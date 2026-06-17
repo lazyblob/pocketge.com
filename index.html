@@ -2495,6 +2495,62 @@ function drawChart(series) {
     ctx.restore();
   }
 
+  /* Support / resistance walls — flat clusters at the top/bottom of the dot
+     cloud where the same price prints repeatedly (heavy bid or ask sitting
+     there). The trade engine already uses these via findRepeatedExtreme; now
+     we surface them visually so flippers can SEE the levels their offers
+     should anchor near. Only drawn when:
+       - the cluster has >=4 hits at the same integer price (real wall, not noise)
+       - the visible window has enough points (>=20) to make repetition meaningful
+       - the wall sits inside the rendered y-range
+       - 5Y/1Y single-price views are skipped (every price is "unique")
+     Solid color-coded lines with subtle labels — no chart chrome bloat. */
+  if (!flipMode && !singlePrice && L.length >= 20) {
+    const hiArr = HI.filter(v => v != null);
+    const loArr = LO.filter(v => v != null);
+    const minHits = Math.max(4, Math.round(L.length * 0.04));
+    const sellWall = hiArr.length >= 8 ? findRepeatedExtreme(hiArr, true,  minHits) : null;
+    const buyWall  = loArr.length >= 8 ? findRepeatedExtreme(loArr, false, minHits) : null;
+
+    const drawWall = (price, color, label) => {
+      if (price == null) return;
+      if (price < vmin || price > vmax) return;
+      const y = Math.round(ypx(price, vmin, vmax, y0, h_price)) + 0.5;
+      ctx.save();
+      ctx.strokeStyle = color; ctx.lineWidth = 1.25; ctx.globalAlpha = 0.65;
+      ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + w, y); ctx.stroke();
+      ctx.globalAlpha = 1;
+      /* Right-side price label — dark badge with color-coded text. Positioned
+         flush against the right edge so it doesn't overlap the live target
+         badge on the left. */
+      ctx.font = "bold 9px BlinkMacSystemFont, sans-serif"; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+      const text = `${label} ${fmtGp(price)}`;
+      const padX = 4, bh = 14, tw = ctx.measureText(text).width;
+      const bx = x0 + w - tw - padX * 2 - 2;
+      let cy = y;
+      ctx.fillStyle = "rgba(11,14,20,0.88)";
+      ctx.fillRect(bx, cy - bh / 2, tw + padX * 2, bh);
+      ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.globalAlpha = 0.7;
+      ctx.strokeRect(bx + 0.5, cy - bh / 2 + 0.5, tw + padX * 2 - 1, bh - 1);
+      ctx.globalAlpha = 1;
+      ctx.fillStyle = color;
+      ctx.fillText(text, Math.round(bx + tw + padX), Math.round(cy));
+      ctx.restore();
+    };
+    /* Only draw walls that are actually separated from the spread mid — if the
+       buy and sell walls collide on a flat tape, drawing both adds noise. */
+    if (sellWall != null && buyWall != null && sellWall - buyWall < (vmax - vmin) * 0.05) {
+      // collapsed walls — show just the more extreme of the two
+      const hiCount = HI.filter(v => v != null && Math.round(v) === sellWall).length;
+      const loCount = LO.filter(v => v != null && Math.round(v) === buyWall).length;
+      if (hiCount >= loCount) drawWall(sellWall, sellColor, "Sell wall");
+      else drawWall(buyWall, buyColor, "Buy wall");
+    } else {
+      drawWall(sellWall, sellColor, "Sell wall");
+      drawWall(buyWall, buyColor, "Buy wall");
+    }
+  }
+
   /* Dots-only scatter (no connecting line — that was scribbling on dense 1D
      charts). The volume needles above carry the "where did big trades happen"
      signal; here we just plot every print clean and small. Flip Mode collapses
