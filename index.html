@@ -339,6 +339,8 @@ button, input { touch-action: manipulation; }
 .category-title.rec-title { color: #FF9800; }
 .category-title.margin-title { color: #2ECC71; }
 .category-title.marginlo-title { color: #7FE3A6; }
+.category-title.gain-title { color: var(--positive); }
+.category-title.fall-title { color: var(--negative); }
 /* Remote Flip Mode: ultra-clean, glanceable, stealthy at-work view. Decorative
    chrome is hidden, prices are oversized, and the chart drops everything except
    the price line + target. */
@@ -771,6 +773,8 @@ let groupOpenStates = {
   "⭐ Favorites": true,
   "💰 High Vol Margins": false,
   "💎 Low Vol Margins": false,
+  "🚀 Biggest Winners (24H)": false,
+  "🔻 Biggest Losers (24H)": false,
   "📈 At 5D Highs": false,
   "📉 At 5D Lows": false
 };
@@ -1260,7 +1264,8 @@ function renderWatchlist() {
   const favsById = new Map(activeItems.map(it => [String(it.id), it]));
   const favs = favorites.map(id => favsById.get(String(id))).filter(Boolean);
 
-  const dayLows = [], dayHighs = [], marginHigh1d = [], marginLow1d = [];
+  const dayLows = [], dayHighs = [], marginHigh1d = [], marginLow1d = [], movers = [];
+  const mover1dPct = {}; // id -> % (live mid vs 24h avg mid), for inline fav badges
 
   activeItems.forEach(item => {
     const id = String(item.id);
@@ -1295,6 +1300,23 @@ function renderWatchlist() {
         if (isLowVolume(item.id)) marginLow1d.push(row); else marginHigh1d.push(row);
       }
     }
+
+    /* 1D movers — live mid price vs its 24h volume-weighted average mid. A
+       bulk-computable momentum read (no per-item fetch) that captures news
+       spikes / dumps the 5D position lists miss. Stored per-id for the inline
+       favorites badge; the discovery sections additionally junk-filter on
+       price, volume, and a >=3% move so penny pumps don't dominate. */
+    if (node && node.high > 0 && node.low > 0
+        && p24 && p24.avgHighPrice > 0 && p24.avgLowPrice > 0) {
+      const curMid = (node.high + node.low) / 2;
+      const avgMid = (p24.avgHighPrice + p24.avgLowPrice) / 2;
+      if (avgMid > 0) {
+        const pct = (curMid - avgMid) / avgMid * 100;
+        mover1dPct[id] = pct;
+        const vol = (p24.highPriceVolume || 0) + (p24.lowPriceVolume || 0);
+        if (curMid >= 100 && vol >= 10000 && Math.abs(pct) >= 3) movers.push({ item, pct });
+      }
+    }
   });
 
   dayLows.sort((a, b) => priceOf(b) - priceOf(a));
@@ -1302,11 +1324,24 @@ function renderWatchlist() {
   marginHigh1d.sort((a, b) => b.margin - a.margin);
   marginLow1d.sort((a, b) => b.margin - a.margin);
 
-  /* plainEntries used to embed a per-row 24h trend arrow, but it duplicated
-     the at-high / at-low badge signal and clashed visually with the reorder
-     ▲/▼ buttons. The row's color glow + price already communicate direction. */
+  const winners = movers.filter(m => m.pct > 0).sort((a, b) => b.pct - a.pct).slice(0, 15);
+  const losers  = movers.filter(m => m.pct < 0).sort((a, b) => a.pct - b.pct).slice(0, 15);
+
+  /* Compact 1D-move chip from the live-vs-24h-avg %, used inline on favorites
+     rows (sub-slot is otherwise empty there). Only shows at >=1% so flat
+     favorites stay clean; below that the row reads as steady. */
+  const moveChip = (id) => {
+    const pct = mover1dPct[String(id)];
+    if (pct == null || Math.abs(pct) < 1) return '';
+    const cls = pct >= 0 ? 'up' : 'down';
+    return `<span class="wl-trend ${cls}" title="Live price vs its 24-hour average — a momentum read, not change-since-yesterday.">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</span>`;
+  };
+
+  /* Favorites carry an inline 1D-move chip; other plain lists stay bare. */
   const plainEntries = (items) => items.map(item => ({ item, price: priceOf(item), sub: '' }));
+  const favEntries = (items) => items.map(item => ({ item, price: priceOf(item), sub: moveChip(item.id) }));
   const marginEntries = (rows, tag) => rows.slice(0, 30).map(r => ({ item: r.item, price: priceOf(r.item), sub: `<span class="wl-trend up">+${abbreviateNumber(r.margin)} ${tag}</span>` }));
+  const moverEntries = (rows) => rows.map(r => ({ item: r.item, price: priceOf(r.item), sub: `<span class="wl-trend ${r.pct >= 0 ? 'up' : 'down'}" title="Live price vs its 24-hour average.">${r.pct >= 0 ? '+' : ''}${r.pct.toFixed(1)}%</span>` }));
 
   /* Final scanner ordering — favorites pinned on top, then current live
      margins (the bread-and-butter "flip now" view), then the 5-day extreme
@@ -1314,9 +1349,11 @@ function renderWatchlist() {
      over-max rares were dropped: clutter that drifted from the core flipping
      workflow. */
   const groups = [
-    { name: "⭐ Favorites", className: "fav-title", entries: plainEntries(favs), alwaysShow: true },
+    { name: "⭐ Favorites", className: "fav-title", entries: favEntries(favs), alwaysShow: true },
     { name: "💰 High Vol Margins", className: "margin-title", entries: marginEntries(marginHigh1d, "ea") },
     { name: "💎 Low Vol Margins", className: "marginlo-title", entries: marginEntries(marginLow1d, "ea") },
+    { name: "🚀 Biggest Winners (24H)", className: "gain-title", entries: moverEntries(winners) },
+    { name: "🔻 Biggest Losers (24H)", className: "fall-title", entries: moverEntries(losers) },
     { name: "📈 At 5D Highs", className: "high-title", entries: plainEntries(dayHighs.slice(0, 30)), scan: "fived" },
     { name: "📉 At 5D Lows", className: "low-title", entries: plainEntries(dayLows.slice(0, 30)), scan: "fived" }
   ];
@@ -2387,6 +2424,18 @@ function drawChart(series) {
 
   const buyColor = getComputedStyle(document.documentElement).getPropertyValue('--buy-color').trim();
   const sellColor = getComputedStyle(document.documentElement).getPropertyValue('--sell-color').trim();
+  const priceColor = "#C2CBDC"; // neutral, used when there's no buy/sell spread (historical)
+
+  /* Long-range historical data (1Y / 5Y) is a single daily price — insta-buy
+     and insta-sell are equal — so the two-tone buy/sell scheme is meaningless
+     and the gold dots simply paint over the teal, leaving one misleading
+     color. Detect that and render both series in a neutral "price" color so
+     the chart honestly reads as historical price rather than all-buy. */
+  let bothCount = 0, eqCount = 0;
+  for (let i = 0; i < L.length; i++) {
+    if (LO[i] != null && HI[i] != null) { bothCount++; if (Math.abs(HI[i] - LO[i]) < 1e-9) eqCount++; }
+  }
+  const singlePrice = bothCount > 0 && eqCount / bothCount > 0.9;
 
   /* Spread band — a soft translucent fill between the buy-low envelope and
      the sell-high envelope, giving the chart a modern "channel" feel without
@@ -2452,10 +2501,16 @@ function drawChart(series) {
       }
     }
   }
-  /* Draw highs first, then lows, so the gold (buy) dots stay visible on top
-     for single-price historical series where low === high. */
-  drawSeries(HI, sellColor, true);
-  drawSeries(LO, buyColor, false);
+  /* Single-price historical → one neutral series (both calls keep the period
+     high & low halos). Otherwise the normal two-tone buy/sell scatter; highs
+     first so gold buy dots stay readable where they overlap. */
+  if (singlePrice) {
+    drawSeries(HI, priceColor, true);
+    drawSeries(LO, priceColor, false);
+  } else {
+    drawSeries(HI, sellColor, true);
+    drawSeries(LO, buyColor, false);
+  }
 
   /* Smoothed mid-price trend line (EMA over (buy+sell)/2). Replaces the old
      straight linear-regression line — it shows the actual SHAPE of the move,
