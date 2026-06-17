@@ -1603,6 +1603,22 @@ async function buildSeriesForItem(id) {
 
 function ypx(v, vmin, vmax, y0, h) { if (vmin === vmax) return y0 + h / 2; return y0 + (1 - ((v - vmin) / (vmax - vmin))) * h; }
 
+/* Produce human-friendly axis tick values spanning [min, max] with roughly
+   `count` divisions. Steps snap to 1 / 2 / 2.5 / 5 × 10^n so prices anchor on
+   round numbers (2,600 / 2,700) instead of raw data-derived values. */
+function niceTicks(min, max, count) {
+  const range = max - min;
+  if (!(range > 0)) return [min];
+  const rawStep = range / Math.max(1, count);
+  const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
+  const norm = rawStep / mag;
+  const niceNorm = norm >= 5 ? 5 : norm >= 2.5 ? 2.5 : norm >= 2 ? 2 : 1;
+  const step = niceNorm * mag;
+  const ticks = [];
+  for (let v = Math.ceil(min / step) * step; v <= max + step * 0.001; v += step) ticks.push(Math.round(v));
+  return ticks;
+}
+
 function linearRegression(x, y) {
   const n = x.length; let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
   for (let i = 0; i < n; i++) { sumX += x[i]; sumY += y[i]; sumXY += x[i] * y[i]; sumX2 += x[i] * x[i]; }
@@ -2323,15 +2339,16 @@ function drawChart(series) {
   chartData.markers = [viewMaxIdx, viewMinIdx, recHiIdx, recLoIdx].filter(i => i >= 0);
 
   ctx.lineWidth = 1;
-  const linesY = 5;
-  /* Bigger axis labels on desktop where the chart is wide — 10px gets lost. */
+  /* Round y-axis ticks (2,600 / 2,700 …) instead of raw data-derived values
+     so prices anchor on human numbers. */
   const axisFontPx = W >= 800 ? 12 : 10;
   ctx.font = `${axisFontPx}px BlinkMacSystemFont, sans-serif`; ctx.textAlign = "right"; ctx.textBaseline = "middle";
-  for (let i = 0; i <= linesY; i++) {
-    const y = y0 + (h_price * i / linesY);
+  const mutedTickCol = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
+  for (const v of niceTicks(vmin, vmax, 5)) {
+    if (v < vmin || v > vmax) continue;
+    const y = ypx(v, vmin, vmax, y0, h_price);
     ctx.strokeStyle = "rgba(255,255,255,0.03)"; ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + w, y); ctx.stroke();
-    const v = Math.round(vmax - (vmax - vmin) * i / linesY);
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
+    ctx.fillStyle = mutedTickCol;
     ctx.fillText(fmtYAxis(v), Math.round(x0 - 6), Math.round(y));
   }
 
@@ -2368,18 +2385,6 @@ function drawChart(series) {
     }
   }
 
-  if (!flipMode) {
-    const midPoints = [];
-    for (let i = 0; i < L.length; i++) if (LO[i] != null && HI[i] != null) midPoints.push({ i, v: (LO[i] + HI[i]) / 2 });
-    if (midPoints.length > 1) {
-      const { slope, intercept } = linearRegression(midPoints.map(m => m.i), midPoints.map(m => m.v));
-      ctx.save(); ctx.setLineDash([4, 6]); ctx.strokeStyle = "rgba(255,255,255,0.2)"; ctx.lineWidth = 1.5;
-      ctx.beginPath(); ctx.moveTo(x0, ypx(intercept, vmin, vmax, y0, h_price));
-      ctx.lineTo(x0 + dataW, ypx(slope * (L.length - 1) + intercept, vmin, vmax, y0, h_price));
-      ctx.stroke(); ctx.restore();
-    }
-  }
-
   const buyColor = getComputedStyle(document.documentElement).getPropertyValue('--buy-color').trim();
   const sellColor = getComputedStyle(document.documentElement).getPropertyValue('--sell-color').trim();
 
@@ -2390,7 +2395,10 @@ function drawChart(series) {
      markers paint on top. */
   if (!flipMode) {
     ctx.save();
-    ctx.fillStyle = "rgba(38, 166, 154, 0.07)";
+    /* The band between buy-low and sell-high IS the margin, drawn over time —
+       the app's hero metric. Kept subtle but actually visible now (was 0.07,
+       basically invisible). */
+    ctx.fillStyle = "rgba(38, 166, 154, 0.13)";
     let segStart = -1;
     for (let i = 0; i <= L.length; i++) {
       const valid = i < L.length && LO[i] != null && HI[i] != null;
@@ -2449,6 +2457,37 @@ function drawChart(series) {
   drawSeries(HI, sellColor, true);
   drawSeries(LO, buyColor, false);
 
+  /* Smoothed mid-price trend line (EMA over (buy+sell)/2). Replaces the old
+     straight linear-regression line — it shows the actual SHAPE of the move,
+     not just net drift, while a single smoothed curve avoids the "scribble"
+     that a raw connecting line caused on dense intraday data. Drawn on top of
+     the dots so the eye can follow the trend at a glance. The EMA carries
+     across small data gaps but the drawn line lifts the pen over them. */
+  if (!flipMode && L.length > 2) {
+    const period = Math.max(2, Math.round(L.length * 0.08));
+    const k = 2 / (period + 1);
+    let ema = null;
+    const smooth = new Array(L.length).fill(null);
+    for (let i = 0; i < L.length; i++) {
+      if (LO[i] == null || HI[i] == null) continue;
+      const mid = (LO[i] + HI[i]) / 2;
+      ema = ema == null ? mid : mid * k + ema * (1 - k);
+      smooth[i] = ema;
+    }
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,255,255,0.55)"; ctx.lineWidth = 1.75;
+    ctx.lineJoin = "round"; ctx.lineCap = "round";
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i < L.length; i++) {
+      if (smooth[i] == null) { started = false; continue; }
+      const x = x0 + i * stepX, y = ypx(smooth[i], vmin, vmax, y0, h_price);
+      if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.restore();
+  }
+
   function ring(i, arr, color) {
     if (i < 0 || arr[i] == null) return;
     const x = x0 + i * stepX, y = ypx(arr[i], vmin, vmax, y0, h_price);
@@ -2464,7 +2503,7 @@ function drawChart(series) {
        made the bottom strip read as cluttered. Modern: quiet, glanceable. */
     const maxVol = Math.max(...VO.filter(v => v > 0), 1);
     const barWidth = Math.max(1, stepX * 0.85);
-    ctx.fillStyle = "rgba(135, 145, 165, 0.32)";
+    ctx.fillStyle = "rgba(140, 152, 176, 0.5)";
     for (let i = 0; i < VO.length; i++) {
       if (LOWVOL[i] == null && HIGHVOL[i] == null) continue;
       const totalH = ((LOWVOL[i] + HIGHVOL[i]) / maxVol) * h_vol;
