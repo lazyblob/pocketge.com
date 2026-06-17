@@ -440,23 +440,28 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-item-left img { width: 20px; height: 20px; image-rendering: pixelated; flex-shrink: 0; }
 .wl-item-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;}
 .wl-item-right { display: flex; align-items: center; gap: 6px; text-align: right; }
-/* Per-row remove-from-favorites button. Only rendered inside the Favorites
-   group. Always visible on touch devices, hover-revealed on desktop. The
-   row's content slides left when the user drags it to expose a confirm bg. */
+/* Favorites management controls (reorder ▲▼ + remove ×). Hidden entirely in
+   the resting state so the list stays clean — revealed only when the user
+   taps "Edit" on the Favorites header (which adds .fav-editing to the list
+   container). Quick swipe-to-remove on touch still works without Edit mode. */
 .wl-item { position: relative; touch-action: pan-y; }
-.wl-fav-remove { background: transparent; border: 1px solid var(--border-light); color: var(--text-muted); border-radius: 3px; width: 22px; height: 22px; cursor: pointer; line-height: 1; font-size: 15px; padding: 0; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s ease; opacity: 0; }
-.wl-fav-reorder { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; opacity: 0; transition: opacity 0.15s ease; }
-.wl-fav-reorder button { background: transparent; border: 1px solid var(--border-light); color: var(--text-muted); border-radius: 3px; width: 22px; height: 12px; cursor: pointer; padding: 0; font-size: 8px; line-height: 1; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; }
+.wl-edit-btn { background: transparent; border: 1px solid var(--border-light); color: var(--text-muted); border-radius: 3px; font-size: 9px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; padding: 2px 8px; margin-right: 8px; cursor: pointer; transition: all 0.15s ease; }
+.wl-edit-btn:hover { color: var(--text-main); border-color: var(--border-active); }
+.wl-edit-btn.active { color: #fff; background: var(--border-active); border-color: var(--border-active); }
+.cat-title-right { display: inline-flex; align-items: center; }
+.wl-fav-remove { background: transparent; border: 1px solid var(--border-light); color: var(--text-muted); border-radius: 3px; width: 24px; height: 24px; cursor: pointer; line-height: 1; font-size: 16px; padding: 0; display: none; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s ease; }
+.wl-fav-reorder { display: none; flex-direction: column; gap: 2px; flex-shrink: 0; }
+.wl-fav-reorder button { background: transparent; border: 1px solid var(--border-light); color: var(--text-muted); border-radius: 3px; width: 24px; height: 12px; cursor: pointer; padding: 0; font-size: 8px; line-height: 1; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; }
 .wl-fav-reorder button:hover:not(:disabled) { color: var(--text-main); border-color: var(--border-active); }
 .wl-fav-reorder button:disabled { opacity: 0.25; cursor: not-allowed; }
-.wl-item:hover .wl-fav-remove,
-.wl-item:hover .wl-fav-reorder,
-.wl-item.swipe-revealed .wl-fav-remove { opacity: 1; }
-@media (hover: none) { .wl-fav-reorder { opacity: 0.7; } }
 .wl-fav-remove:hover { color: var(--negative); border-color: var(--negative); background: rgba(239,83,80,0.12); }
-/* On touch devices (no hover capability) keep the button visible so users
-   discover it without needing to guess at a hover affordance. */
-@media (hover: none) { .wl-fav-remove { opacity: 0.7; } }
+/* Edit mode: show the controls, hide the read-only price / move-chip / badge
+   so the controls have breathing room and the row never crowds. */
+.fav-editing .wl-fav-reorder, .fav-editing .wl-fav-remove { display: flex; }
+.fav-editing .wl-item[data-fav-row="1"] .wl-item-price,
+.fav-editing .wl-item[data-fav-row="1"] .wl-trend,
+.fav-editing .wl-item[data-fav-row="1"] .hl-badge { display: none; }
+.fav-editing .wl-item[data-fav-row="1"] { cursor: default; }
 .wl-item.swiping { transition: none; }
 .wl-item .wl-item-left, .wl-item .wl-item-right { transition: transform 0.18s ease; }
 .wl-item.swipe-revealed .wl-item-left,
@@ -778,6 +783,9 @@ let groupOpenStates = {
   "📈 At 5D Highs": false,
   "📉 At 5D Lows": false
 };
+/* Favorites "Edit" mode — when on, rows reveal reorder/remove controls and
+   stop navigating on tap. Off by default so the resting list stays clean. */
+let favEditMode = false;
 
 const canvas = document.getElementById("chart");
 const ctx = canvas.getContext("2d");
@@ -1367,17 +1375,31 @@ function renderWatchlist() {
     const isGroupOpen = groupOpenStates[group.name] !== false;
     const titleDiv = document.createElement("div");
     titleDiv.className = `category-title ${group.className}`;
-    titleDiv.innerHTML = `<span>${group.name}</span><span>${isGroupOpen ? "▼" : "▶"}</span>`;
+    const isFavTitle = group.name === "⭐ Favorites";
+    const editBtnHTML = isFavTitle && group.entries.length
+      ? `<button type="button" class="wl-edit-btn ${favEditMode ? 'active' : ''}">${favEditMode ? 'Done' : 'Edit'}</button>`
+      : '';
+    titleDiv.innerHTML = `<span>${group.name}</span><span class="cat-title-right">${editBtnHTML}<span class="cat-chevron">${isGroupOpen ? "▼" : "▶"}</span></span>`;
     const listDiv = document.createElement("div");
     listDiv.className = `category-list ${isGroupOpen ? "" : "collapsed"}`;
     titleDiv.onclick = () => {
       const nowCollapsed = listDiv.classList.toggle("collapsed");
-      titleDiv.querySelector("span:last-child").textContent = nowCollapsed ? "▶" : "▼";
+      titleDiv.querySelector(".cat-chevron").textContent = nowCollapsed ? "▶" : "▼";
       groupOpenStates[group.name] = !nowCollapsed;
       if (!nowCollapsed && hasScan && scanStatus[group.scan] === 'idle' && group.scan === 'fived') {
         runFiveDayScan();
       }
     };
+    const editBtn = titleDiv.querySelector('.wl-edit-btn');
+    if (editBtn) {
+      editBtn.onclick = (ev) => {
+        ev.stopPropagation(); // don't collapse the group
+        favEditMode = !favEditMode;
+        container.classList.toggle('fav-editing', favEditMode);
+        editBtn.textContent = favEditMode ? 'Done' : 'Edit';
+        editBtn.classList.toggle('active', favEditMode);
+      };
+    }
 
     let inner = "";
     if (hasScan && scanState !== 'done' && group.entries.length === 0) {
@@ -1439,6 +1461,9 @@ function renderWatchlist() {
     fragment.appendChild(groupDiv);
   });
   container.appendChild(fragment);
+  /* Persist edit-mode styling across re-renders (the 5-min refresh rebuilds
+     the list). */
+  container.classList.toggle('fav-editing', favEditMode);
 
   container.querySelectorAll('.scan-row[data-scan="fived"]').forEach(el => {
     el.onclick = () => runFiveDayScan();
@@ -1446,8 +1471,10 @@ function renderWatchlist() {
   container.querySelectorAll('.wl-item[data-id]').forEach(el => {
     el.onclick = (ev) => {
       /* Don't navigate when the user clicks the per-row × or after a swipe
-         has revealed the remove backdrop. */
+         has revealed the remove backdrop. While editing favorites, taps
+         manage the list rather than navigate. */
       if (ev.target.closest('.wl-fav-remove, .wl-fav-reorder')) return;
+      if (favEditMode && el.getAttribute('data-fav-row') === '1') return;
       if (el.classList.contains('swipe-revealed')) {
         el.classList.remove('swipe-revealed');
         return;
