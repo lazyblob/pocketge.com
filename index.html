@@ -23,12 +23,15 @@
 <meta property="og:image" content="https://oldschool.runescape.wiki/images/Gilded_scimitar.png">
 <meta property="og:image:width" content="100">
 <meta property="og:image:height" content="100">
+<meta property="og:image:alt" content="PocketGE — OSRS Grand Exchange flipping tracker">
 <meta property="og:site_name" content="PocketGE">
+<meta property="og:locale" content="en_US">
 
 <meta name="twitter:card" content="summary">
 <meta name="twitter:title" content="PocketGE | Live OSRS Flipping Tool & Bank Tracker">
 <meta name="twitter:description" content="Live OSRS margins, 5-day breakout scanner, Bank stack alerts, and push notifications. Mobile-first.">
 <meta name="twitter:image" content="https://oldschool.runescape.wiki/images/Gilded_scimitar.png">
+<meta name="twitter:image:alt" content="PocketGE — OSRS Grand Exchange flipping tracker">
 
 <link id="favicon1" rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <link id="favicon2" rel="icon" type="image/png" sizes="192x192" href="https://oldschool.runescape.wiki/images/Gilded_scimitar.png">
@@ -40,12 +43,60 @@
   "@context": "https://schema.org",
   "@type": "WebApplication",
   "name": "PocketGE",
+  "alternateName": "PocketGE OSRS Grand Exchange Tracker",
   "url": "https://pocketge.com/",
   "applicationCategory": "FinanceApplication",
   "operatingSystem": "Any",
+  "browserRequirements": "Requires JavaScript. Works in any modern browser.",
   "description": "Mobile-first OSRS Grand Exchange tracker — live margins with 2% GE tax baked in, 5-day breakout scanner split by high vs low volume, Bank of Gielinor stack tracker with per-stack alerts, and browser push notifications when favorites break above/below their 24H or 5D extremes.",
   "image": "https://oldschool.runescape.wiki/images/Gilded_scimitar.png",
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "PocketGE",
+  "url": "https://pocketge.com/",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": { "@type": "EntryPoint", "urlTemplate": "https://pocketge.com/?q={search_term_string}" },
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    {
+      "@type": "Question",
+      "name": "How does the 2% Grand Exchange tax work in OSRS?",
+      "acceptedAnswer": { "@type": "Answer", "text": "When you sell an item on the Grand Exchange, Old School RuneScape takes a 2% sales tax from the sale, rounded down, capped at 5,000,000 gp per item. Items selling for under 50 gp are exempt, and certain items like the bond are also exempt. PocketGE bakes this into every margin and into the flip calculator, so the profit you see is what you actually keep after tax." }
+    },
+    {
+      "@type": "Question",
+      "name": "What are the best items to flip in OSRS?",
+      "acceptedAnswer": { "@type": "Answer", "text": "It depends on your capital and patience. High-volume staples like gems, bars, ores, runes, arrows and cannonballs flip fast with small per-item margins, suiting active flipping. Low-volume items such as rare gear and niche supplies carry bigger absolute spreads but fill slower. PocketGE splits live margins into High Vol and Low Vol lists, sorted by gp profit per flip after tax." }
+    },
+    {
+      "@type": "Question",
+      "name": "What is a buy limit on the Grand Exchange?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Every tradeable item has a 4-hour buy limit, the maximum quantity you can purchase from the GE in a rolling four-hour window. PocketGE multiplies the current per-item margin by the item's buy limit to show the realistic profit ceiling for one 4-hour flip." }
+    },
+    {
+      "@type": "Question",
+      "name": "How do I know when to buy or sell an item in OSRS?",
+      "acceptedAnswer": { "@type": "Answer", "text": "PocketGE gives each item a Target Buy and Target Sell anchored to recent competitive bids, plus a letter-grade verdict for the current price. The chart marks support and resistance walls — flat price levels where heavy buy or sell orders repeatedly sit — and flags when an item is testing a genuine 5-day high or low." }
+    },
+    {
+      "@type": "Question",
+      "name": "Is PocketGE free, and does it need my RuneScape login?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes, PocketGE is completely free with no ads and no account. It never asks for your RuneScape credentials and only reads public Grand Exchange price data. Everything you save stays in your own browser, and you can install it to your phone's home screen as an app." }
+    }
+  ]
 }
 </script>
 
@@ -101,6 +152,14 @@ button, input { touch-action: manipulation; }
 .about-section a { color: var(--border-active); text-decoration: none; }
 .about-section a:hover { text-decoration: underline; }
 .about-section .about-intro { font-size: 14px; color: var(--text-main); padding-bottom: 12px; border-bottom: 1px solid var(--border-main); margin-bottom: 20px; }
+.about-section .faq { margin-top: 4px; }
+.about-section .faq details { border: 1px solid var(--border-main); border-radius: 6px; margin-bottom: 8px; background: var(--bg-panel); overflow: hidden; }
+.about-section .faq summary { cursor: pointer; padding: 11px 14px; font-size: 13px; font-weight: 600; color: var(--text-main); list-style: none; display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.about-section .faq summary::-webkit-details-marker { display: none; }
+.about-section .faq summary::after { content: "+"; color: var(--text-muted); font-size: 18px; font-weight: 400; flex-shrink: 0; }
+.about-section .faq details[open] summary::after { content: "−"; }
+.about-section .faq details[open] summary { border-bottom: 1px solid var(--border-main); }
+.about-section .faq p { margin: 0; padding: 11px 14px; font-size: 12.5px; }
 .wrap { max-width: 1800px; margin: 0 auto; padding: 8px; height: 100dvh; display: flex; flex-direction: column; gap: 8px; }
 .content-area { display: flex; flex-direction: row; flex: 1; gap: 8px; min-height: 0; min-width: 0; }
 .main-column { flex: 1; display: flex; flex-direction: column; min-width: 0; gap: 8px; }
@@ -1336,13 +1395,16 @@ function renderWatchlist() {
   const losers  = movers.filter(m => m.pct < 0).sort((a, b) => a.pct - b.pct).slice(0, 15);
 
   /* Compact 1D-move chip from the live-vs-24h-avg %, used inline on favorites
-     rows (sub-slot is otherwise empty there). Only shows at >=1% so flat
-     favorites stay clean; below that the row reads as steady. */
+     rows. Always shown when we have data (even near-zero) so every row keeps
+     the same right-edge spacing; small moves render in the muted neutral
+     color rather than green/red so a flat item reads as "steady". */
   const moveChip = (id) => {
     const pct = mover1dPct[String(id)];
-    if (pct == null || Math.abs(pct) < 1) return '';
-    const cls = pct >= 0 ? 'up' : 'down';
-    return `<span class="wl-trend ${cls}" title="Live price vs its 24-hour average — a momentum read, not change-since-yesterday.">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</span>`;
+    if (pct == null) return '';
+    const cls = pct >= 1 ? 'up' : pct <= -1 ? 'down' : 'neutral';
+    const rounded = pct.toFixed(1);
+    const display = (rounded === '0.0' || rounded === '-0.0') ? '0.0%' : `${pct > 0 ? '+' : ''}${rounded}%`;
+    return `<span class="wl-trend ${cls}" title="Live price vs its 24-hour average — a momentum read, not change-since-yesterday.">${display}</span>`;
   };
 
   /* Favorites carry an inline 1D-move chip; other plain lists stay bare. */
@@ -3140,6 +3202,34 @@ if ('serviceWorker' in navigator) {
 
   <h2>Free, no signup, runs entirely in your browser</h2>
   <p>PocketGE never asks for an account or game credentials. All your favorites, Bank stacks, alert thresholds, and notification settings live in your browser's localStorage — wipe your cache and they're gone, which also means none of it leaves your device. Prices come from the public <a href="https://prices.runescape.wiki/" rel="noopener">OSRS Wiki real-time prices API</a>; historical context comes from the public <a href="https://api.weirdgloop.org/" rel="noopener">Weird Gloop exchange history</a>. Open the help (❓) inside the app for the badge / verdict glossary.</p>
+
+  <h2 id="faq">Frequently asked questions</h2>
+  <div class="faq">
+    <details>
+      <summary>How does the 2% Grand Exchange tax work in OSRS?</summary>
+      <p>When you sell an item on the Grand Exchange, Old School RuneScape takes a 2% sales tax from the sale, rounded down, capped at 5,000,000 gp per item. Items selling for under 50 gp are exempt, and certain items (like the old school bond) are also exempt. PocketGE bakes this into every margin and into the flip calculator, so the profit you see is what you actually keep after tax — not the raw buy/sell spread.</p>
+    </details>
+    <details>
+      <summary>What are the best items to flip in OSRS?</summary>
+      <p>It depends on your capital and patience. High-volume staples — gems (rubies, diamonds), bars, ores, runes, arrows, cannonballs — flip fast with small per-item margins, so they suit active flipping. Low-volume items (rare gear, niche supplies) carry bigger absolute spreads but fill slower. PocketGE's sidebar splits live margins into High Vol and Low Vol lists, sorted by gp profit per flip after tax, so you can pick the style that fits how often you can hop to a GE.</p>
+    </details>
+    <details>
+      <summary>What is a buy limit on the Grand Exchange?</summary>
+      <p>Every tradeable item has a 4-hour buy limit — the maximum quantity you can purchase from the GE in a rolling four-hour window. It caps how much profit a single flip can make per cycle. PocketGE's "potential profit" headline multiplies the current per-item margin by the item's buy limit, so you can see the realistic ceiling for one 4-hour flip rather than a per-item figure.</p>
+    </details>
+    <details>
+      <summary>How do I know when to buy or sell an item?</summary>
+      <p>PocketGE gives each item a Target Buy and Target Sell anchored to recent competitive bids, plus a letter-grade verdict (e.g. "Strong Entry", "Top Sell") for the current price. The chart marks support and resistance walls — flat price levels where heavy buy or sell orders repeatedly sit — so you can place offers just inside them. The 5-day high / low badges flag when an item is testing a genuine multi-day extreme.</p>
+    </details>
+    <details>
+      <summary>What's the difference between high-volume and low-volume flipping?</summary>
+      <p>High-volume items trade tens of thousands to millions of units per day, so offers fill almost instantly but margins are thin — profit comes from turning capital over many times. Low-volume items trade slowly but with wider spreads, so each flip earns more gp but you may wait hours for a fill. PocketGE separates the two so you don't accidentally tie up capital in a slow item expecting a fast flip.</p>
+    </details>
+    <details>
+      <summary>Is PocketGE free, and does it need my RuneScape login?</summary>
+      <p>Yes, it's completely free with no ads and no account. It never asks for your RuneScape credentials — it only reads public Grand Exchange price data. Everything you save (favorites, Bank stacks, alerts) stays in your own browser. You can also install it to your phone's home screen as an app.</p>
+    </details>
+  </div>
 </section>
 
 </body>
