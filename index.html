@@ -1336,13 +1336,16 @@ function renderWatchlist() {
   const losers  = movers.filter(m => m.pct < 0).sort((a, b) => a.pct - b.pct).slice(0, 15);
 
   /* Compact 1D-move chip from the live-vs-24h-avg %, used inline on favorites
-     rows (sub-slot is otherwise empty there). Only shows at >=1% so flat
-     favorites stay clean; below that the row reads as steady. */
+     rows. Always shown when we have data (even near-zero) so every row keeps
+     the same right-edge spacing; small moves render in the muted neutral
+     color rather than green/red so a flat item reads as "steady". */
   const moveChip = (id) => {
     const pct = mover1dPct[String(id)];
-    if (pct == null || Math.abs(pct) < 1) return '';
-    const cls = pct >= 0 ? 'up' : 'down';
-    return `<span class="wl-trend ${cls}" title="Live price vs its 24-hour average — a momentum read, not change-since-yesterday.">${pct >= 0 ? '+' : ''}${pct.toFixed(1)}%</span>`;
+    if (pct == null) return '';
+    const cls = pct >= 1 ? 'up' : pct <= -1 ? 'down' : 'neutral';
+    const rounded = pct.toFixed(1);
+    const display = (rounded === '0.0' || rounded === '-0.0') ? '0.0%' : `${pct > 0 ? '+' : ''}${rounded}%`;
+    return `<span class="wl-trend ${cls}" title="Live price vs its 24-hour average — a momentum read, not change-since-yesterday.">${display}</span>`;
   };
 
   /* Favorites carry an inline 1D-move chip; other plain lists stay bare. */
