@@ -105,7 +105,11 @@
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
-  gtag('config', 'G-43YM2RCX1R');
+  /* send_page_view: false because this is an SPA — we fire our own virtual
+     page_view from setItem() once the selected item is known, so every visit
+     (including deep links like /?q=Cake) reports the actual item title/path
+     instead of collapsing into a single "home /" pageview. */
+  gtag('config', 'G-43YM2RCX1R', { send_page_view: false });
 </script>
 <style>
 :root {
@@ -614,7 +618,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 
             <div class="search-group">
               <div class="sbar">
-                <img id="itemIcon" src="" alt="">
+                <img id="itemIcon" src="" alt="Selected OSRS item icon">
                 <input id="query" placeholder="Symbol Search..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
                 <div id="suggestBox" class="suggest" style="display:none"></div>
               </div>
@@ -768,7 +772,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
       <div class="bk-stats" id="pfStats"></div>
       <form class="bk-form" id="pfForm" autocomplete="off">
         <div class="bk-item-row">
-          <img id="pfItemIcon" class="bk-item-icon" src="" alt="">
+          <img id="pfItemIcon" class="bk-item-icon" src="" alt="Selected item icon for Bank of Gielinor">
           <span class="bk-item-name" id="pfItemName">No item selected</span>
         </div>
         <div class="bk-form-grid">
@@ -1505,7 +1509,7 @@ function renderWatchlist() {
           <div class="wl-item ${activeClass} ${hlClass}" data-id="${item.id}" ${isFavGroup ? 'data-fav-row="1"' : ''}>
             ${swipeBg}
             <div class="wl-item-left">
-              <img src="${itemIconUrl(item.id)}" alt="" loading="lazy">
+              <img src="${itemIconUrl(item.id)}" alt="${item.name} icon" loading="lazy">
               <span class="wl-item-name">${item.name}</span>
             </div>
             <div class="wl-item-right">
@@ -2165,7 +2169,7 @@ function renderPortfolio() {
       ? `<span class="bk-pl ${cls}">${s}${m.plPct.toFixed(1)}%</span>`
       : `<span class="bk-pl">—</span>`;
     return `<div class="bk-row" data-idx="${i}">
-      <img src="${itemIconUrl(h.itemId)}" alt="" loading="lazy">
+      <img src="${itemIconUrl(h.itemId)}" alt="${h.name} icon" loading="lazy">
       <div style="overflow:hidden">
         <div class="bk-name">${h.name}</div>
         <div class="bk-sub">${sub}</div>
@@ -2197,6 +2201,7 @@ function renderPortfolio() {
 function openPortfolio() {
   if (selected && !overMaxData[String(selected.id)]) {
     $('#pfItemIcon').src = itemIconUrl(selected.id);
+    $('#pfItemIcon').alt = `${selected.name} icon`;
     $('#pfItemName').textContent = selected.name;
     const existing = portfolio.find(h => String(h.itemId) === String(selected.id));
     if (existing) {
@@ -2334,7 +2339,7 @@ function renderNotifCenter() {
   const favHTML = favItems.length
     ? `<div class="nc-list">${favItems.map(m => `
         <div class="nc-row">
-          <img src="${itemIconUrl(m.id)}" alt="">
+          <img src="${itemIconUrl(m.id)}" alt="${m.name} icon">
           <div class="nc-row-name-stack">
             <span class="nc-row-name">${m.name}</span>
             <span class="nc-row-caption">24H break + 5D break (auto)</span>
@@ -2351,7 +2356,7 @@ function renderNotifCenter() {
           : 'No cost basis — alerts need a cost ea to compare against';
         return `
           <div class="nc-row" data-bk-id="${h.itemId}">
-            <img src="${itemIconUrl(h.itemId)}" alt="">
+            <img src="${itemIconUrl(h.itemId)}" alt="${h.name} icon">
             <div class="nc-row-name-stack">
               <span class="nc-row-name">${h.name}</span>
               <span class="nc-row-caption">${caption}</span>
@@ -2564,15 +2569,34 @@ function drawChart(series) {
      should anchor near. Only drawn when:
        - the cluster has >=4 hits at the same integer price (real wall, not noise)
        - the visible window has enough points (>=20) to make repetition meaningful
-       - the wall sits inside the rendered y-range
+       - the wall is ACTIONABLE relative to current price: a sell wall must be
+         at or above current (overhead resistance), a buy wall must be at or
+         below current (underlying support). Stale clusters from a previous
+         regime get filtered out — if Cake breaks out from 297 to 391, the
+         old 297 floor is no longer overhead resistance, so we don't show it.
        - 5Y/1Y single-price views are skipped (every price is "unique")
      Solid color-coded lines with subtle labels — no chart chrome bloat. */
   if (!flipMode && !singlePrice && L.length >= 20) {
-    const hiArr = HI.filter(v => v != null);
-    const loArr = LO.filter(v => v != null);
+    /* Recent live levels — averaged over the last ~5% of prints (min 3, max 8)
+       so a single noisy spike doesn't define "current price." Used to gate
+       walls as overhead vs. underfoot. */
+    const recentN = Math.max(3, Math.min(8, Math.floor(L.length * 0.05)));
+    let curSell = 0, curBuy = 0, ns = 0, nb = 0;
+    for (let i = L.length - 1; i >= 0 && (ns < recentN || nb < recentN); i--) {
+      if (ns < recentN && HI[i] != null) { curSell += HI[i]; ns++; }
+      if (nb < recentN && LO[i] != null) { curBuy += LO[i]; nb++; }
+    }
+    if (ns) curSell /= ns;
+    if (nb) curBuy /= nb;
+
     const minHits = Math.max(4, Math.round(L.length * 0.04));
-    const sellWall = hiArr.length >= 8 ? findRepeatedExtreme(hiArr, true,  minHits) : null;
-    const buyWall  = loArr.length >= 8 ? findRepeatedExtreme(loArr, false, minHits) : null;
+    /* Overhead-only filter: a sell wall is meaningful only when prints have
+       repeated AT or ABOVE current sell. 1.5% tolerance lets a wall RIGHT AT
+       current still count (price tagging the level). */
+    const overheadHi = curSell > 0 ? HI.filter(v => v != null && v >= curSell * 0.985) : [];
+    const underfootLo = curBuy  > 0 ? LO.filter(v => v != null && v <= curBuy  * 1.015) : [];
+    const sellWall = overheadHi.length >= 6 ? findRepeatedExtreme(overheadHi, true,  minHits) : null;
+    const buyWall  = underfootLo.length >= 6 ? findRepeatedExtreme(underfootLo, false, minHits) : null;
 
     const drawWall = (price, color, label) => {
       if (price == null) return;
@@ -2599,18 +2623,12 @@ function drawChart(series) {
       ctx.fillText(text, Math.round(bx + tw + padX), Math.round(cy));
       ctx.restore();
     };
-    /* Only draw walls that are actually separated from the spread mid — if the
-       buy and sell walls collide on a flat tape, drawing both adds noise. */
-    if (sellWall != null && buyWall != null && sellWall - buyWall < (vmax - vmin) * 0.05) {
-      // collapsed walls — show just the more extreme of the two
-      const hiCount = HI.filter(v => v != null && Math.round(v) === sellWall).length;
-      const loCount = LO.filter(v => v != null && Math.round(v) === buyWall).length;
-      if (hiCount >= loCount) drawWall(sellWall, sellColor, "Sell wall");
-      else drawWall(buyWall, buyColor, "Buy wall");
-    } else {
-      drawWall(sellWall, sellColor, "Sell wall");
-      drawWall(buyWall, buyColor, "Buy wall");
-    }
+    /* Each wall is gated independently. After the overhead/underfoot filter
+       they can no longer overlap, so the old collision-collapse logic is
+       gone — either side may exist or not, including both being null when
+       price has broken out of all repeated clusters in both directions. */
+    drawWall(sellWall, sellColor, "Sell wall");
+    drawWall(buyWall, buyColor, "Buy wall");
   }
 
   /* Dots-only scatter (no connecting line — that was scribbling on dense 1D
@@ -2929,9 +2947,33 @@ async function setItem(m) {
   try { localStorage.setItem('ge_recentItems', JSON.stringify(recentItems)); } catch (e) {}
   $("#query").value = m.name;
   applyTitleBadge();
+  /* SPA analytics + shareable URLs: when the user switches items, no real
+     navigation happens, so GA4 never sees a new page_view and every
+     item-specific visit collapses into "home /". Mirror the item into the
+     URL via history.replaceState (replace, not push, so the back button
+     doesn't fill up with every click), then fire a virtual page_view so
+     analytics tracks per-item engagement and so deep links like
+     /?q=Cake actually work. */
+  try {
+    const slug = encodeURIComponent(m.name);
+    const newUrl = `${window.location.pathname}?q=${slug}`;
+    if (window.location.search !== `?q=${slug}`) {
+      history.replaceState(null, '', newUrl);
+    }
+    if (typeof gtag === 'function') {
+      gtag('event', 'page_view', {
+        page_title: `${m.name} - PocketGE`,
+        page_location: window.location.href,
+        page_path: `/?q=${slug}`,
+        item_id: String(m.id),
+        item_name: m.name
+      });
+    }
+  } catch (e) {}
   const iconURL = itemIconUrl(m.id);
-  $("#itemIcon").src = iconURL;
-  $("#tickerHeaderIcon").src = iconURL;
+  const iconAlt = `${m.name} — OSRS Grand Exchange price`;
+  $("#itemIcon").src = iconURL; $("#itemIcon").alt = iconAlt;
+  $("#tickerHeaderIcon").src = iconURL; $("#tickerHeaderIcon").alt = iconAlt;
   /* Tab favicon mirrors the selected item — so when you have a bunch of
      PocketGE tabs open you can tell at a glance which item is which. */
   updateFavicon(iconURL);
@@ -3020,14 +3062,14 @@ setItem._userPicked = false;
         .slice(0, 10);
       if (!items.length) { sb.style.display = "none"; return; }
       sb.innerHTML = `<div class="suggest-header">Recent</div>`
-        + items.map(x => `<div data-id="${x.id}"><img src="${itemIconUrl(x.id)}">${x.name}</div>`).join("");
+        + items.map(x => `<div data-id="${x.id}"><img src="${itemIconUrl(x.id)}" alt="${x.name} icon">${x.name}</div>`).join("");
       sb.style.display = "block";
     }
     qInput.addEventListener("input", () => {
       const q = qInput.value.trim().toLowerCase();
       if (!q) { showRecents(); return; }
       const list = mapping.filter(x => x.name.toLowerCase().includes(q) && (membersOn || !x.members)).slice(0, 40);
-      sb.innerHTML = list.map(x => `<div data-id="${x.id}"><img src="${itemIconUrl(x.id)}">${x.name}</div>`).join("");
+      sb.innerHTML = list.map(x => `<div data-id="${x.id}"><img src="${itemIconUrl(x.id)}" alt="${x.name} icon">${x.name}</div>`).join("");
       sb.style.display = list.length ? "block" : "none";
     });
     qInput.addEventListener("focus", () => { if (!qInput.value.trim()) showRecents(); });
@@ -3151,13 +3193,20 @@ setItem._userPicked = false;
 
     resizeCanvas();
 
-    /* Landing item: prefer the last item the user viewed (persisted across
-       refreshes), then the Gilded scimitar default, then Ruby as a last resort.
-       Honors the F2P / Members mode — won't restore a members item in F2P. */
-    const lastId = (() => { try { return localStorage.getItem('ge_lastItem'); } catch (e) { return null; } })();
+    /* Landing item priority:
+         1. ?q=<item-name> in the URL  — so deep links from search / shares /
+            old analytics referrers actually land on the right item.
+         2. Last item the user viewed (localStorage).
+         3. Gilded scimitar default.
+         4. Ruby as a last resort.
+       F2P / Members mode is respected — won't restore a members item in F2P. */
     const eligible = (m) => m && (membersOn || !m.members);
+    const urlQ = (() => { try { return new URLSearchParams(window.location.search).get('q'); } catch (e) { return null; } })();
+    const urlItem = urlQ ? mapping.find(x => x.name.toLowerCase() === urlQ.toLowerCase()) : null;
+    const lastId = (() => { try { return localStorage.getItem('ge_lastItem'); } catch (e) { return null; } })();
     const last = lastId ? mapping.find(x => String(x.id) === lastId) : null;
-    const landing = eligible(last) ? last
+    const landing = eligible(urlItem) ? urlItem
+                  : eligible(last) ? last
                   : eligible(mapping.find(x => String(x.id) === LANDING_ID)) ? mapping.find(x => String(x.id) === LANDING_ID)
                   : mapping.find(x => x.name.toLowerCase() === "ruby");
     if (landing) {
