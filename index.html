@@ -2529,7 +2529,15 @@ function renderNotifCenter() {
 function drawChart(series) {
   const rect = canvas.parentElement.getBoundingClientRect();
   const W = rect.width, H = rect.height - 24;
-  const x0 = 45, y0 = 60, w = W - x0 - 15, h = H - y0 - 20;
+  /* Inner chart padding (y0 = top, x0 = left for y-axis labels, 15 = right,
+     20 = bottom for x-axis labels). Originally a fixed 60px top — fine on a
+     600px tall desktop chart (10%), but on a 280-320px mobile chart that's
+     20% of the canvas burned to dead space. Scale top padding with canvas
+     height so the data fills the available room. The y-axis label gutter
+     also shrinks on narrow screens. */
+  const y0 = H < 360 ? 22 : H < 480 ? 36 : 60;
+  const x0 = W < 480 ? 38 : 45;
+  const w = W - x0 - 15, h = H - y0 - 20;
   ctx.clearRect(0, 0, W, H);
 
   if (!series || !series.labels.length) {
