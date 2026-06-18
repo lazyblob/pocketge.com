@@ -294,7 +294,9 @@ button, input { touch-action: manipulation; }
 .mode-pill { display: flex; background: var(--bg-input); border-radius: 4px; padding: 2px; height: 28px; flex-shrink: 0; }
 .mode-pill button { background: transparent; border: none; color: var(--text-muted); padding: 0 7px; cursor: pointer; font-weight: 700; font-size: 11px; border-radius: 3px; height: 100%; letter-spacing: 0.3px; }
 .mode-pill button.active { background: var(--border-active); color: #fff; }
-.status-text { font-size: 11px; color: var(--text-muted); }
+.status-text { font-size: 11px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 5px; }
+.status-text.live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--positive); box-shadow: 0 0 6px var(--positive); animation: status-pulse 2s ease-in-out infinite; }
+@keyframes status-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
 .ticker-header { background: var(--bg-panel); border: 1px solid var(--border-main); border-radius: 6px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
 .ticker-title-group { display: flex; align-items: center; gap: 12px; }
 .ticker-title-group img { width: 48px; height: 48px; image-rendering: pixelated; }
@@ -1089,10 +1091,20 @@ function updateCalculator() {
   const profitPerItem = sell - buy - taxPerItem;
   const totalProfit = profitPerItem * qty;
   const totalTax = taxPerItem * qty;
+  /* First-impression guard: a red "-22K" at the very top reads as "this app
+     is losing me money" to someone who doesn't know it means the spread is
+     too tight to beat the 2% tax right now. When there's no profit, show a
+     calm muted "No margin" instead of an alarming red negative. The expanded
+     breakdown below still shows the real signed numbers for anyone who digs in. */
+  if (totalProfit > 0) {
+    headline.textContent = `+${abbreviateNumber(totalProfit)}`;
+    headline.style.color = 'var(--positive)';
+  } else {
+    headline.textContent = 'No margin';
+    headline.style.color = 'var(--text-muted)';
+  }
   const color = totalProfit > 0 ? 'var(--positive)' : (totalProfit < 0 ? 'var(--negative)' : 'var(--text-main)');
   const sign = totalProfit > 0 ? '+' : '';
-  headline.textContent = `${sign}${abbreviateNumber(totalProfit)}`;
-  headline.style.color = color;
   const bd = $('#calcBreakdown');
   if (bd) {
     bd.innerHTML = `
@@ -2303,7 +2315,10 @@ function computeGrade(item, side) {
   /* Right-now is tight but the timeframe shows a real range — tell the user
      the opportunity is there if they're patient (don't hide it behind "Fair"). */
   if ((currentMarginPct ?? 1) <= 0 && (dayMarginPct ?? 0) > 0.01) {
-    verdict = side === 'buy' ? 'Patient Bid' : 'Patient Ask';
+    /* Verdict reads as a plain action — "Wait for Dip" / "Wait for Peak" —
+       instead of "Patient Bid / Patient Ask" jargon a new flipper won't
+       parse. Same logic; clearer language. */
+    verdict = side === 'buy' ? 'Wait for Dip' : 'Wait for Peak';
     color = grade >= 70 ? '#1FB85C' : '#FFD24D';
     return { grade, verdict, color };
   }
@@ -3160,7 +3175,7 @@ function renderOverMax(m) {
   offset = Math.max(0, currentSeries.labels.length - Math.floor(currentSeries.labels.length / zoom));
   updateGradeBadge();
   resizeCanvas();
-  $("#status").textContent = "Consensus Active";
+  $("#status").textContent = "Live"; $("#status").classList.add("live");
 }
 
 /* Re-render only the chart + targets when the user changes timeframe.
@@ -3240,7 +3255,7 @@ async function setItem(m) {
   const wikiURL = `https://oldschool.runescape.wiki/w/${encodeURIComponent(wikiSlug)}`;
   $("#tickerHeaderIconLink").href = wikiURL;
   $("#tickerNameLink").href = wikiURL;
-  $("#status").textContent = "Loading...";
+  $("#status").textContent = "Loading..."; $("#status").classList.remove("live");
   updateFavoriteBtn();
   renderWatchlist();
 
@@ -3285,7 +3300,7 @@ async function setItem(m) {
   offset = Math.max(0, currentSeries.labels.length - Math.floor(currentSeries.labels.length / zoom));
   updateGradeBadge();
   resizeCanvas();
-  $("#status").textContent = "Active";
+  $("#status").textContent = "Live"; $("#status").classList.add("live");
 }
 setItem._userPicked = false;
 
@@ -3498,7 +3513,7 @@ setItem._userPicked = false;
     }
     updateFootFresh();
   } catch (e) {
-    $("#status").textContent = "API Error";
+    $("#status").textContent = "API Error"; $("#status").classList.remove("live");
     console.error(e);
   }
 })();
