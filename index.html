@@ -399,7 +399,21 @@ button, input { touch-action: manipulation; }
 .calc-breakdown .row { display: flex; justify-content: space-between; }
 .watchlist-content { flex: 1; overflow-y: auto; }
 .category-group { border-bottom: 1px solid var(--border-main); }
-.category-title { padding: 8px 14px; font-size: 11px; font-weight: bold; color: var(--border-active); background: rgba(42, 46, 57, 0.4); cursor: pointer; display: flex; justify-content: space-between; }
+/* Category title — sticky at the top of the scroll container so when you've
+   scrolled deep into a long section (High Vol Margins, etc.) the title stays
+   pinned and tappable to collapse it. Solid bg (was 40% alpha) so the header
+   visually separates from the data rows below, and a slight bottom shadow
+   while stuck gives a sense of layered depth. */
+.category-title {
+  position: sticky; top: 0; z-index: 4;
+  padding: 9px 12px; font-size: 12px; font-weight: 800; letter-spacing: 0.3px;
+  color: var(--border-active);
+  background: #161A23;
+  border-top: 1px solid var(--border-main);
+  cursor: pointer;
+  display: flex; justify-content: space-between; align-items: center;
+  box-shadow: 0 2px 4px -2px rgba(0,0,0,0.4);
+}
 .category-title.high-title { color: var(--positive); }
 .category-title.low-title { color: var(--buy-color); }
 .category-title.fav-title { color: var(--text-main); }
@@ -437,7 +451,9 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
   body.flip-mode .price-val { font-size: 32px; }
   body.flip-mode .price-box { min-width: 160px; padding: 10px 14px; }
 }
-.category-title:hover { background: var(--bg-input); }
+.category-title:hover { background: #1F242F; }
+.cat-chevron { font-size: 11px; opacity: 0.7; padding: 0 2px; }
+.category-title:hover .cat-chevron { opacity: 1; }
 .category-list { display: block; }
 .category-list.collapsed { display: none; }
 .scan-row { padding: 10px 14px; font-size: 11px; color: var(--border-active); cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; background: rgba(41,98,255,0.06); }
