@@ -399,30 +399,38 @@ button, input { touch-action: manipulation; }
 .calc-breakdown .row { display: flex; justify-content: space-between; }
 .watchlist-content { flex: 1; overflow-y: auto; }
 .category-group { border-bottom: 1px solid var(--border-main); }
-/* Category title — sticky at the top of the scroll container so when you've
-   scrolled deep into a long section (High Vol Margins, etc.) the title stays
-   pinned and tappable to collapse it. Solid bg (was 40% alpha) so the header
-   visually separates from the data rows below, and a slight bottom shadow
-   while stuck gives a sense of layered depth. */
+/* Category title — sticky at top of the scroll container AND visually
+   distinct from the dense colored rows below.
+   Previous attempt went darker than the panel and kept colored text; both
+   blended into the data. Now: LIGHTER bg than rows (clear "this is a
+   different layer" contrast), always-bright white text (doesn't compete
+   with the colored row badges), and a fat 3px colored accent stripe on the
+   left so each section is still identifiable by color WITHOUT making the
+   title text itself harder to read. Bigger padding gives the header real
+   physical presence vs the dense row stack. */
 .category-title {
   position: sticky; top: 0; z-index: 4;
-  padding: 9px 12px; font-size: 12px; font-weight: 800; letter-spacing: 0.3px;
-  color: var(--border-active);
-  background: #161A23;
-  border-top: 1px solid var(--border-main);
+  padding: 11px 12px 11px 13px;
+  font-size: 11px; font-weight: 800; letter-spacing: 0.7px; text-transform: uppercase;
+  color: #F0F2F8;
+  background: #2A2E39;
+  border-left: 3px solid var(--border-active);
+  border-bottom: 1px solid #15171F;
   cursor: pointer;
   display: flex; justify-content: space-between; align-items: center;
-  box-shadow: 0 2px 4px -2px rgba(0,0,0,0.4);
+  box-shadow: 0 2px 6px -2px rgba(0,0,0,0.55);
 }
-.category-title.high-title { color: var(--positive); }
-.category-title.low-title { color: var(--buy-color); }
-.category-title.fav-title { color: var(--text-main); }
-.category-title.lose-title { color: var(--negative); }
-.category-title.rec-title { color: #FF9800; }
-.category-title.margin-title { color: #2ECC71; }
-.category-title.marginlo-title { color: #7FE3A6; }
-.category-title.gain-title { color: var(--positive); }
-.category-title.fall-title { color: var(--negative); }
+/* Per-section color now lives in the LEFT STRIPE, not the title text — the
+   text stays bright white so it never disappears into colored row content. */
+.category-title.high-title { border-left-color: var(--positive); }
+.category-title.low-title { border-left-color: var(--buy-color); }
+.category-title.fav-title { border-left-color: var(--fav-gold, #FFB300); }
+.category-title.lose-title { border-left-color: var(--negative); }
+.category-title.rec-title { border-left-color: #FF9800; }
+.category-title.margin-title { border-left-color: #2ECC71; }
+.category-title.marginlo-title { border-left-color: #7FE3A6; }
+.category-title.gain-title { border-left-color: var(--positive); }
+.category-title.fall-title { border-left-color: var(--negative); }
 /* Remote Flip Mode: ultra-clean, glanceable, stealthy at-work view. Decorative
    chrome is hidden, prices are oversized, and the chart drops everything except
    the price line + target. */
@@ -451,9 +459,20 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
   body.flip-mode .price-val { font-size: 32px; }
   body.flip-mode .price-box { min-width: 160px; padding: 10px 14px; }
 }
-.category-title:hover { background: #1F242F; }
-.cat-chevron { font-size: 11px; opacity: 0.7; padding: 0 2px; }
-.category-title:hover .cat-chevron { opacity: 1; }
+.category-title:hover { background: #353A47; }
+/* Chevron rendered as a clearly tappable button so users can find "close"
+   without aiming at a tiny glyph. Inverts when the section is collapsed so
+   it's even more obvious the title is interactive. */
+.cat-chevron {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px;
+  font-size: 11px; color: #F0F2F8;
+  background: rgba(255,255,255,0.07);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 4px;
+  transition: background 0.12s ease, border-color 0.12s ease;
+}
+.category-title:hover .cat-chevron { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.25); }
 .category-list { display: block; }
 .category-list.collapsed { display: none; }
 .scan-row { padding: 10px 14px; font-size: 11px; color: var(--border-active); cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; background: rgba(41,98,255,0.06); }
