@@ -2729,7 +2729,13 @@ function drawChart(series) {
          old 297 floor is no longer overhead resistance, so we don't show it.
        - 5Y/1Y single-price views are skipped (every price is "unique")
      Solid color-coded lines with subtle labels — no chart chrome bloat. */
-  if (!flipMode && !singlePrice && L.length >= 20) {
+  /* Walls only render on the short-timeframe views (1D / 5D) — they're an
+     execution signal ("where do I place my offer right now?") and execution
+     happens on short timeframes. On 1M+ the chart is for trend analysis,
+     not order placement, and the same lines start picking up stale clusters
+     from weeks ago that aren't actionable for a flip today. */
+  const wallsAllowed = view === '1d' || view === '5d';
+  if (!flipMode && !singlePrice && wallsAllowed && L.length >= 20) {
     /* Recent live levels — averaged over the last ~5% of prints (min 3, max 8)
        so a single noisy spike doesn't define "current price." Used to gate
        walls as overhead vs. underfoot. */
