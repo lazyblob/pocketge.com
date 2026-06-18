@@ -1829,6 +1829,58 @@ function findRepeatedExtreme(arr, wantHighest, minCount) {
   return best;
 }
 
+/* Volume-weighted wall detection — bucket actual trade volume by price level
+   (the volume-profile concept) and return the most extreme price whose
+   accumulated volume clears `minVolFraction` of the filtered total. Replaces
+   the count-only heuristic for the chart's Sell/Buy wall overlay: a price
+   that printed 4 times in heavy volume now beats a price that printed 8
+   times in dead volume — that's where actual liquidity sits.
+   `priceFilter(p)` lets the caller restrict the search to overhead (above
+   current sell) or underfoot (below current buy). Falls back to print-count
+   when volume data is entirely missing so old data still gets a sensible
+   answer. */
+function findVolumeWall(prices, volumes, wantHighest, minVolFraction, priceFilter) {
+  if (!prices || !prices.length) return null;
+  const byPrice = new Map();
+  let totalVol = 0, valid = 0;
+  for (let i = 0; i < prices.length; i++) {
+    const p = prices[i];
+    if (p == null) continue;
+    if (priceFilter && !priceFilter(p)) continue;
+    valid++;
+    const v = (volumes && volumes[i]) ? volumes[i] : 0;
+    const k = Math.round(p);
+    byPrice.set(k, (byPrice.get(k) || 0) + v);
+    totalVol += v;
+  }
+  if (valid < 4) return null;
+  if (totalVol <= 0) {
+    /* No volume data → revert to print-count style (effectively the old
+       findRepeatedExtreme on the filtered subset). */
+    const counts = new Map();
+    for (let i = 0; i < prices.length; i++) {
+      const p = prices[i];
+      if (p == null || (priceFilter && !priceFilter(p))) continue;
+      const k = Math.round(p);
+      counts.set(k, (counts.get(k) || 0) + 1);
+    }
+    const minHits = Math.max(4, Math.round(valid * 0.04));
+    let best = null;
+    for (const [k, c] of counts) {
+      if (c < minHits) continue;
+      if (best === null || (wantHighest ? k > best : k < best)) best = k;
+    }
+    return best;
+  }
+  const minVol = totalVol * minVolFraction;
+  let best = null;
+  for (const [k, vol] of byPrice) {
+    if (vol < minVol) continue;
+    if (best === null || (wantHighest ? k > best : k < best)) best = k;
+  }
+  return best;
+}
+
 /* Trade engine — anchor to RECENT prints only (last ~7% of the visible
    window, ~1.5 hours on 1D). Three complementary signals per side:
      1. 20th / 80th percentile of recent insta-sells / insta-buys (was 25/75
@@ -2632,14 +2684,16 @@ function drawChart(series) {
     if (ns) curSell /= ns;
     if (nb) curBuy /= nb;
 
-    const minHits = Math.max(4, Math.round(L.length * 0.04));
-    /* Overhead-only filter: a sell wall is meaningful only when prints have
-       repeated AT or ABOVE current sell. 1.5% tolerance lets a wall RIGHT AT
-       current still count (price tagging the level). */
-    const overheadHi = curSell > 0 ? HI.filter(v => v != null && v >= curSell * 0.985) : [];
-    const underfootLo = curBuy  > 0 ? LO.filter(v => v != null && v <= curBuy  * 1.015) : [];
-    const sellWall = overheadHi.length >= 6 ? findRepeatedExtreme(overheadHi, true,  minHits) : null;
-    const buyWall  = underfootLo.length >= 6 ? findRepeatedExtreme(underfootLo, false, minHits) : null;
+    /* Volume-weighted wall search — bucket trade volume by integer price.
+       The wall is the most extreme price level whose accumulated volume
+       clears 5% of the filtered (overhead/underfoot) total, so a tight
+       cluster with heavy print volume wins over a wider cluster with thin
+       prints. 1.5% tolerance on the current-price filter lets a wall RIGHT
+       AT current still count (price tagging the level). */
+    const overheadPred = curSell > 0 ? (p => p >= curSell * 0.985) : null;
+    const underfootPred = curBuy  > 0 ? (p => p <= curBuy  * 1.015) : null;
+    const sellWall = overheadPred  ? findVolumeWall(HI, HIGHVOL, true,  0.05, overheadPred)  : null;
+    const buyWall  = underfootPred ? findVolumeWall(LO, LOWVOL,  false, 0.05, underfootPred) : null;
 
     const drawWall = (price, color, label) => {
       if (price == null) return;
