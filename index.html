@@ -3373,8 +3373,17 @@ setItem._userPicked = false;
        and triggers a chart redraw so the simplified-chart branches kick in. */
     function applyFlipMode() {
       document.body.classList.toggle('flip-mode', flipMode);
-      $("#btnFlip").classList.toggle('active', flipMode);
-      $("#btnFlip").setAttribute('aria-pressed', flipMode ? 'true' : 'false');
+      const btn = $("#btnFlip");
+      btn.classList.toggle('active', flipMode);
+      btn.setAttribute('aria-pressed', flipMode ? 'true' : 'false');
+      /* Swap label to reflect the action the next click will take: when we
+         ARE in Simple mode the button takes you back to Detailed, and vice
+         versa. Tooltip stays in sync. */
+      const labelEl = btn.querySelector('.icon-label');
+      if (labelEl) labelEl.textContent = flipMode ? 'Detailed' : 'Simple';
+      btn.title = flipMode
+        ? 'Detailed View — restore the full chart, walls, badges, and grades.'
+        : 'Simple View — huge buy/sell prices, minimal chart. Good for a quick glance or checking at work.';
       resizeCanvas();
     }
     applyFlipMode();
