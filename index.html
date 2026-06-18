@@ -470,7 +470,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-item.at-low .wl-item-name { color: #E8D599; font-weight: 700; }
 /* Selected at-high / at-low rows keep their green/gold gradient + the white
    .active outline (painted on top) carries the "selected" cue. */
-.hl-badge { font-size: 8px; font-weight: 900; padding: 2px 5px; border-radius: 2px; letter-spacing: 0.6px; line-height: 1.3; }
+.hl-badge { font-size: 8px; font-weight: 900; padding: 2px 5px; border-radius: 2px; letter-spacing: 0.6px; line-height: 1.3; white-space: nowrap; flex-shrink: 0; }
 /* Day-tier badges are deliberately PALE so the eye doesn't treat a routine
    intraday wiggle as a major signal. Outlined chip, muted fill, no glow. */
 .hl-badge.high { background: rgba(79,255,142,0.18); color: #6FE8A0; border: 1px solid rgba(79,255,142,0.55); }
@@ -543,31 +543,46 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-trend.neutral { color: var(--text-muted); }
 
 @media screen and (max-width: 1023px) and (orientation: portrait) {
-  /* Mobile portrait: tighten every gap above the chart so the chart starts
-     higher up the screen. main-column gap 8px -> 4px, wrap padding 6px -> 4px,
-     top-row gap 4px -> 2px, price strip pulled flush. */
+  /* Mobile portrait: every gap above the chart is collapsed so the chart
+     starts as high up the screen as possible. Earlier this section saved
+     wrap / row-wrapper space; the price strip was still eating ~60px
+     because it stacked label / value / grade vertically. Below it now
+     renders single-row (label-on-left, value, then grade-chip right), like
+     the desktop layout but smaller. Saves ~30px above the chart. */
   .wrap { padding: 4px; overflow-y: auto; gap: 4px; }
-  .main-column { gap: 4px; }
+  .main-column { gap: 3px; }
   .top-row-wrapper { gap: 2px; }
-  .top-panel { padding: 4px 8px; }
+  .top-panel { padding: 3px 8px; }
   .panel-left { width: 100%; flex-wrap: nowrap; justify-content: space-between; gap: 6px; }
   .brand-logo { display: none !important; }
-  .mode-pill { flex-shrink: 0; }
+  .mode-pill { flex-shrink: 0; height: 26px; }
   .search-group { flex: 1; min-width: 0; }
   .sbar { flex: 1 1 0; min-width: 80px; width: auto; }
-  .icon-btn { flex: 0 0 auto; }
-  .content-area { flex-direction: column; gap: 4px; }
+  .sbar input { padding-top: 3px; padding-bottom: 3px; height: 28px; }
+  .icon-btn { flex: 0 0 auto; padding: 3px 7px; }
+  .content-area { flex-direction: column; gap: 3px; }
   .ticker-title-group { display: none !important; }
   .ticker-header { padding: 0; border: none; background: transparent; gap: 0; height: auto; }
-  .toolbar { width: 100%; justify-content: space-between; }
-  .toolbar button { flex: 1; padding: 6px 4px; font-size: 12px; }
+  .toolbar { width: 100%; justify-content: space-between; padding: 2px; }
+  .toolbar button { flex: 1; padding: 4px 2px; font-size: 12px; min-width: 0; }
   .pct-chg { display: none !important; }
-  .chart-container { flex: none; height: 44vh; min-height: 280px; margin-bottom: 0; }
+  .chart-container { flex: none; height: 48vh; min-height: 300px; margin-bottom: 0; }
   .watchlist-container { width: 100%; flex: 1; min-height: 400px; }
   .status-text { display: none; }
+  /* Single-row price boxes — the big space saver. */
   .price-strip { gap: 4px; }
-  .price-box { padding: 3px 8px; min-width: 0; }
-  .price-val { font-size: 13px; }
+  .price-box { display: flex; align-items: center; gap: 8px; padding: 3px 8px; min-width: 0; }
+  .price-label { flex-direction: column; align-items: flex-start; gap: 0; flex-shrink: 0; font-size: 9px; }
+  .live-val { font-size: 9px; }
+  .price-val { font-size: 17px; margin-top: 0; flex-shrink: 0; white-space: nowrap; line-height: 1.1; }
+  .price-grade, .price-box.selected .price-grade {
+    display: flex; align-items: center; gap: 4px;
+    margin-top: 0; padding-top: 0; border-top: none;
+    margin-left: auto; font-size: 9px; flex-shrink: 1; min-width: 0;
+  }
+  .price-grade .pg-num { font-size: 13px; }
+  .price-grade .pg-verdict { font-size: 9px; letter-spacing: 0.3px; }
+  .price-grade .pg-ctx { font-size: 9px; opacity: 0.7; }
   .calc-container input { font-size: 16px; }
 }
 @media screen and (max-width: 1023px) and (orientation: landscape), screen and (max-height: 600px) and (orientation: landscape) {
@@ -724,8 +739,8 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
     </div>
     <div class="modal-body">
       <div class="glossary-section">Row highlights</div>
-      <div class="glossary-row"><span class="hl-badge high5d">▲▲ 5D HIGH</span><span>At or near the 5-day high — a notable peak, not just an intraday wiggle. Brighter glow + double arrow means the move is real.</span></div>
-      <div class="glossary-row"><span class="hl-badge low5d">▼▼ 5D LOW</span><span>At or near the 5-day low — a notable trough across the last 5 days. Stronger signal than a routine day low.</span></div>
+      <div class="glossary-row"><span class="hl-badge high5d">▲ 5D HIGH</span><span>At or near the 5-day high — a notable peak across the last 5 days, not just an intraday wiggle. Brighter glow signals the macro move.</span></div>
+      <div class="glossary-row"><span class="hl-badge low5d">▼ 5D LOW</span><span>At or near the 5-day low — a notable trough across the last 5 days. Stronger signal than a routine day low.</span></div>
       <div class="glossary-row"><span class="hl-badge high">▲ HIGH</span><span>At or above its 24-hour high. Sell now to catch the peak. Row glows RuneScape-green.</span></div>
       <div class="glossary-row"><span class="hl-badge low">▼ LOW</span><span>At or below its 24-hour low. Buy now to catch the dip. Row glows RuneScape-gold.</span></div>
 
@@ -1532,8 +1547,8 @@ function renderWatchlist() {
         }
         const activeClass = selected?.id === item.id ? 'active' : '';
         const hlBadge =
-            hlClass === 'at-high5d' ? `<span class="hl-badge high5d" title="At or near the 5-DAY HIGH — notable peak across the last 5 days, not just today.">▲▲ 5D HIGH</span>`
-          : hlClass === 'at-low5d'  ? `<span class="hl-badge low5d"  title="At or near the 5-DAY LOW — notable trough across the last 5 days, not just today.">▼▼ 5D LOW</span>`
+            hlClass === 'at-high5d' ? `<span class="hl-badge high5d" title="At or near the 5-DAY HIGH — notable peak across the last 5 days, not just today.">▲ 5D HIGH</span>`
+          : hlClass === 'at-low5d'  ? `<span class="hl-badge low5d"  title="At or near the 5-DAY LOW — notable trough across the last 5 days, not just today.">▼ 5D LOW</span>`
           : hlClass === 'at-high'   ? `<span class="hl-badge high" title="Currently at or above its 24-hour high. Sell now to catch the peak.">▲ HIGH</span>`
           : hlClass === 'at-low'    ? `<span class="hl-badge low" title="Currently at or below its 24-hour low. Buy now to catch the dip.">▼ LOW</span>` : '';
         /* Favorites rows get reorder buttons (▲ / ▼), a × quick-remove button
@@ -1824,6 +1839,58 @@ function findRepeatedExtreme(arr, wantHighest, minCount) {
   let best = null;
   for (const [k, c] of counts) {
     if (c < minCount) continue;
+    if (best === null || (wantHighest ? k > best : k < best)) best = k;
+  }
+  return best;
+}
+
+/* Volume-weighted wall detection — bucket actual trade volume by price level
+   (the volume-profile concept) and return the most extreme price whose
+   accumulated volume clears `minVolFraction` of the filtered total. Replaces
+   the count-only heuristic for the chart's Sell/Buy wall overlay: a price
+   that printed 4 times in heavy volume now beats a price that printed 8
+   times in dead volume — that's where actual liquidity sits.
+   `priceFilter(p)` lets the caller restrict the search to overhead (above
+   current sell) or underfoot (below current buy). Falls back to print-count
+   when volume data is entirely missing so old data still gets a sensible
+   answer. */
+function findVolumeWall(prices, volumes, wantHighest, minVolFraction, priceFilter) {
+  if (!prices || !prices.length) return null;
+  const byPrice = new Map();
+  let totalVol = 0, valid = 0;
+  for (let i = 0; i < prices.length; i++) {
+    const p = prices[i];
+    if (p == null) continue;
+    if (priceFilter && !priceFilter(p)) continue;
+    valid++;
+    const v = (volumes && volumes[i]) ? volumes[i] : 0;
+    const k = Math.round(p);
+    byPrice.set(k, (byPrice.get(k) || 0) + v);
+    totalVol += v;
+  }
+  if (valid < 4) return null;
+  if (totalVol <= 0) {
+    /* No volume data → revert to print-count style (effectively the old
+       findRepeatedExtreme on the filtered subset). */
+    const counts = new Map();
+    for (let i = 0; i < prices.length; i++) {
+      const p = prices[i];
+      if (p == null || (priceFilter && !priceFilter(p))) continue;
+      const k = Math.round(p);
+      counts.set(k, (counts.get(k) || 0) + 1);
+    }
+    const minHits = Math.max(4, Math.round(valid * 0.04));
+    let best = null;
+    for (const [k, c] of counts) {
+      if (c < minHits) continue;
+      if (best === null || (wantHighest ? k > best : k < best)) best = k;
+    }
+    return best;
+  }
+  const minVol = totalVol * minVolFraction;
+  let best = null;
+  for (const [k, vol] of byPrice) {
+    if (vol < minVol) continue;
     if (best === null || (wantHighest ? k > best : k < best)) best = k;
   }
   return best;
@@ -2632,14 +2699,16 @@ function drawChart(series) {
     if (ns) curSell /= ns;
     if (nb) curBuy /= nb;
 
-    const minHits = Math.max(4, Math.round(L.length * 0.04));
-    /* Overhead-only filter: a sell wall is meaningful only when prints have
-       repeated AT or ABOVE current sell. 1.5% tolerance lets a wall RIGHT AT
-       current still count (price tagging the level). */
-    const overheadHi = curSell > 0 ? HI.filter(v => v != null && v >= curSell * 0.985) : [];
-    const underfootLo = curBuy  > 0 ? LO.filter(v => v != null && v <= curBuy  * 1.015) : [];
-    const sellWall = overheadHi.length >= 6 ? findRepeatedExtreme(overheadHi, true,  minHits) : null;
-    const buyWall  = underfootLo.length >= 6 ? findRepeatedExtreme(underfootLo, false, minHits) : null;
+    /* Volume-weighted wall search — bucket trade volume by integer price.
+       The wall is the most extreme price level whose accumulated volume
+       clears 5% of the filtered (overhead/underfoot) total, so a tight
+       cluster with heavy print volume wins over a wider cluster with thin
+       prints. 1.5% tolerance on the current-price filter lets a wall RIGHT
+       AT current still count (price tagging the level). */
+    const overheadPred = curSell > 0 ? (p => p >= curSell * 0.985) : null;
+    const underfootPred = curBuy  > 0 ? (p => p <= curBuy  * 1.015) : null;
+    const sellWall = overheadPred  ? findVolumeWall(HI, HIGHVOL, true,  0.05, overheadPred)  : null;
+    const buyWall  = underfootPred ? findVolumeWall(LO, LOWVOL,  false, 0.05, underfootPred) : null;
 
     const drawWall = (price, color, label) => {
       if (price == null) return;
