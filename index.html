@@ -470,7 +470,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-item.at-low .wl-item-name { color: #E8D599; font-weight: 700; }
 /* Selected at-high / at-low rows keep their green/gold gradient + the white
    .active outline (painted on top) carries the "selected" cue. */
-.hl-badge { font-size: 8px; font-weight: 900; padding: 2px 5px; border-radius: 2px; letter-spacing: 0.6px; line-height: 1.3; }
+.hl-badge { font-size: 8px; font-weight: 900; padding: 2px 5px; border-radius: 2px; letter-spacing: 0.6px; line-height: 1.3; white-space: nowrap; flex-shrink: 0; }
 /* Day-tier badges are deliberately PALE so the eye doesn't treat a routine
    intraday wiggle as a major signal. Outlined chip, muted fill, no glow. */
 .hl-badge.high { background: rgba(79,255,142,0.18); color: #6FE8A0; border: 1px solid rgba(79,255,142,0.55); }
@@ -724,8 +724,8 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
     </div>
     <div class="modal-body">
       <div class="glossary-section">Row highlights</div>
-      <div class="glossary-row"><span class="hl-badge high5d">▲▲ 5D HIGH</span><span>At or near the 5-day high — a notable peak, not just an intraday wiggle. Brighter glow + double arrow means the move is real.</span></div>
-      <div class="glossary-row"><span class="hl-badge low5d">▼▼ 5D LOW</span><span>At or near the 5-day low — a notable trough across the last 5 days. Stronger signal than a routine day low.</span></div>
+      <div class="glossary-row"><span class="hl-badge high5d">▲ 5D HIGH</span><span>At or near the 5-day high — a notable peak across the last 5 days, not just an intraday wiggle. Brighter glow signals the macro move.</span></div>
+      <div class="glossary-row"><span class="hl-badge low5d">▼ 5D LOW</span><span>At or near the 5-day low — a notable trough across the last 5 days. Stronger signal than a routine day low.</span></div>
       <div class="glossary-row"><span class="hl-badge high">▲ HIGH</span><span>At or above its 24-hour high. Sell now to catch the peak. Row glows RuneScape-green.</span></div>
       <div class="glossary-row"><span class="hl-badge low">▼ LOW</span><span>At or below its 24-hour low. Buy now to catch the dip. Row glows RuneScape-gold.</span></div>
 
@@ -1532,8 +1532,8 @@ function renderWatchlist() {
         }
         const activeClass = selected?.id === item.id ? 'active' : '';
         const hlBadge =
-            hlClass === 'at-high5d' ? `<span class="hl-badge high5d" title="At or near the 5-DAY HIGH — notable peak across the last 5 days, not just today.">▲▲ 5D HIGH</span>`
-          : hlClass === 'at-low5d'  ? `<span class="hl-badge low5d"  title="At or near the 5-DAY LOW — notable trough across the last 5 days, not just today.">▼▼ 5D LOW</span>`
+            hlClass === 'at-high5d' ? `<span class="hl-badge high5d" title="At or near the 5-DAY HIGH — notable peak across the last 5 days, not just today.">▲ 5D HIGH</span>`
+          : hlClass === 'at-low5d'  ? `<span class="hl-badge low5d"  title="At or near the 5-DAY LOW — notable trough across the last 5 days, not just today.">▼ 5D LOW</span>`
           : hlClass === 'at-high'   ? `<span class="hl-badge high" title="Currently at or above its 24-hour high. Sell now to catch the peak.">▲ HIGH</span>`
           : hlClass === 'at-low'    ? `<span class="hl-badge low" title="Currently at or below its 24-hour low. Buy now to catch the dip.">▼ LOW</span>` : '';
         /* Favorites rows get reorder buttons (▲ / ▼), a × quick-remove button
