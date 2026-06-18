@@ -543,31 +543,46 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-trend.neutral { color: var(--text-muted); }
 
 @media screen and (max-width: 1023px) and (orientation: portrait) {
-  /* Mobile portrait: tighten every gap above the chart so the chart starts
-     higher up the screen. main-column gap 8px -> 4px, wrap padding 6px -> 4px,
-     top-row gap 4px -> 2px, price strip pulled flush. */
+  /* Mobile portrait: every gap above the chart is collapsed so the chart
+     starts as high up the screen as possible. Earlier this section saved
+     wrap / row-wrapper space; the price strip was still eating ~60px
+     because it stacked label / value / grade vertically. Below it now
+     renders single-row (label-on-left, value, then grade-chip right), like
+     the desktop layout but smaller. Saves ~30px above the chart. */
   .wrap { padding: 4px; overflow-y: auto; gap: 4px; }
-  .main-column { gap: 4px; }
+  .main-column { gap: 3px; }
   .top-row-wrapper { gap: 2px; }
-  .top-panel { padding: 4px 8px; }
+  .top-panel { padding: 3px 8px; }
   .panel-left { width: 100%; flex-wrap: nowrap; justify-content: space-between; gap: 6px; }
   .brand-logo { display: none !important; }
-  .mode-pill { flex-shrink: 0; }
+  .mode-pill { flex-shrink: 0; height: 26px; }
   .search-group { flex: 1; min-width: 0; }
   .sbar { flex: 1 1 0; min-width: 80px; width: auto; }
-  .icon-btn { flex: 0 0 auto; }
-  .content-area { flex-direction: column; gap: 4px; }
+  .sbar input { padding-top: 3px; padding-bottom: 3px; height: 28px; }
+  .icon-btn { flex: 0 0 auto; padding: 3px 7px; }
+  .content-area { flex-direction: column; gap: 3px; }
   .ticker-title-group { display: none !important; }
   .ticker-header { padding: 0; border: none; background: transparent; gap: 0; height: auto; }
-  .toolbar { width: 100%; justify-content: space-between; }
-  .toolbar button { flex: 1; padding: 6px 4px; font-size: 12px; }
+  .toolbar { width: 100%; justify-content: space-between; padding: 2px; }
+  .toolbar button { flex: 1; padding: 4px 2px; font-size: 12px; min-width: 0; }
   .pct-chg { display: none !important; }
-  .chart-container { flex: none; height: 44vh; min-height: 280px; margin-bottom: 0; }
+  .chart-container { flex: none; height: 48vh; min-height: 300px; margin-bottom: 0; }
   .watchlist-container { width: 100%; flex: 1; min-height: 400px; }
   .status-text { display: none; }
+  /* Single-row price boxes — the big space saver. */
   .price-strip { gap: 4px; }
-  .price-box { padding: 3px 8px; min-width: 0; }
-  .price-val { font-size: 13px; }
+  .price-box { display: flex; align-items: center; gap: 8px; padding: 3px 8px; min-width: 0; }
+  .price-label { flex-direction: column; align-items: flex-start; gap: 0; flex-shrink: 0; font-size: 9px; }
+  .live-val { font-size: 9px; }
+  .price-val { font-size: 17px; margin-top: 0; flex-shrink: 0; white-space: nowrap; line-height: 1.1; }
+  .price-grade, .price-box.selected .price-grade {
+    display: flex; align-items: center; gap: 4px;
+    margin-top: 0; padding-top: 0; border-top: none;
+    margin-left: auto; font-size: 9px; flex-shrink: 1; min-width: 0;
+  }
+  .price-grade .pg-num { font-size: 13px; }
+  .price-grade .pg-verdict { font-size: 9px; letter-spacing: 0.3px; }
+  .price-grade .pg-ctx { font-size: 9px; opacity: 0.7; }
   .calc-container input { font-size: 16px; }
 }
 @media screen and (max-width: 1023px) and (orientation: landscape), screen and (max-height: 600px) and (orientation: landscape) {
