@@ -650,6 +650,64 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
   .price-val { font-size: 12px; margin-top: 0px; }
   .status-text { display: none; }
 }
+
+/* First-visit onboarding banner — orients an organic searcher in one line,
+   then dismisses to localStorage forever. */
+.onboard-banner {
+  display: flex; align-items: center; gap: 10px;
+  background: linear-gradient(90deg, rgba(41,98,255,0.16), rgba(41,98,255,0.04));
+  border: 1px solid rgba(41,98,255,0.4); border-radius: 6px;
+  padding: 8px 12px; margin-bottom: 6px; flex-shrink: 0;
+  font-size: 12.5px; line-height: 1.4; color: var(--text-main);
+}
+.onboard-banner .ob-icon { font-size: 17px; flex-shrink: 0; }
+.onboard-banner .ob-text { flex: 1; min-width: 0; }
+.onboard-banner .ob-text strong { color: #fff; }
+.onboard-banner .ob-close {
+  flex-shrink: 0; background: transparent; border: 1px solid var(--border-light);
+  color: var(--text-muted); border-radius: 4px; width: 24px; height: 24px;
+  cursor: pointer; font-size: 15px; line-height: 1; display: flex;
+  align-items: center; justify-content: center; transition: all 0.15s ease;
+}
+.onboard-banner .ob-close:hover { color: #fff; border-color: var(--border-active); }
+
+/* Tiny "?" affordance on the grade chips → opens the glossary. */
+.pg-help {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 14px; height: 14px; margin-left: 6px; flex-shrink: 0;
+  border-radius: 50%; border: 1px solid var(--text-muted);
+  color: var(--text-muted); font-size: 9px; font-weight: 700;
+  cursor: help; line-height: 1;
+}
+.pg-help:hover { color: #fff; border-color: #fff; }
+
+/* Chart loading skeleton — shown until the first real draw lands. */
+.chart-loading {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 12px;
+  color: var(--text-muted); font-size: 13px; pointer-events: none;
+  background: var(--bg-chart); z-index: 3;
+}
+.chart-loading.hidden { display: none; }
+.chart-loading .cl-spinner {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 3px solid rgba(255,255,255,0.12); border-top-color: var(--border-active);
+  animation: cl-spin 0.8s linear infinite;
+}
+@keyframes cl-spin { to { transform: rotate(360deg); } }
+
+/* Site footer — trust / attribution signal below the about content. */
+.site-footer {
+  max-width: 880px; margin: 0 auto 48px; padding: 18px 20px 0;
+  border-top: 1px solid var(--border-main);
+  color: var(--text-muted); font-size: 11.5px; line-height: 1.6;
+}
+.site-footer .foot-row { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-bottom: 8px; }
+.site-footer .foot-brand { color: var(--text-main); font-weight: 800; }
+.site-footer .foot-fresh { color: var(--positive); }
+.site-footer a { color: var(--border-active); text-decoration: none; }
+.site-footer a:hover { text-decoration: underline; }
+.site-footer .foot-disclaimer { opacity: 0.7; font-size: 10.5px; }
 </style>
 </head>
 <body>
@@ -683,7 +741,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
                 </svg>
                 <span class="icon-label">Favorite</span>
               </button>
-              <button id="btnFlip" class="icon-btn" title="Glance Mode — large prices, minimal chrome"><span>🔍</span><span class="icon-label">Glance</span></button>
+              <button id="btnFlip" class="icon-btn" title="Simple View — huge buy/sell prices, minimal chart. Good for a quick glance or checking at work."><span>🔍</span><span class="icon-label">Simple</span></button>
               <button id="btnNotif" class="icon-btn" title="Enable Browser Push Notifications"><span>🔕</span><span class="icon-label">Alerts</span></button>
               <button id="btnPortfolio" class="icon-btn" title="Bank of Gielinor — track your stacks &amp; total wealth">
                 <svg class="bk-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
@@ -729,6 +787,12 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
         </div>
       </div>
 
+      <div class="onboard-banner" id="onboardBanner" style="display:none">
+        <span class="ob-icon">📊</span>
+        <span class="ob-text"><strong>Live OSRS Grand Exchange prices.</strong> The two boxes below are what you should <strong>buy</strong> and <strong>sell</strong> this item for right now — 2% GE tax already included. Pick any item on the right to switch.</span>
+        <button class="ob-close" id="onboardClose" type="button" aria-label="Dismiss">×</button>
+      </div>
+
       <div class="price-strip">
         <div id="buyPrice" class="price-box low">
           <div class="price-label">Target Buy <span id="lblLiveBuy" class="live-val">Live: —</span></div>
@@ -744,6 +808,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 
       <div class="chart-container">
         <canvas id="chart" class="chart"></canvas>
+        <div id="chartLoading" class="chart-loading"><div class="cl-spinner"></div>Loading live prices…</div>
         <div id="tip" class="chart-tip"></div>
 
         <div class="chart-footer legend">
@@ -1377,6 +1442,15 @@ function applyTitleBadge() {
   const base = selected ? `${selected.name} - PocketGE` : 'PocketGE';
   const n = countFavoriteBreakouts();
   document.title = n > 0 ? `(${n}) ${base}` : base;
+}
+
+/* Footer freshness signal — stamps the last successful price refresh so a
+   first-time visitor sees the data is genuinely live, not stale/abandoned. */
+function updateFootFresh() {
+  const el = document.getElementById('footFresh');
+  if (!el) return;
+  const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  el.textContent = `Live prices · last updated ${t} · refreshes every 5 min`;
 }
 
 /* Per-item meta refresh. Updates description / OG / Twitter / canonical so a
@@ -2248,7 +2322,8 @@ function updateGradeBadge() {
     if (!div) return;
     const g = computeGrade(selected, side);
     if (!g) { div.innerHTML = ''; return; }
-    div.innerHTML = `<span class="pg-num" style="color:${g.color}">${g.grade}</span><span class="pg-verdict" style="color:${g.color}">${g.verdict}</span><span class="pg-ctx">${view.toUpperCase()}</span>`;
+    const gradeTip = `${side === 'buy' ? 'Entry' : 'Exit'} score 0–100 for the ${view.toUpperCase()} window — higher is better. 85+ = elite (${side === 'buy' ? 'Steal Buy' : 'Top Sell'}), 50–69 = Fair, under 30 = Avoid. Tap for the full glossary.`;
+    div.innerHTML = `<span class="pg-num" style="color:${g.color}">${g.grade}</span><span class="pg-verdict" style="color:${g.color}">${g.verdict}</span><span class="pg-ctx">${view.toUpperCase()}</span><span class="pg-help" title="${gradeTip}" role="button" aria-label="What does this grade mean?">?</span>`;
   }
   fill(buyDiv, 'buy');
   fill(sellDiv, 'sell');
@@ -2581,6 +2656,10 @@ function drawChart(series) {
     ctx.fillText("No trade data for this timeframe — try a longer one.", W / 2, H / 2);
     return;
   }
+
+  /* Real data is about to paint — retire the loading skeleton (first draw). */
+  const clEl = document.getElementById('chartLoading');
+  if (clEl && !clEl.classList.contains('hidden')) clEl.classList.add('hidden');
 
   const n = series.labels.length;
   const win = Math.max(20, Math.floor(n / zoom));
@@ -3316,6 +3395,25 @@ setItem._userPicked = false;
     $('#closeHelp').onclick = () => { $('#helpModal').style.display = 'none'; };
     $('#helpModal').addEventListener('click', (ev) => { if (ev.target === $('#helpModal')) $('#helpModal').style.display = 'none'; });
 
+    /* First-visit onboarding banner — show once, dismiss forever. The grade
+       "?" chips and the banner CTA both route into the same glossary modal. */
+    if (localStorage.getItem('ge_onboardDismissed') !== '1') {
+      $('#onboardBanner').style.display = 'flex';
+    }
+    $('#onboardClose').onclick = () => {
+      $('#onboardBanner').style.display = 'none';
+      try { localStorage.setItem('ge_onboardDismissed', '1'); } catch (e) {}
+    };
+    /* Tapping a grade "?" chip opens the glossary (mobile can't hover the
+       title tooltip). stopPropagation so it doesn't also toggle the buy/sell
+       price-box selection it lives inside. */
+    document.addEventListener('click', (ev) => {
+      if (ev.target.classList && ev.target.classList.contains('pg-help')) {
+        ev.stopPropagation();
+        $('#helpModal').style.display = 'flex';
+      }
+    }, true);
+
     /* Portfolio wiring. */
     $('#btnPortfolio').onclick = () => openPortfolio();
     $('#closePortfolio').onclick = () => closePortfolio();
@@ -3351,6 +3449,7 @@ setItem._userPicked = false;
     setInterval(async () => {
       try {
         latest = await loadLatest();
+        updateFootFresh();
         dayHiLoCache = {}; // refresh recent-peak data so the glow stays current
         scanStatus.fived = 'idle'; // let runFiveDayScan re-populate against fresh extremes
         runFiveDayScan();
@@ -3395,6 +3494,7 @@ setItem._userPicked = false;
       setItem._userPicked = false;
       setItem(landing);
     }
+    updateFootFresh();
   } catch (e) {
     $("#status").textContent = "API Error";
     console.error(e);
@@ -3574,6 +3674,24 @@ if ('serviceWorker' in navigator) {
     </div>
   </div>
 </section>
+
+<footer class="site-footer">
+  <div class="foot-row">
+    <span class="foot-brand">PocketGE</span>
+    <span>·</span>
+    <span class="foot-fresh" id="footFresh">Live prices · updates every 5 min</span>
+  </div>
+  <div class="foot-row">
+    <span>Price data: <a href="https://prices.runescape.wiki/" rel="noopener" target="_blank">OSRS Wiki real-time API</a></span>
+    <span>·</span>
+    <span>History: <a href="https://api.weirdgloop.org/" rel="noopener" target="_blank">Weird Gloop</a></span>
+    <span>·</span>
+    <a href="#faq">FAQ</a>
+  </div>
+  <div class="foot-disclaimer">
+    PocketGE is a free, independent fan tool. Not affiliated with, endorsed by, or sponsored by Jagex Ltd. RuneScape and Old School RuneScape are trademarks of Jagex. No account or login required — your data stays in your browser.
+  </div>
+</footer>
 
 </body>
 </html>
