@@ -164,6 +164,11 @@ button, input { touch-action: manipulation; }
 .about-section .faq details[open] summary::after { content: "−"; }
 .about-section .faq details[open] summary { border-bottom: 1px solid var(--border-main); }
 .about-section .faq p { margin: 0; padding: 11px 14px; font-size: 12.5px; }
+.about-section .popular { margin-top: 24px; }
+.about-section .popular h3 { color: var(--text-main); font-size: 13px; font-weight: 700; margin: 14px 0 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+.about-section .popular .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 4px 14px; }
+.about-section .popular .item-grid a { display: block; padding: 3px 0; font-size: 12.5px; color: var(--border-active); text-decoration: none; }
+.about-section .popular .item-grid a:hover { text-decoration: underline; color: #fff; }
 .wrap { max-width: 1800px; margin: 0 auto; padding: 8px; height: 100dvh; display: flex; flex-direction: column; gap: 8px; }
 .content-area { display: flex; flex-direction: row; flex: 1; gap: 8px; min-height: 0; min-width: 0; }
 .main-column { flex: 1; display: flex; flex-direction: column; min-width: 0; gap: 8px; }
@@ -1322,6 +1327,44 @@ function applyTitleBadge() {
   const base = selected ? `${selected.name} - PocketGE` : 'PocketGE';
   const n = countFavoriteBreakouts();
   document.title = n > 0 ? `(${n}) ${base}` : base;
+}
+
+/* Per-item meta refresh. Updates description / OG / Twitter / canonical so a
+   shared `/?q=Cake` link's social card shows the actual item, and so each
+   `?q=` URL has its own canonical (lets Google index per-item pages instead
+   of consolidating everything to /). Idempotent; safe to call repeatedly. */
+function setMetaTag(key, val, isProperty) {
+  if (val == null) return;
+  const attr = isProperty ? 'property' : 'name';
+  let el = document.querySelector(`meta[${attr}="${key}"]`);
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute(attr, key);
+    document.head.appendChild(el);
+  }
+  el.setAttribute('content', val);
+}
+function setCanonicalLink(url) {
+  let el = document.querySelector('link[rel="canonical"]');
+  if (!el) {
+    el = document.createElement('link');
+    el.rel = 'canonical';
+    document.head.appendChild(el);
+  }
+  el.href = url;
+}
+function updateMetaForItem(m) {
+  if (!m) return;
+  const title = `${m.name} - PocketGE`;
+  const desc = `Live OSRS ${m.name} price, flipping margins, target buy and sell with the 2% Grand Exchange tax already applied, plus 5-day breakout markers and support/resistance walls. Mobile-first, free, no signup.`;
+  const url = window.location.href;
+  setMetaTag('description', desc);
+  setMetaTag('og:title', title, true);
+  setMetaTag('og:description', desc, true);
+  setMetaTag('og:url', url, true);
+  setMetaTag('twitter:title', title);
+  setMetaTag('twitter:description', desc.length > 200 ? desc.slice(0, 197) + '…' : desc);
+  setCanonicalLink(url.split('#')[0]);
 }
 
 function renderWatchlist() {
@@ -2947,19 +2990,20 @@ async function setItem(m) {
   try { localStorage.setItem('ge_recentItems', JSON.stringify(recentItems)); } catch (e) {}
   $("#query").value = m.name;
   applyTitleBadge();
-  /* SPA analytics + shareable URLs: when the user switches items, no real
-     navigation happens, so GA4 never sees a new page_view and every
-     item-specific visit collapses into "home /". Mirror the item into the
-     URL via history.replaceState (replace, not push, so the back button
-     doesn't fill up with every click), then fire a virtual page_view so
-     analytics tracks per-item engagement and so deep links like
-     /?q=Cake actually work. */
+  /* SPA analytics + shareable URLs + per-item SEO: when the user switches
+     items, no real navigation happens, so GA4 never sees a new page_view,
+     every item-specific visit collapses into "home /", and any social-card
+     preview of a shared /?q=Cake link shows the generic homepage text.
+     Mirror the item into the URL via history.replaceState, refresh every
+     meta tag / canonical to the item's context, then fire a virtual GA4
+     page_view. */
   try {
     const slug = encodeURIComponent(m.name);
     const newUrl = `${window.location.pathname}?q=${slug}`;
     if (window.location.search !== `?q=${slug}`) {
       history.replaceState(null, '', newUrl);
     }
+    updateMetaForItem(m);
     if (typeof gtag === 'function') {
       gtag('event', 'page_view', {
         page_title: `${m.name} - PocketGE`,
@@ -3278,6 +3322,118 @@ if ('serviceWorker' in navigator) {
       <summary>Is PocketGE free, and does it need my RuneScape login?</summary>
       <p>Yes, it's completely free with no ads and no account. It never asks for your RuneScape credentials — it only reads public Grand Exchange price data. Everything you save (favorites, Bank stacks, alerts) stays in your own browser. You can also install it to your phone's home screen as an app.</p>
     </details>
+  </div>
+
+  <div class="popular" aria-label="Popular OSRS item prices">
+    <h2 id="popular-items">Popular OSRS item prices</h2>
+    <p>Jump straight to any of these — live insta-buy / insta-sell, target flip prices with GE tax baked in, support &amp; resistance walls, and 5-day breakout markers for each.</p>
+
+    <h3>Gems &amp; materials</h3>
+    <div class="item-grid">
+      <a href="/?q=Diamond">Diamond price</a>
+      <a href="/?q=Ruby">Ruby price</a>
+      <a href="/?q=Emerald">Emerald price</a>
+      <a href="/?q=Sapphire">Sapphire price</a>
+      <a href="/?q=Uncut%20diamond">Uncut diamond price</a>
+      <a href="/?q=Uncut%20ruby">Uncut ruby price</a>
+      <a href="/?q=Uncut%20emerald">Uncut emerald price</a>
+      <a href="/?q=Uncut%20sapphire">Uncut sapphire price</a>
+      <a href="/?q=Dragonstone">Dragonstone price</a>
+      <a href="/?q=Onyx">Onyx price</a>
+      <a href="/?q=Zenyte">Zenyte price</a>
+    </div>
+
+    <h3>Ores &amp; bars</h3>
+    <div class="item-grid">
+      <a href="/?q=Iron%20ore">Iron ore price</a>
+      <a href="/?q=Coal">Coal price</a>
+      <a href="/?q=Mithril%20ore">Mithril ore price</a>
+      <a href="/?q=Adamantite%20ore">Adamantite ore price</a>
+      <a href="/?q=Runite%20ore">Runite ore price</a>
+      <a href="/?q=Gold%20ore">Gold ore price</a>
+      <a href="/?q=Iron%20bar">Iron bar price</a>
+      <a href="/?q=Steel%20bar">Steel bar price</a>
+      <a href="/?q=Mithril%20bar">Mithril bar price</a>
+      <a href="/?q=Adamantite%20bar">Adamantite bar price</a>
+      <a href="/?q=Runite%20bar">Runite bar price</a>
+      <a href="/?q=Gold%20bar">Gold bar price</a>
+    </div>
+
+    <h3>Runes</h3>
+    <div class="item-grid">
+      <a href="/?q=Nature%20rune">Nature rune price</a>
+      <a href="/?q=Law%20rune">Law rune price</a>
+      <a href="/?q=Death%20rune">Death rune price</a>
+      <a href="/?q=Blood%20rune">Blood rune price</a>
+      <a href="/?q=Soul%20rune">Soul rune price</a>
+      <a href="/?q=Wrath%20rune">Wrath rune price</a>
+      <a href="/?q=Cosmic%20rune">Cosmic rune price</a>
+      <a href="/?q=Chaos%20rune">Chaos rune price</a>
+    </div>
+
+    <h3>Logs &amp; food</h3>
+    <div class="item-grid">
+      <a href="/?q=Yew%20logs">Yew logs price</a>
+      <a href="/?q=Magic%20logs">Magic logs price</a>
+      <a href="/?q=Mahogany%20logs">Mahogany logs price</a>
+      <a href="/?q=Maple%20logs">Maple logs price</a>
+      <a href="/?q=Redwood%20logs">Redwood logs price</a>
+      <a href="/?q=Teak%20logs">Teak logs price</a>
+      <a href="/?q=Shark">Shark price</a>
+      <a href="/?q=Manta%20ray">Manta ray price</a>
+      <a href="/?q=Anglerfish">Anglerfish price</a>
+      <a href="/?q=Karambwan">Karambwan price</a>
+      <a href="/?q=Cake">Cake price</a>
+      <a href="/?q=Anchovy%20pizza">Anchovy pizza price</a>
+    </div>
+
+    <h3>Ranged ammo &amp; supplies</h3>
+    <div class="item-grid">
+      <a href="/?q=Rune%20arrow">Rune arrow price</a>
+      <a href="/?q=Dragon%20arrow">Dragon arrow price</a>
+      <a href="/?q=Amethyst%20arrow">Amethyst arrow price</a>
+      <a href="/?q=Cannonball">Cannonball price</a>
+      <a href="/?q=Dragon%20dart">Dragon dart price</a>
+      <a href="/?q=Pure%20essence">Pure essence price</a>
+    </div>
+
+    <h3>Potions &amp; seeds</h3>
+    <div class="item-grid">
+      <a href="/?q=Saradomin%20brew(4)">Saradomin brew price</a>
+      <a href="/?q=Super%20combat%20potion(4)">Super combat potion price</a>
+      <a href="/?q=Ranarr%20seed">Ranarr seed price</a>
+      <a href="/?q=Snapdragon%20seed">Snapdragon seed price</a>
+      <a href="/?q=Torstol%20seed">Torstol seed price</a>
+      <a href="/?q=Old%20school%20bond">Old school bond price</a>
+    </div>
+
+    <h3>PvM drops &amp; high-tier gear</h3>
+    <div class="item-grid">
+      <a href="/?q=Twisted%20bow">Twisted bow price</a>
+      <a href="/?q=Scythe%20of%20vitur">Scythe of vitur price</a>
+      <a href="/?q=Dragon%20claws">Dragon claws price</a>
+      <a href="/?q=Bandos%20chestplate">Bandos chestplate price</a>
+      <a href="/?q=Bandos%20tassets">Bandos tassets price</a>
+      <a href="/?q=Armadyl%20chestplate">Armadyl chestplate price</a>
+      <a href="/?q=Armadyl%20chainskirt">Armadyl chainskirt price</a>
+      <a href="/?q=Abyssal%20whip">Abyssal whip price</a>
+      <a href="/?q=Dragon%20scimitar">Dragon scimitar price</a>
+      <a href="/?q=Toxic%20blowpipe">Toxic blowpipe price</a>
+      <a href="/?q=Trident%20of%20the%20seas">Trident of the seas price</a>
+      <a href="/?q=Trident%20of%20the%20swamp">Trident of the swamp price</a>
+      <a href="/?q=Berserker%20ring">Berserker ring price</a>
+      <a href="/?q=Amulet%20of%20fury">Amulet of fury price</a>
+      <a href="/?q=Amulet%20of%20torture">Amulet of torture price</a>
+      <a href="/?q=Necklace%20of%20anguish">Necklace of anguish price</a>
+    </div>
+
+    <h3>Rares &amp; 3rd Age</h3>
+    <div class="item-grid">
+      <a href="/?q=Gilded%20scimitar">Gilded scimitar price</a>
+      <a href="/?q=3rd%20age%20longsword">3rd age longsword price</a>
+      <a href="/?q=Party%20hat%20(red)">Red party hat price</a>
+      <a href="/?q=Halloween%20mask%20(red)">Red Halloween mask price</a>
+    </div>
   </div>
 </section>
 
