@@ -2051,10 +2051,98 @@ function pickEngineSeries(src) {
   return null;
 }
 
+/* ─── Expected-value offer optimizer ────────────────────────────────────
+   The core idea that sets this apart from "show the latest margin" or
+   "pick the Nth percentile": a flip target is only good if it BOTH clears a
+   profit after the 2% GE tax AND fills often enough to be worth posting.
+   So instead of guessing a price, we maximize the expected captured margin
+
+       score(price) = P(offer fills) × (margin if it fills)
+
+   P(fill) comes from an empirical, recency- and volume-weighted distribution
+   of what the item ACTUALLY traded at recently — not a model, just the tape.
+   A too-low bid has fat margin but ~0 fill probability; a too-high bid fills
+   instantly but earns nothing. The product peaks at the realistic sweet
+   spot, which is exactly the price a disciplined flipper would set. */
+function optimizeOffer(prints, side, refOpp) {
+  if (!prints.length || !(refOpp > 0)) return null;
+  const totalW = prints.reduce((a, x) => a + x.w, 0);
+  if (totalW <= 0) return null;
+  const prices = prints.map(x => x.p).sort((a, b) => a - b);
+  /* Search only the realistic offer band: for a buy, the 2nd–70th percentile
+     of recent insta-sell prints (no point bidding above typical); for a sell,
+     the 30th–98th percentile of insta-buy prints. */
+  const loP = percentile(prices, side === 'buy' ? 2 : 30);
+  const hiP = percentile(prices, side === 'buy' ? 70 : 98);
+  const cand = [...new Set(prices.filter(p => p >= loP && p <= hiP).map(Math.round))];
+  if (!cand.length) return null;
+  const taxOf = (s) => Math.min(5000000, Math.floor(s * 0.02));
+  /* Iterate in the fill-improving direction (buy: low→high, sell: high→low)
+     so that on a score tie we keep the MORE fillable price — safer targets. */
+  const order = side === 'buy' ? cand.sort((a, b) => a - b) : cand.sort((a, b) => b - a);
+  let best = null, bestScore = -Infinity;
+  for (const c of order) {
+    let wFill = 0;
+    for (const x of prints) {
+      if (side === 'buy' ? x.p <= c : x.p >= c) wFill += x.w;
+    }
+    const pFill = wFill / totalW;
+    const margin = side === 'buy' ? (refOpp - c - taxOf(refOpp)) : (c - refOpp - taxOf(c));
+    const score = pFill * margin;
+    if (score >= bestScore) { bestScore = score; best = c; }
+  }
+  return best;
+}
+
+/* Build recency- and volume-weighted print samples over the last ~6h and run
+   the EV optimizer for both sides. Margin for each side is measured against
+   the TYPICAL opposite price (weighted median) — a realistic exit/entry, not
+   the day's absolute extreme — which keeps targets fillable instead of
+   over-ambitious. Returns null on thin data so the caller falls back to the
+   percentile heuristic. */
+function evTargets(series, rawLow, rawHigh) {
+  if (!series || !series.labels || series.labels.length < 12) return null;
+  const labels = series.labels;
+  const now = labels[labels.length - 1];
+  if (!(now > 0)) return null;
+  const windowSec = 6 * 3600, halfLife = 90 * 60;
+  const lows = [], highs = [];
+  for (let i = 0; i < labels.length; i++) {
+    const age = now - labels[i];
+    if (age < 0 || age > windowSec) continue;
+    const decay = Math.pow(0.5, age / halfLife);
+    const lo = series.low[i], hi = series.high[i];
+    const lv = (series.lowVol && series.lowVol[i]) || 0;
+    const hv = (series.highVol && series.highVol[i]) || 0;
+    if (lo != null && lo > 0) lows.push({ p: lo, w: decay * (lv > 0 ? lv : 1) });
+    if (hi != null && hi > 0) highs.push({ p: hi, w: decay * (hv > 0 ? hv : 1) });
+  }
+  if (lows.length < 8 || highs.length < 8) return null;
+  const wMedian = (arr) => {
+    const s = [...arr].sort((a, b) => a.p - b.p);
+    const tot = s.reduce((a, x) => a + x.w, 0);
+    let acc = 0;
+    for (const x of s) { acc += x.w; if (acc >= tot / 2) return x.p; }
+    return s[s.length - 1].p;
+  };
+  const buyRef = wMedian(lows), sellRef = wMedian(highs);
+  const buy = optimizeOffer(lows, 'buy', sellRef);
+  const sell = optimizeOffer(highs, 'sell', buyRef);
+  if (buy == null || sell == null) return null;
+  return { buy, sell };
+}
+
 function runTradeEngine(rawLow, rawHigh, series) {
   if (!rawLow || !rawHigh) return { buy: rawLow || 0, sell: rawHigh || 0 };
   let recentLow = rawLow, recentHigh = rawHigh;
-  if (series && series.high.length > 5) {
+  /* Primary: expected-value optimizer (needs ~6h of volume-bearing prints).
+     Falls back to the percentile + cluster + patient heuristic below when
+     data is too thin (low-volume items, single-price historical series). */
+  const ev = evTargets(series, rawLow, rawHigh);
+  if (ev) {
+    recentLow = ev.buy;
+    recentHigh = ev.sell;
+  } else if (series && series.high.length > 5) {
     /* Slice to a real wall-clock window (last ~90 min for the percentile
        anchor, last ~30 min for the very-recent ambition / trend signals)
        when the series has timestamps. Falls back to 7% / 3% by count for
