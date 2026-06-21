@@ -1981,12 +1981,13 @@ function findRepeatedExtreme(arr, wantHighest, minCount) {
 function findVolumeWall(prices, volumes, wantHighest, minVolFraction, priceFilter) {
   if (!prices || !prices.length) return null;
   const byPrice = new Map();
-  let totalVol = 0, valid = 0;
+  let totalVol = 0, valid = 0, samplePrice = 0;
   for (let i = 0; i < prices.length; i++) {
     const p = prices[i];
     if (p == null) continue;
     if (priceFilter && !priceFilter(p)) continue;
     valid++;
+    if (!samplePrice) samplePrice = p;
     const v = (volumes && volumes[i]) ? volumes[i] : 0;
     const k = Math.round(p);
     byPrice.set(k, (byPrice.get(k) || 0) + v);
@@ -2011,10 +2012,22 @@ function findVolumeWall(prices, volumes, wantHighest, minVolFraction, priceFilte
     }
     return best;
   }
+  /* BAND-sum, not per-integer. Earlier version required each individual
+     integer price to clear the 5% threshold on its own — so a cluster
+     genuinely worth flagging (Diamond on 5D: heavy trading 1820-1840) had
+     its volume split across ~20 integers and NO single tick passed, leaving
+     the chart wall-less even when the eye plainly saw a ceiling. We now sum
+     volume across a small band (±0.2% of price, min ±2 ticks) around each
+     candidate, so spread-out clusters register and tight clusters still
+     register the same way. The line still anchors to a single integer
+     (the most extreme passing one) — same visual, much more reliable. */
+  const halfBand = Math.max(2, Math.round(samplePrice * 0.002));
   const minVol = totalVol * minVolFraction;
   let best = null;
-  for (const [k, vol] of byPrice) {
-    if (vol < minVol) continue;
+  for (const k of byPrice.keys()) {
+    let bandVol = 0;
+    for (let dk = -halfBand; dk <= halfBand; dk++) bandVol += byPrice.get(k + dk) || 0;
+    if (bandVol < minVol) continue;
     if (best === null || (wantHighest ? k > best : k < best)) best = k;
   }
   return best;
