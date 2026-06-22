@@ -399,7 +399,15 @@ button, input { touch-action: manipulation; }
 .chart-tip { position: absolute; display: none; background: rgba(19, 23, 34, 0.95); color: var(--text-main); padding: 8px 10px; border-radius: 4px; font-size: 10px; pointer-events: none; white-space: nowrap; border: 1px solid var(--border-light); box-shadow: 0 4px 12px var(--shadow); z-index: 50; }
 @media (min-width: 1024px) { .chart-tip { font-size: 12px; padding: 10px 12px; } }
 .chart-tip strong { display: block; margin-bottom: 3px; color: #fff; border-bottom: 1px solid var(--border-main); padding-bottom: 3px;}
-.watchlist-container { width: 300px; flex-shrink: 0; background: var(--bg-panel); border: 1px solid var(--border-main); border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; }
+.watchlist-container { width: var(--wl-width, 300px); flex-shrink: 0; background: var(--bg-panel); border: 1px solid var(--border-main); border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; }
+/* Draggable divider between chart and sidebar (desktop only). Hidden by
+   default; shown when the layout is the side-by-side row at >=1024px. */
+.wl-resize { display: none; }
+@media (min-width: 1024px) {
+  .wl-resize { display: block; flex: 0 0 8px; align-self: stretch; cursor: col-resize; position: relative; margin: 0 -4px; z-index: 6; touch-action: none; }
+  .wl-resize::before { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 2px; height: 30px; background: var(--border-light); border-radius: 2px; transition: background 0.15s, height 0.15s; }
+  .wl-resize:hover::before, .wl-resize.dragging::before { background: var(--border-active); height: 52px; }
+}
 .calc-container { background: var(--bg-panel); border-bottom: 1px solid var(--border-main); padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
 .calc-headline { display: flex; justify-content: space-between; align-items: center; cursor: pointer; gap: 8px; border-radius: 4px; padding: 2px; margin: -2px; transition: background 0.15s ease; -webkit-tap-highlight-color: rgba(41,98,255,0.2); }
 .calc-headline:hover { background: rgba(255,255,255,0.04); }
@@ -848,6 +856,8 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
         </div>
       </div>
     </div>
+
+    <div class="wl-resize" id="wlResize" title="Drag to resize · double-click to reset" aria-hidden="true"></div>
 
     <div class="watchlist-container">
       <div class="calc-container" id="sideModule"></div>
@@ -3601,6 +3611,53 @@ setItem._userPicked = false;
     $("#status").textContent = "API Error"; $("#status").classList.remove("live");
     console.error(e);
   }
+})();
+
+/* Resizable sidebar (desktop) — drag the divider to set the watchlist width,
+   clamped 230–560px, persisted to localStorage. Width is applied via the
+   --wl-width CSS variable; the mobile media queries override with explicit
+   widths so this only affects the side-by-side desktop layout. The chart
+   reflows live (rAF-throttled) and double-click resets to the default. */
+(function initSidebarResize() {
+  const handle = document.getElementById('wlResize');
+  const root = document.documentElement;
+  const wl = document.querySelector('.watchlist-container');
+  const MIN = 230, MAX = 560, DEFAULT = 300;
+  const saved = parseInt(localStorage.getItem('ge_wlWidth') || '', 10);
+  if (saved >= MIN && saved <= MAX) root.style.setProperty('--wl-width', saved + 'px');
+  if (!handle || !wl) return;
+  let startX = 0, startW = 0, dragging = false, raf = 0;
+  const apply = (clientX) => {
+    const dx = clientX - startX;
+    const w = Math.max(MIN, Math.min(MAX, startW - dx)); // drag left grows the right-hand sidebar
+    root.style.setProperty('--wl-width', w + 'px');
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (typeof resizeCanvas === 'function') resizeCanvas(); });
+  };
+  const begin = (clientX) => {
+    if (window.innerWidth < 1024) return;
+    dragging = true; startX = clientX; startW = wl.getBoundingClientRect().width;
+    handle.classList.add('dragging');
+    document.body.style.userSelect = 'none'; document.body.style.cursor = 'col-resize';
+  };
+  const end = () => {
+    if (!dragging) return;
+    dragging = false; handle.classList.remove('dragging');
+    document.body.style.userSelect = ''; document.body.style.cursor = '';
+    const w = Math.round(wl.getBoundingClientRect().width);
+    if (w) { try { localStorage.setItem('ge_wlWidth', String(w)); } catch (e) {} }
+    if (typeof resizeCanvas === 'function') resizeCanvas();
+  };
+  handle.addEventListener('mousedown', (e) => { begin(e.clientX); e.preventDefault(); });
+  window.addEventListener('mousemove', (e) => { if (dragging) apply(e.clientX); });
+  window.addEventListener('mouseup', end);
+  handle.addEventListener('touchstart', (e) => { begin(e.touches[0].clientX); }, { passive: true });
+  window.addEventListener('touchmove', (e) => { if (dragging) apply(e.touches[0].clientX); }, { passive: true });
+  window.addEventListener('touchend', end);
+  handle.addEventListener('dblclick', () => {
+    root.style.setProperty('--wl-width', DEFAULT + 'px');
+    try { localStorage.setItem('ge_wlWidth', String(DEFAULT)); } catch (e) {}
+    if (typeof resizeCanvas === 'function') resizeCanvas();
+  });
 })();
 
 /* PWA: register the service worker so the app is installable to the home
