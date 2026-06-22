@@ -463,7 +463,7 @@ button, input { touch-action: manipulation; }
 .category-title.rec-title { border-left-color: #FF9800; }
 .category-title.margin-title { border-left-color: #2ECC71; }
 .category-title.marginlo-title { border-left-color: #7FE3A6; }
-.category-title.gain-title { border-left-color: var(--positive); }
+.category-title.steady-title { border-left-color: #6AA9FF; }
 .category-title.fall-title { border-left-color: var(--negative); }
 /* Remote Flip Mode: ultra-clean, glanceable, stealthy at-work view. Decorative
    chrome is hidden, prices are oversized, and the chart drops everything except
@@ -991,7 +991,8 @@ let currentItemSrc = null;
 let currentItemLowVol = false;
 let overMaxFull = null;
 let dayHiLoCache = {};
-let scanStatus = { fived: 'idle' };
+let steadyFlipsCache = []; // [{ id, item, meanMargin, days, vol }]
+let scanStatus = { fived: 'idle', steady: 'idle' };
 
 let flipMode = localStorage.getItem('ge_flip') === '1';
 let notifEnabled = localStorage.getItem('ge_notif') === '1';
@@ -1002,7 +1003,7 @@ let groupOpenStates = {
   "⭐ Favorites": true,
   "💰 High Vol Margins": false,
   "💎 Low Vol Margins": false,
-  "🚀 Biggest Winners (24H)": false,
+  "🔁 Steady Flips": false,
   "🔻 Biggest Losers (24H)": false,
   "📈 At 5D Highs": false,
   "📉 At 5D Lows": false
@@ -1427,6 +1428,60 @@ async function runFiveDayScan() {
   scanStatus.fived = 'done'; renderWatchlist();
 }
 
+/* Steady Flips scan — looks for items whose post-tax daily margin has been
+   POSITIVE and CONSISTENT across the last ~14 days. These are the boring
+   reliable grinds (runes, ammo, bars, common potions) that pay roughly the
+   same flip every single day — the thing serious flippers actually grind,
+   and the thing no other category surfaces (every margin list is a
+   snapshot of THIS MINUTE's spread, which is noisy and disappears in
+   minutes). Throttled per-item against the bounded candidate pool, same
+   pattern as the 5D scan; cache lives in steadyFlipsCache. */
+async function runSteadyFlipsScan() {
+  if (scanStatus.steady === 'loading' || scanStatus.steady === 'done') return;
+  scanStatus.steady = 'loading'; renderWatchlist();
+  const cands = getScanCandidates();
+  const results = [];
+  await throttleMap(cands, async (m) => {
+    try {
+      const ts = seriesFromTS(await loadTS('24h', m.id));
+      if (!ts.labels.length) return;
+      const lastN = 14;
+      const start = Math.max(0, ts.labels.length - lastN);
+      const dayMargins = [];
+      let totalVol = 0;
+      for (let i = start; i < ts.labels.length; i++) {
+        const hi = ts.high[i], lo = ts.low[i];
+        const v = (ts.lowVol[i] || 0) + (ts.highVol[i] || 0);
+        totalVol += v;
+        if (hi == null || lo == null || hi <= lo) continue;
+        const margin = hi - lo - calculateTax(hi);
+        if (margin > 0 && margin < hi * 0.5) dayMargins.push(margin);
+      }
+      const days = ts.labels.length - start;
+      if (days < 10) return;
+      /* Steady = at least 80% of days had a positive after-tax margin AND
+         the coefficient of variation is low (mean / stdev > 2). Filters out
+         items that had one fluke 10K margin day next to a bunch of zeros. */
+      if (dayMargins.length < Math.ceil(days * 0.8)) return;
+      const mean = dayMargins.reduce((a, b) => a + b, 0) / dayMargins.length;
+      if (mean < 5) return; // too thin to bother
+      const variance = dayMargins.reduce((a, b) => a + (b - mean) ** 2, 0) / dayMargins.length;
+      const stdev = Math.sqrt(variance);
+      if (stdev > mean * 0.5) return; // too noisy to call "steady"
+      results.push({
+        id: String(m.id), item: m,
+        meanMargin: Math.round(mean),
+        days: dayMargins.length,
+        vol: Math.round(totalVol / Math.max(1, days)) // avg daily volume
+      });
+    } catch (e) {}
+  }, SCAN_CONCURRENCY);
+  /* Rank by mean margin (after tax), highest first. */
+  results.sort((a, b) => b.meanMargin - a.meanMargin);
+  steadyFlipsCache = results;
+  scanStatus.steady = 'done'; renderWatchlist();
+}
+
 function trendSub(node, p24) {
   let currentMid = null;
   if (node?.high && node?.low) currentMid = (node.high + node.low) / 2;
@@ -1638,7 +1693,9 @@ function renderWatchlist() {
   marginHigh1d.sort((a, b) => b.margin - a.margin);
   marginLow1d.sort((a, b) => b.margin - a.margin);
 
-  const winners = movers.filter(m => m.pct > 0).sort((a, b) => b.pct - a.pct).slice(0, 15);
+  /* Winners (24H) was removed: an item that already pumped is the LEAST
+     actionable for a buy-low-sell-high flipper — entry's missed and you
+     probably don't hold to sell. Losers stays — those are genuine dip-buys. */
   const losers  = movers.filter(m => m.pct < 0).sort((a, b) => a.pct - b.pct).slice(0, 15);
 
   /* Compact 1D-move chip from the live-vs-24h-avg %, used inline on favorites
@@ -1673,16 +1730,23 @@ function renderWatchlist() {
     else if (favSort === 'change') favsSorted.sort((a, b) => (mover1dPct[String(b.id)] ?? -Infinity) - (mover1dPct[String(a.id)] ?? -Infinity));
   }
 
-  /* Final scanner ordering — favorites pinned on top, then current live
-     margins (the bread-and-butter "flip now" view), then the 5-day extreme
-     breakouts. Long-term lows, 1M-averaged margins, manipulation hints, and
-     over-max rares were dropped: clutter that drifted from the core flipping
-     workflow. */
+  /* Steady Flips entries — uses cache populated by runSteadyFlipsScan(). The
+     "ea avg" tag distinguishes it from the live snapshot margins above. */
+  const steadyEntries = steadyFlipsCache.slice(0, 30).map(r => ({
+    item: r.item, price: priceOf(r.item),
+    sub: `<span class="wl-trend up" title="Average daily margin after 2% tax over the last ${r.days} days — consistent">+${abbreviateNumber(r.meanMargin)} ea avg</span><span class="wl-vol" title="Average daily traded volume">${abbreviateNumber(r.vol)} vol</span>`
+  }));
+
+  /* Final scanner ordering — favorites pinned on top, then live margins
+     (the right-now snapshot), then Steady Flips (reliable day-over-day
+     grinds, the thing serious flippers actually farm), then dip-buys, then
+     5D extremes. Winners (24H) was dropped: an item that already pumped is
+     the least actionable thing for a buy-low-sell-high flipper. */
   const groups = [
     { name: "⭐ Favorites", className: "fav-title", entries: favEntries(favsSorted), alwaysShow: true },
     { name: "💰 High Vol Margins", className: "margin-title", entries: marginEntries(marginHigh1d, "ea") },
     { name: "💎 Low Vol Margins", className: "marginlo-title", entries: marginEntries(marginLow1d, "ea") },
-    { name: "🚀 Biggest Winners (24H)", className: "gain-title", entries: moverEntries(winners) },
+    { name: "🔁 Steady Flips", className: "steady-title", entries: steadyEntries, scan: "steady" },
     { name: "🔻 Biggest Losers (24H)", className: "fall-title", entries: moverEntries(losers) },
     { name: "📈 At 5D Highs", className: "high-title", entries: plainEntries(dayHighs.slice(0, 30)), scan: "fived" },
     { name: "📉 At 5D Lows", className: "low-title", entries: plainEntries(dayLows.slice(0, 30)), scan: "fived" }
@@ -1711,8 +1775,9 @@ function renderWatchlist() {
       const nowCollapsed = listDiv.classList.toggle("collapsed");
       titleDiv.querySelector(".cat-chevron").textContent = nowCollapsed ? "▶" : "▼";
       groupOpenStates[group.name] = !nowCollapsed;
-      if (!nowCollapsed && hasScan && scanStatus[group.scan] === 'idle' && group.scan === 'fived') {
-        runFiveDayScan();
+      if (!nowCollapsed && hasScan && scanStatus[group.scan] === 'idle') {
+        if (group.scan === 'fived') runFiveDayScan();
+        else if (group.scan === 'steady') runSteadyFlipsScan();
       }
     };
     const editBtn = titleDiv.querySelector('.wl-edit-btn');
@@ -1744,8 +1809,10 @@ function renderWatchlist() {
 
     let inner = "";
     if (hasScan && scanState !== 'done' && group.entries.length === 0) {
-      if (scanState === 'loading') inner = `<div class="scan-row loading">⏳ Scanning 5-day extremes…</div>`;
-      else inner = `<div class="scan-row" data-scan="${group.scan}">🔍 Tap to scan 5-day extremes (top items)</div>`;
+      const loadLabel = group.scan === 'steady' ? 'Scanning 14 days of margins…' : 'Scanning 5-day extremes…';
+      const idleLabel = group.scan === 'steady' ? 'Tap to scan steady flippers (top items)' : 'Tap to scan 5-day extremes (top items)';
+      if (scanState === 'loading') inner = `<div class="scan-row loading">⏳ ${loadLabel}</div>`;
+      else inner = `<div class="scan-row" data-scan="${group.scan}">🔍 ${idleLabel}</div>`;
     } else if (group.entries.length === 0) {
       inner = `<div class="wl-item" style="color:var(--text-muted); justify-content:center;">Nothing at a 5-day extreme right now</div>`;
     } else {
@@ -1811,6 +1878,9 @@ function renderWatchlist() {
 
   container.querySelectorAll('.scan-row[data-scan="fived"]').forEach(el => {
     el.onclick = () => runFiveDayScan();
+  });
+  container.querySelectorAll('.scan-row[data-scan="steady"]').forEach(el => {
+    el.onclick = () => runSteadyFlipsScan();
   });
   container.querySelectorAll('.wl-item[data-id]').forEach(el => {
     el.onclick = (ev) => {
@@ -3460,10 +3530,11 @@ setItem._userPicked = false;
 
     renderWatchlist();
     /* Auto-kick the 5-day extremes scan in the background so the 5D Highs /
-       5D Lows groups have results by the time the user looks. Throttled via
-       SCAN_CONCURRENCY against a bounded ~100-item candidate pool (top vol +
-       top price), never the full 4500-item mapping. */
+       5D Lows / Steady Flips groups have results by the time the user looks.
+       Throttled via SCAN_CONCURRENCY against a bounded ~100-item candidate
+       pool (top vol + top price), never the full 4500-item mapping. */
     runFiveDayScan();
+    runSteadyFlipsScan();
 
     const sb = $("#suggestBox"), qInput = $("#query");
     /* Empty-input focus → show recently-viewed items so you can hop back
@@ -3504,7 +3575,7 @@ setItem._userPicked = false;
     $("#btnF2P").onclick = () => {
       membersOn = false; localStorage.setItem('ge_members', 'false');
       $("#btnF2P").classList.add("active"); $("#btnMembers").classList.remove("active");
-      dayHiLoCache = {}; scanStatus = { fived: 'idle' };
+      dayHiLoCache = {}; steadyFlipsCache = []; scanStatus = { fived: 'idle', steady: 'idle' };
       renderWatchlist();
       if (selected?.members) {
         const landing = mapping.find(x => String(x.id) === LANDING_ID);
@@ -3514,7 +3585,7 @@ setItem._userPicked = false;
     $("#btnMembers").onclick = () => {
       membersOn = true; localStorage.setItem('ge_members', 'true');
       $("#btnMembers").classList.add("active"); $("#btnF2P").classList.remove("active");
-      dayHiLoCache = {}; scanStatus = { fived: 'idle' };
+      dayHiLoCache = {}; steadyFlipsCache = []; scanStatus = { fived: 'idle', steady: 'idle' };
       renderWatchlist();
     };
 
