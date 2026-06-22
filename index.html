@@ -3028,9 +3028,16 @@ function drawChart(series) {
     /* Each wall is gated independently. After the overhead/underfoot filter
        they can no longer overlap, so the old collision-collapse logic is
        gone — either side may exist or not, including both being null when
-       price has broken out of all repeated clusters in both directions. */
-    drawWall(sellWall, sellColor, "Sell wall", 'above');
-    drawWall(buyWall, buyColor, "Buy wall", 'below');
+       price has broken out of all repeated clusters in both directions.
+       Final guard: a wall must AGREE with the engine's target — a buy wall
+       above target buy (or sell wall below target sell) means historical
+       support broke and the engine has already priced that in. Showing the
+       stale wall next to a target on the wrong side reads as the chart
+       contradicting itself, so we hide the wall in that case. */
+    const buyWallOk  = (buyWall  != null && recommendedBuy  != null) ? buyWall  <= Math.round(recommendedBuy  * 1.005) : true;
+    const sellWallOk = (sellWall != null && recommendedSell != null) ? sellWall >= Math.round(recommendedSell * 0.995) : true;
+    if (sellWallOk) drawWall(sellWall, sellColor, "Sell wall", 'above');
+    if (buyWallOk)  drawWall(buyWall,  buyColor,  "Buy wall",  'below');
   }
 
   /* Dots-only scatter (no connecting line — that was scribbling on dense 1D
@@ -3115,8 +3122,14 @@ function drawChart(series) {
     ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.stroke(); ctx.restore();
   }
   if (!flipMode) {
-    ring(recHiIdx, HI, sellColor);
-    ring(recLoIdx, LO, buyColor);
+    /* In singlePrice (historical 5Y/1Y where buy==sell every day) the rest of
+       the chart paints neutral; the recent-high/low rings should follow suit
+       instead of popping in bright gold/teal that no longer represent
+       anything meaningful. */
+    const recHiCol = singlePrice ? priceColor : sellColor;
+    const recLoCol = singlePrice ? priceColor : buyColor;
+    ring(recHiIdx, HI, recHiCol);
+    ring(recLoIdx, LO, recLoCol);
 
     /* Unified volume bars — one muted color, no two-tone stack. The earlier
        gold/teal split echoed colors that already carry meaning above, which
@@ -3185,9 +3198,18 @@ function showTipFor(local, clientX, clientY) {
   if (!L || local < 0 || local >= L.length) { tip.style.display = "none"; return; }
   const rect = canvas.getBoundingClientRect();
   const mx = clientX - rect.left, my = clientY - rect.top;
+  /* When the point has no buy/sell distinction (historical daily data where
+     low === high), collapse the tooltip to a single "Price" line instead of
+     showing "Buy: 5,662" and "Sell: 5,662" as if they were two separate
+     numbers — that read as redundant / broken on 5Y views. */
+  const lo = LO[local], hi = HI[local];
+  const same = lo != null && hi != null && Math.abs(hi - lo) < 1e-9;
+  const priceRows = same
+    ? `<span style="color:#C2CBDC">Price: ${fmtGp(hi)}</span><br/>`
+    : `<span style="color:var(--buy-color)">Buy: ${fmtGp(lo)}</span><br/>
+       <span style="color:var(--sell-color)">Sell: ${fmtGp(hi)}</span><br/>`;
   tip.innerHTML = `<strong>${new Date(L[local] * 1000).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>
-    <span style="color:var(--buy-color)">Buy: ${fmtGp(LO[local])}</span><br/>
-    <span style="color:var(--sell-color)">Sell: ${fmtGp(HI[local])}</span><br/>
+    ${priceRows}
     <span style="color:var(--text-muted)">Volume: ${fmtNum(VO[local])}</span>`;
   tip.style.display = "block";
   let tipX = mx + 15, tipY = my + 15;
