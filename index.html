@@ -612,6 +612,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-trend.up { color: var(--positive); }
 .wl-trend.down { color: var(--negative); }
 .wl-trend.neutral { color: var(--text-muted); }
+.wl-vol { display: block; font-size: 9px; color: var(--text-muted); cursor: help; margin-top: 1px; letter-spacing: 0.2px; }
 
 @media screen and (max-width: 1023px) and (orientation: portrait) {
   /* Mobile portrait: every gap above the chart is collapsed so the chart
@@ -1104,13 +1105,19 @@ function itemIconUrl(id) { return `https://static.runelite.net/cache/item/icon/$
 function calculateTax(price) { return Math.min(5000000, Math.floor(price * 0.02)); }
 function emptySeries() { return { labels: [], low: [], high: [], lowVol: [], highVol: [] }; }
 
-function isLowVolume(id) {
+/* Daily traded volume for an item — prefers the bulk /volumes endpoint,
+   falls back to summing the 24h high/low print volumes. Drives both the
+   high/low-vol categorisation and the sidebar liquidity figure. */
+function dailyVolume(id) {
   let v = volumes?.data?.[String(id)];
   if (v == null) {
     const p = past24h?.data?.[String(id)];
     v = p ? (p.highPriceVolume || 0) + (p.lowPriceVolume || 0) : 0;
   }
-  return v < LOW_VOL_THRESHOLD;
+  return v || 0;
+}
+function isLowVolume(id) {
+  return dailyVolume(id) < LOW_VOL_THRESHOLD;
 }
 
 /* Profit Calculator */
@@ -1650,7 +1657,10 @@ function renderWatchlist() {
   /* Favorites carry an inline 1D-move chip; other plain lists stay bare. */
   const plainEntries = (items) => items.map(item => ({ item, price: priceOf(item), sub: '' }));
   const favEntries = (items) => items.map(item => ({ item, price: priceOf(item), sub: moveChip(item.id) }));
-  const marginEntries = (rows, tag) => rows.slice(0, 30).map(r => ({ item: r.item, price: priceOf(r.item), sub: `<span class="wl-trend up">+${abbreviateNumber(r.margin)} ${tag}</span>` }));
+  const marginEntries = (rows, tag) => rows.slice(0, 30).map(r => ({
+    item: r.item, price: priceOf(r.item),
+    sub: `<span class="wl-trend up">+${abbreviateNumber(r.margin)} ${tag}</span><span class="wl-vol" title="Daily trade volume — how fast this flip will fill">${abbreviateNumber(dailyVolume(r.item.id))} vol</span>`
+  }));
   const moverEntries = (rows) => rows.map(r => ({ item: r.item, price: priceOf(r.item), sub: `<span class="wl-trend ${r.pct >= 0 ? 'up' : 'down'}" title="Live price vs its 24-hour average.">${r.pct >= 0 ? '+' : ''}${r.pct.toFixed(1)}%</span>` }));
 
   /* Apply the favorites sort (display-only — never mutates the saved order,
