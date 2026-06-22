@@ -399,7 +399,15 @@ button, input { touch-action: manipulation; }
 .chart-tip { position: absolute; display: none; background: rgba(19, 23, 34, 0.95); color: var(--text-main); padding: 8px 10px; border-radius: 4px; font-size: 10px; pointer-events: none; white-space: nowrap; border: 1px solid var(--border-light); box-shadow: 0 4px 12px var(--shadow); z-index: 50; }
 @media (min-width: 1024px) { .chart-tip { font-size: 12px; padding: 10px 12px; } }
 .chart-tip strong { display: block; margin-bottom: 3px; color: #fff; border-bottom: 1px solid var(--border-main); padding-bottom: 3px;}
-.watchlist-container { width: 300px; flex-shrink: 0; background: var(--bg-panel); border: 1px solid var(--border-main); border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; }
+.watchlist-container { width: var(--wl-width, 300px); flex-shrink: 0; background: var(--bg-panel); border: 1px solid var(--border-main); border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; }
+/* Draggable divider between chart and sidebar (desktop only). Hidden by
+   default; shown when the layout is the side-by-side row at >=1024px. */
+.wl-resize { display: none; }
+@media (min-width: 1024px) {
+  .wl-resize { display: block; flex: 0 0 8px; align-self: stretch; cursor: col-resize; position: relative; margin: 0 -4px; z-index: 6; touch-action: none; }
+  .wl-resize::before { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 2px; height: 30px; background: var(--border-light); border-radius: 2px; transition: background 0.15s, height 0.15s; }
+  .wl-resize:hover::before, .wl-resize.dragging::before { background: var(--border-active); height: 52px; }
+}
 .calc-container { background: var(--bg-panel); border-bottom: 1px solid var(--border-main); padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
 .calc-headline { display: flex; justify-content: space-between; align-items: center; cursor: pointer; gap: 8px; border-radius: 4px; padding: 2px; margin: -2px; transition: background 0.15s ease; -webkit-tap-highlight-color: rgba(41,98,255,0.2); }
 .calc-headline:hover { background: rgba(255,255,255,0.04); }
@@ -455,7 +463,7 @@ button, input { touch-action: manipulation; }
 .category-title.rec-title { border-left-color: #FF9800; }
 .category-title.margin-title { border-left-color: #2ECC71; }
 .category-title.marginlo-title { border-left-color: #7FE3A6; }
-.category-title.gain-title { border-left-color: var(--positive); }
+.category-title.steady-title { border-left-color: #6AA9FF; }
 .category-title.fall-title { border-left-color: var(--negative); }
 /* Remote Flip Mode: ultra-clean, glanceable, stealthy at-work view. Decorative
    chrome is hidden, prices are oversized, and the chart drops everything except
@@ -577,6 +585,8 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-edit-btn { background: transparent; border: 1px solid var(--border-light); color: var(--text-muted); border-radius: 3px; font-size: 9px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; padding: 2px 8px; margin-right: 8px; cursor: pointer; transition: all 0.15s ease; }
 .wl-edit-btn:hover { color: var(--text-main); border-color: var(--border-active); }
 .wl-edit-btn.active { color: #fff; background: var(--border-active); border-color: var(--border-active); }
+.wl-sort-btn { background: transparent; border: 1px solid var(--border-light); color: var(--text-muted); border-radius: 3px; font-size: 9px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; padding: 2px 7px; margin-right: 8px; cursor: pointer; transition: all 0.15s ease; white-space: nowrap; }
+.wl-sort-btn:hover { color: var(--text-main); border-color: var(--border-active); }
 .cat-title-right { display: inline-flex; align-items: center; }
 .wl-fav-remove { background: transparent; border: 1px solid var(--border-light); color: var(--text-muted); border-radius: 3px; width: 24px; height: 24px; cursor: pointer; line-height: 1; font-size: 16px; padding: 0; display: none; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s ease; }
 .wl-fav-reorder { display: none; flex-direction: column; gap: 2px; flex-shrink: 0; }
@@ -602,6 +612,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-trend.up { color: var(--positive); }
 .wl-trend.down { color: var(--negative); }
 .wl-trend.neutral { color: var(--text-muted); }
+.wl-vol { display: block; font-size: 9px; color: var(--text-muted); cursor: help; margin-top: 1px; letter-spacing: 0.2px; }
 
 @media screen and (max-width: 1023px) and (orientation: portrait) {
   /* Mobile portrait: every gap above the chart is collapsed so the chart
@@ -849,6 +860,8 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
       </div>
     </div>
 
+    <div class="wl-resize" id="wlResize" title="Drag to resize · double-click to reset" aria-hidden="true"></div>
+
     <div class="watchlist-container">
       <div class="calc-container" id="sideModule"></div>
       <div class="watchlist-content" id="watchlistContent"></div>
@@ -978,7 +991,8 @@ let currentItemSrc = null;
 let currentItemLowVol = false;
 let overMaxFull = null;
 let dayHiLoCache = {};
-let scanStatus = { fived: 'idle' };
+let steadyFlipsCache = []; // [{ id, item, meanMargin, days, vol }]
+let scanStatus = { fived: 'idle', steady: 'idle' };
 
 let flipMode = localStorage.getItem('ge_flip') === '1';
 let notifEnabled = localStorage.getItem('ge_notif') === '1';
@@ -989,7 +1003,7 @@ let groupOpenStates = {
   "⭐ Favorites": true,
   "💰 High Vol Margins": false,
   "💎 Low Vol Margins": false,
-  "🚀 Biggest Winners (24H)": false,
+  "🔁 Steady Flips": false,
   "🔻 Biggest Losers (24H)": false,
   "📈 At 5D Highs": false,
   "📉 At 5D Lows": false
@@ -997,6 +1011,11 @@ let groupOpenStates = {
 /* Favorites "Edit" mode — when on, rows reveal reorder/remove controls and
    stop navigating on tap. Off by default so the resting list stays clean. */
 let favEditMode = false;
+/* Favorites sort — 'manual' respects the user's drag order (and is the only
+   mode where reorder arrows make sense); the others sort the displayed list
+   without mutating the saved order. Persisted. */
+let favSort = (() => { try { return localStorage.getItem('ge_favSort') || 'manual'; } catch (e) { return 'manual'; } })();
+const FAV_SORT_LABELS = { manual: 'Manual', price: 'Price', change: '24h %', name: 'A–Z' };
 
 const canvas = document.getElementById("chart");
 const ctx = canvas.getContext("2d");
@@ -1087,13 +1106,19 @@ function itemIconUrl(id) { return `https://static.runelite.net/cache/item/icon/$
 function calculateTax(price) { return Math.min(5000000, Math.floor(price * 0.02)); }
 function emptySeries() { return { labels: [], low: [], high: [], lowVol: [], highVol: [] }; }
 
-function isLowVolume(id) {
+/* Daily traded volume for an item — prefers the bulk /volumes endpoint,
+   falls back to summing the 24h high/low print volumes. Drives both the
+   high/low-vol categorisation and the sidebar liquidity figure. */
+function dailyVolume(id) {
   let v = volumes?.data?.[String(id)];
   if (v == null) {
     const p = past24h?.data?.[String(id)];
     v = p ? (p.highPriceVolume || 0) + (p.lowPriceVolume || 0) : 0;
   }
-  return v < LOW_VOL_THRESHOLD;
+  return v || 0;
+}
+function isLowVolume(id) {
+  return dailyVolume(id) < LOW_VOL_THRESHOLD;
 }
 
 /* Profit Calculator */
@@ -1139,11 +1164,23 @@ function updateCalculator() {
 }
 
 function restoreCalculator(itemLimit, recBuy, recSell) {
+  /* Some OSRS items (potions, food, seeds, raw materials, etc.) have no GE
+     buy limit at all — the mapping returns null/undefined for `.limit`. We
+     used to fall back to 1, which made the calculator default to a single-
+     unit flip and hide the actual flipping potential. Now we treat "no
+     limit" explicitly: default the qty input to 1,000 as a reasonable
+     starting batch (user can edit), and label the sub-text honestly. */
+  const hasLimit = itemLimit != null && itemLimit > 0;
+  const defaultQty = hasLimit ? itemLimit : 1000;
+  const subText = hasLimit
+    ? `${itemLimit.toLocaleString()} units @ 4h limit · tap to ${isCalcOpen ? 'collapse' : 'expand'}`
+    : `No GE buy limit · default 1,000 units · tap to ${isCalcOpen ? 'collapse' : 'expand'}`;
+  const qtyLabel = hasLimit ? 'Qty (4H)' : 'Qty (any)';
   $("#sideModule").innerHTML = `
     <div class="calc-headline" id="calcToggle" role="button" tabindex="0" aria-expanded="${isCalcOpen}">
       <div class="calc-headline-left">
         <span class="calc-headline-label">Potential Profit</span>
-        <span class="calc-headline-sub">${(itemLimit || 1).toLocaleString()} units @ 4h limit · tap to ${isCalcOpen ? 'collapse' : 'expand'}</span>
+        <span class="calc-headline-sub">${subText}</span>
       </div>
       <div class="calc-headline-right">
         <span class="res-profit" id="calcProfitValue">—</span>
@@ -1152,7 +1189,7 @@ function restoreCalculator(itemLimit, recBuy, recSell) {
     </div>
     <div id="calcInputs" class="calc-body" style="display:${isCalcOpen ? 'block' : 'none'};">
       <div class="calc-grid">
-        <div class="calc-input"><label>Qty (4H)</label><input type="text" id="calcQty" value="${(itemLimit || 1).toLocaleString()}" placeholder="Limit"></div>
+        <div class="calc-input"><label>${qtyLabel}</label><input type="text" id="calcQty" value="${defaultQty.toLocaleString()}" placeholder="Enter qty"></div>
         <div class="calc-input"><label>Buy (ea)</label><input type="text" id="calcBuy" value="${recBuy || 0}" placeholder="0"></div>
         <div class="calc-input"><label>Sell (ea)</label><input type="text" id="calcSell" value="${recSell || 0}" placeholder="0"></div>
       </div>
@@ -1167,7 +1204,9 @@ function restoreCalculator(itemLimit, recBuy, recSell) {
     const hl = $('#calcToggle');
     if (hl) hl.setAttribute('aria-expanded', isCalcOpen);
     const sub = hl && hl.querySelector('.calc-headline-sub');
-    if (sub) sub.textContent = `${(itemLimit || 1).toLocaleString()} units @ 4h limit · tap to ${isCalcOpen ? 'collapse' : 'expand'}`;
+    if (sub) sub.textContent = hasLimit
+      ? `${itemLimit.toLocaleString()} units @ 4h limit · tap to ${isCalcOpen ? 'collapse' : 'expand'}`
+      : `No GE buy limit · default 1,000 units · tap to ${isCalcOpen ? 'collapse' : 'expand'}`;
   };
   $('#calcToggle').onclick = toggleCalc;
   $('#calcToggle').onkeydown = (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggleCalc(); } };
@@ -1389,6 +1428,60 @@ async function runFiveDayScan() {
   scanStatus.fived = 'done'; renderWatchlist();
 }
 
+/* Steady Flips scan — looks for items whose post-tax daily margin has been
+   POSITIVE and CONSISTENT across the last ~14 days. These are the boring
+   reliable grinds (runes, ammo, bars, common potions) that pay roughly the
+   same flip every single day — the thing serious flippers actually grind,
+   and the thing no other category surfaces (every margin list is a
+   snapshot of THIS MINUTE's spread, which is noisy and disappears in
+   minutes). Throttled per-item against the bounded candidate pool, same
+   pattern as the 5D scan; cache lives in steadyFlipsCache. */
+async function runSteadyFlipsScan() {
+  if (scanStatus.steady === 'loading' || scanStatus.steady === 'done') return;
+  scanStatus.steady = 'loading'; renderWatchlist();
+  const cands = getScanCandidates();
+  const results = [];
+  await throttleMap(cands, async (m) => {
+    try {
+      const ts = seriesFromTS(await loadTS('24h', m.id));
+      if (!ts.labels.length) return;
+      const lastN = 14;
+      const start = Math.max(0, ts.labels.length - lastN);
+      const dayMargins = [];
+      let totalVol = 0;
+      for (let i = start; i < ts.labels.length; i++) {
+        const hi = ts.high[i], lo = ts.low[i];
+        const v = (ts.lowVol[i] || 0) + (ts.highVol[i] || 0);
+        totalVol += v;
+        if (hi == null || lo == null || hi <= lo) continue;
+        const margin = hi - lo - calculateTax(hi);
+        if (margin > 0 && margin < hi * 0.5) dayMargins.push(margin);
+      }
+      const days = ts.labels.length - start;
+      if (days < 10) return;
+      /* Steady = at least 80% of days had a positive after-tax margin AND
+         the coefficient of variation is low (mean / stdev > 2). Filters out
+         items that had one fluke 10K margin day next to a bunch of zeros. */
+      if (dayMargins.length < Math.ceil(days * 0.8)) return;
+      const mean = dayMargins.reduce((a, b) => a + b, 0) / dayMargins.length;
+      if (mean < 5) return; // too thin to bother
+      const variance = dayMargins.reduce((a, b) => a + (b - mean) ** 2, 0) / dayMargins.length;
+      const stdev = Math.sqrt(variance);
+      if (stdev > mean * 0.5) return; // too noisy to call "steady"
+      results.push({
+        id: String(m.id), item: m,
+        meanMargin: Math.round(mean),
+        days: dayMargins.length,
+        vol: Math.round(totalVol / Math.max(1, days)) // avg daily volume
+      });
+    } catch (e) {}
+  }, SCAN_CONCURRENCY);
+  /* Rank by mean margin (after tax), highest first. */
+  results.sort((a, b) => b.meanMargin - a.meanMargin);
+  steadyFlipsCache = results;
+  scanStatus.steady = 'done'; renderWatchlist();
+}
+
 function trendSub(node, p24) {
   let currentMid = null;
   if (node?.high && node?.low) currentMid = (node.high + node.low) / 2;
@@ -1600,7 +1693,9 @@ function renderWatchlist() {
   marginHigh1d.sort((a, b) => b.margin - a.margin);
   marginLow1d.sort((a, b) => b.margin - a.margin);
 
-  const winners = movers.filter(m => m.pct > 0).sort((a, b) => b.pct - a.pct).slice(0, 15);
+  /* Winners (24H) was removed: an item that already pumped is the LEAST
+     actionable for a buy-low-sell-high flipper — entry's missed and you
+     probably don't hold to sell. Losers stays — those are genuine dip-buys. */
   const losers  = movers.filter(m => m.pct < 0).sort((a, b) => a.pct - b.pct).slice(0, 15);
 
   /* Compact 1D-move chip from the live-vs-24h-avg %, used inline on favorites
@@ -1619,19 +1714,39 @@ function renderWatchlist() {
   /* Favorites carry an inline 1D-move chip; other plain lists stay bare. */
   const plainEntries = (items) => items.map(item => ({ item, price: priceOf(item), sub: '' }));
   const favEntries = (items) => items.map(item => ({ item, price: priceOf(item), sub: moveChip(item.id) }));
-  const marginEntries = (rows, tag) => rows.slice(0, 30).map(r => ({ item: r.item, price: priceOf(r.item), sub: `<span class="wl-trend up">+${abbreviateNumber(r.margin)} ${tag}</span>` }));
+  const marginEntries = (rows, tag) => rows.slice(0, 30).map(r => ({
+    item: r.item, price: priceOf(r.item),
+    sub: `<span class="wl-trend up">+${abbreviateNumber(r.margin)} ${tag}</span><span class="wl-vol" title="Daily trade volume — how fast this flip will fill">${abbreviateNumber(dailyVolume(r.item.id))} vol</span>`
+  }));
   const moverEntries = (rows) => rows.map(r => ({ item: r.item, price: priceOf(r.item), sub: `<span class="wl-trend ${r.pct >= 0 ? 'up' : 'down'}" title="Live price vs its 24-hour average.">${r.pct >= 0 ? '+' : ''}${r.pct.toFixed(1)}%</span>` }));
 
-  /* Final scanner ordering — favorites pinned on top, then current live
-     margins (the bread-and-butter "flip now" view), then the 5-day extreme
-     breakouts. Long-term lows, 1M-averaged margins, manipulation hints, and
-     over-max rares were dropped: clutter that drifted from the core flipping
-     workflow. */
+  /* Apply the favorites sort (display-only — never mutates the saved order,
+     so switching back to Manual restores the user's drag arrangement). */
+  let favsSorted = favs;
+  if (favSort !== 'manual') {
+    favsSorted = [...favs];
+    if (favSort === 'price') favsSorted.sort((a, b) => priceOf(b) - priceOf(a));
+    else if (favSort === 'name') favsSorted.sort((a, b) => a.name.localeCompare(b.name));
+    else if (favSort === 'change') favsSorted.sort((a, b) => (mover1dPct[String(b.id)] ?? -Infinity) - (mover1dPct[String(a.id)] ?? -Infinity));
+  }
+
+  /* Steady Flips entries — uses cache populated by runSteadyFlipsScan(). The
+     "ea avg" tag distinguishes it from the live snapshot margins above. */
+  const steadyEntries = steadyFlipsCache.slice(0, 30).map(r => ({
+    item: r.item, price: priceOf(r.item),
+    sub: `<span class="wl-trend up" title="Average daily margin after 2% tax over the last ${r.days} days — consistent">+${abbreviateNumber(r.meanMargin)} ea avg</span><span class="wl-vol" title="Average daily traded volume">${abbreviateNumber(r.vol)} vol</span>`
+  }));
+
+  /* Final scanner ordering — favorites pinned on top, then live margins
+     (the right-now snapshot), then Steady Flips (reliable day-over-day
+     grinds, the thing serious flippers actually farm), then dip-buys, then
+     5D extremes. Winners (24H) was dropped: an item that already pumped is
+     the least actionable thing for a buy-low-sell-high flipper. */
   const groups = [
-    { name: "⭐ Favorites", className: "fav-title", entries: favEntries(favs), alwaysShow: true },
+    { name: "⭐ Favorites", className: "fav-title", entries: favEntries(favsSorted), alwaysShow: true },
     { name: "💰 High Vol Margins", className: "margin-title", entries: marginEntries(marginHigh1d, "ea") },
     { name: "💎 Low Vol Margins", className: "marginlo-title", entries: marginEntries(marginLow1d, "ea") },
-    { name: "🚀 Biggest Winners (24H)", className: "gain-title", entries: moverEntries(winners) },
+    { name: "🔁 Steady Flips", className: "steady-title", entries: steadyEntries, scan: "steady" },
     { name: "🔻 Biggest Losers (24H)", className: "fall-title", entries: moverEntries(losers) },
     { name: "📈 At 5D Highs", className: "high-title", entries: plainEntries(dayHighs.slice(0, 30)), scan: "fived" },
     { name: "📉 At 5D Lows", className: "low-title", entries: plainEntries(dayLows.slice(0, 30)), scan: "fived" }
@@ -1647,18 +1762,22 @@ function renderWatchlist() {
     const titleDiv = document.createElement("div");
     titleDiv.className = `category-title ${group.className}`;
     const isFavTitle = group.name === "⭐ Favorites";
+    const sortBtnHTML = isFavTitle && group.entries.length
+      ? `<button type="button" class="wl-sort-btn" title="Sort favorites">⇅ ${FAV_SORT_LABELS[favSort]}</button>`
+      : '';
     const editBtnHTML = isFavTitle && group.entries.length
       ? `<button type="button" class="wl-edit-btn ${favEditMode ? 'active' : ''}">${favEditMode ? 'Done' : 'Edit'}</button>`
       : '';
-    titleDiv.innerHTML = `<span>${group.name}</span><span class="cat-title-right">${editBtnHTML}<span class="cat-chevron">${isGroupOpen ? "▼" : "▶"}</span></span>`;
+    titleDiv.innerHTML = `<span>${group.name}</span><span class="cat-title-right">${sortBtnHTML}${editBtnHTML}<span class="cat-chevron">${isGroupOpen ? "▼" : "▶"}</span></span>`;
     const listDiv = document.createElement("div");
     listDiv.className = `category-list ${isGroupOpen ? "" : "collapsed"}`;
     titleDiv.onclick = () => {
       const nowCollapsed = listDiv.classList.toggle("collapsed");
       titleDiv.querySelector(".cat-chevron").textContent = nowCollapsed ? "▶" : "▼";
       groupOpenStates[group.name] = !nowCollapsed;
-      if (!nowCollapsed && hasScan && scanStatus[group.scan] === 'idle' && group.scan === 'fived') {
-        runFiveDayScan();
+      if (!nowCollapsed && hasScan && scanStatus[group.scan] === 'idle') {
+        if (group.scan === 'fived') runFiveDayScan();
+        else if (group.scan === 'steady') runSteadyFlipsScan();
       }
     };
     const editBtn = titleDiv.querySelector('.wl-edit-btn');
@@ -1671,11 +1790,29 @@ function renderWatchlist() {
         editBtn.classList.toggle('active', favEditMode);
       };
     }
+    const sortBtn = titleDiv.querySelector('.wl-sort-btn');
+    if (sortBtn) {
+      sortBtn.onclick = (ev) => {
+        ev.stopPropagation(); // don't collapse the group
+        /* Cycle Manual → Price → 24h % → A–Z → Manual. Leaving manual exits
+           edit mode (reorder arrows are meaningless when not in drag order). */
+        const order = ['manual', 'price', 'change', 'name'];
+        favSort = order[(order.indexOf(favSort) + 1) % order.length];
+        try { localStorage.setItem('ge_favSort', favSort); } catch (e) {}
+        if (favSort !== 'manual' && favEditMode) {
+          favEditMode = false;
+          container.classList.remove('fav-editing');
+        }
+        renderWatchlist();
+      };
+    }
 
     let inner = "";
     if (hasScan && scanState !== 'done' && group.entries.length === 0) {
-      if (scanState === 'loading') inner = `<div class="scan-row loading">⏳ Scanning 5-day extremes…</div>`;
-      else inner = `<div class="scan-row" data-scan="${group.scan}">🔍 Tap to scan 5-day extremes (top items)</div>`;
+      const loadLabel = group.scan === 'steady' ? 'Scanning 14 days of margins…' : 'Scanning 5-day extremes…';
+      const idleLabel = group.scan === 'steady' ? 'Tap to scan steady flippers (top items)' : 'Tap to scan 5-day extremes (top items)';
+      if (scanState === 'loading') inner = `<div class="scan-row loading">⏳ ${loadLabel}</div>`;
+      else inner = `<div class="scan-row" data-scan="${group.scan}">🔍 ${idleLabel}</div>`;
     } else if (group.entries.length === 0) {
       inner = `<div class="wl-item" style="color:var(--text-muted); justify-content:center;">Nothing at a 5-day extreme right now</div>`;
     } else {
@@ -1703,7 +1840,10 @@ function renderWatchlist() {
            left gesture. The swipe target is a red "REMOVE" backdrop revealed
            under the row. */
         const favIdx = isFavGroup ? favorites.indexOf(String(item.id)) : -1;
-        const reorderBtns = isFavGroup ? `
+        /* Reorder arrows only when in Manual sort — in any other sort the
+           displayed order doesn't match the saved order, so moving rows would
+           be confusing. The × remove still shows in edit mode regardless. */
+        const reorderBtns = (isFavGroup && favSort === 'manual') ? `
           <div class="wl-fav-reorder">
             <button type="button" class="wl-fav-up" data-fav-id="${item.id}" ${favIdx === 0 ? 'disabled' : ''} title="Move up" aria-label="Move ${item.name} up">▲</button>
             <button type="button" class="wl-fav-down" data-fav-id="${item.id}" ${favIdx === favorites.length - 1 ? 'disabled' : ''} title="Move down" aria-label="Move ${item.name} down">▼</button>
@@ -1738,6 +1878,9 @@ function renderWatchlist() {
 
   container.querySelectorAll('.scan-row[data-scan="fived"]').forEach(el => {
     el.onclick = () => runFiveDayScan();
+  });
+  container.querySelectorAll('.scan-row[data-scan="steady"]').forEach(el => {
+    el.onclick = () => runSteadyFlipsScan();
   });
   container.querySelectorAll('.wl-item[data-id]').forEach(el => {
     el.onclick = (ev) => {
@@ -3271,7 +3414,7 @@ function refreshChart() {
   recommendedBuy = targets.buy; recommendedSell = targets.sell;
   $("#buyPrice").innerHTML = `<div class="price-label">Target Buy <span class="live-val">Live: ${fmtGp(liveBuyRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedBuy)}</span></div><div class="price-grade" id="buyGrade"></div>`;
   $("#sellPrice").innerHTML = `<div class="price-label">Target Sell <span class="live-val">Live: ${fmtGp(liveSellRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedSell)}</span></div><div class="price-grade" id="sellGrade"></div>`;
-  restoreCalculator(selected.limit ? selected.limit : 1, recommendedBuy, recommendedSell);
+  restoreCalculator(selected.limit, recommendedBuy, recommendedSell);
   updateGradeBadge();
   resizeCanvas();
 }
@@ -3367,7 +3510,7 @@ async function setItem(m) {
   $("#buyPrice").innerHTML = `<div class="price-label">Target Buy <span class="live-val">Live: ${fmtGp(liveBuyRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedBuy)}</span></div><div class="price-grade" id="buyGrade"></div>`;
   $("#sellPrice").innerHTML = `<div class="price-label">Target Sell <span class="live-val">Live: ${fmtGp(liveSellRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedSell)}</span></div><div class="price-grade" id="sellGrade"></div>`;
 
-  restoreCalculator(m.limit ? m.limit : 1, recommendedBuy, recommendedSell);
+  restoreCalculator(m.limit, recommendedBuy, recommendedSell);
   offset = Math.max(0, currentSeries.labels.length - Math.floor(currentSeries.labels.length / zoom));
   updateGradeBadge();
   resizeCanvas();
@@ -3387,10 +3530,11 @@ setItem._userPicked = false;
 
     renderWatchlist();
     /* Auto-kick the 5-day extremes scan in the background so the 5D Highs /
-       5D Lows groups have results by the time the user looks. Throttled via
-       SCAN_CONCURRENCY against a bounded ~100-item candidate pool (top vol +
-       top price), never the full 4500-item mapping. */
+       5D Lows / Steady Flips groups have results by the time the user looks.
+       Throttled via SCAN_CONCURRENCY against a bounded ~100-item candidate
+       pool (top vol + top price), never the full 4500-item mapping. */
     runFiveDayScan();
+    runSteadyFlipsScan();
 
     const sb = $("#suggestBox"), qInput = $("#query");
     /* Empty-input focus → show recently-viewed items so you can hop back
@@ -3431,7 +3575,7 @@ setItem._userPicked = false;
     $("#btnF2P").onclick = () => {
       membersOn = false; localStorage.setItem('ge_members', 'false');
       $("#btnF2P").classList.add("active"); $("#btnMembers").classList.remove("active");
-      dayHiLoCache = {}; scanStatus = { fived: 'idle' };
+      dayHiLoCache = {}; steadyFlipsCache = []; scanStatus = { fived: 'idle', steady: 'idle' };
       renderWatchlist();
       if (selected?.members) {
         const landing = mapping.find(x => String(x.id) === LANDING_ID);
@@ -3441,7 +3585,7 @@ setItem._userPicked = false;
     $("#btnMembers").onclick = () => {
       membersOn = true; localStorage.setItem('ge_members', 'true');
       $("#btnMembers").classList.add("active"); $("#btnF2P").classList.remove("active");
-      dayHiLoCache = {}; scanStatus = { fived: 'idle' };
+      dayHiLoCache = {}; steadyFlipsCache = []; scanStatus = { fived: 'idle', steady: 'idle' };
       renderWatchlist();
     };
 
@@ -3587,6 +3731,53 @@ setItem._userPicked = false;
     $("#status").textContent = "API Error"; $("#status").classList.remove("live");
     console.error(e);
   }
+})();
+
+/* Resizable sidebar (desktop) — drag the divider to set the watchlist width,
+   clamped 230–560px, persisted to localStorage. Width is applied via the
+   --wl-width CSS variable; the mobile media queries override with explicit
+   widths so this only affects the side-by-side desktop layout. The chart
+   reflows live (rAF-throttled) and double-click resets to the default. */
+(function initSidebarResize() {
+  const handle = document.getElementById('wlResize');
+  const root = document.documentElement;
+  const wl = document.querySelector('.watchlist-container');
+  const MIN = 230, MAX = 560, DEFAULT = 300;
+  const saved = parseInt(localStorage.getItem('ge_wlWidth') || '', 10);
+  if (saved >= MIN && saved <= MAX) root.style.setProperty('--wl-width', saved + 'px');
+  if (!handle || !wl) return;
+  let startX = 0, startW = 0, dragging = false, raf = 0;
+  const apply = (clientX) => {
+    const dx = clientX - startX;
+    const w = Math.max(MIN, Math.min(MAX, startW - dx)); // drag left grows the right-hand sidebar
+    root.style.setProperty('--wl-width', w + 'px');
+    if (!raf) raf = requestAnimationFrame(() => { raf = 0; if (typeof resizeCanvas === 'function') resizeCanvas(); });
+  };
+  const begin = (clientX) => {
+    if (window.innerWidth < 1024) return;
+    dragging = true; startX = clientX; startW = wl.getBoundingClientRect().width;
+    handle.classList.add('dragging');
+    document.body.style.userSelect = 'none'; document.body.style.cursor = 'col-resize';
+  };
+  const end = () => {
+    if (!dragging) return;
+    dragging = false; handle.classList.remove('dragging');
+    document.body.style.userSelect = ''; document.body.style.cursor = '';
+    const w = Math.round(wl.getBoundingClientRect().width);
+    if (w) { try { localStorage.setItem('ge_wlWidth', String(w)); } catch (e) {} }
+    if (typeof resizeCanvas === 'function') resizeCanvas();
+  };
+  handle.addEventListener('mousedown', (e) => { begin(e.clientX); e.preventDefault(); });
+  window.addEventListener('mousemove', (e) => { if (dragging) apply(e.clientX); });
+  window.addEventListener('mouseup', end);
+  handle.addEventListener('touchstart', (e) => { begin(e.touches[0].clientX); }, { passive: true });
+  window.addEventListener('touchmove', (e) => { if (dragging) apply(e.touches[0].clientX); }, { passive: true });
+  window.addEventListener('touchend', end);
+  handle.addEventListener('dblclick', () => {
+    root.style.setProperty('--wl-width', DEFAULT + 'px');
+    try { localStorage.setItem('ge_wlWidth', String(DEFAULT)); } catch (e) {}
+    if (typeof resizeCanvas === 'function') resizeCanvas();
+  });
 })();
 
 /* PWA: register the service worker so the app is installable to the home
