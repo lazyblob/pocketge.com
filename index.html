@@ -803,9 +803,9 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
           </div>
 
           <div class="toolbar" id="timeToolbar">
-            <button data-view="1d" class="view-btn">1D<span class="pct-chg">...</span></button>
+            <button data-view="1d" class="active view-btn">1D<span class="pct-chg">...</span></button>
             <button data-view="5d" class="view-btn">5D<span class="pct-chg">...</span></button>
-            <button data-view="1m" class="active view-btn">1M<span class="pct-chg">...</span></button>
+            <button data-view="1m" class="view-btn">1M<span class="pct-chg">...</span></button>
             <button data-view="6m" class="view-btn">6M<span class="pct-chg">...</span></button>
             <button data-view="1y" class="view-btn">1Y<span class="pct-chg">...</span></button>
             <button data-view="5y" class="view-btn">5Y<span class="pct-chg">...</span></button>
@@ -950,7 +950,7 @@ const SCAN_CONCURRENCY = 4;
 const LANDING_ID = "12389"; /* Gilded scimitar (F2P, GE-tradeable) */
 
 let mapping = [], latest = null, past24h = null, volumes = null, selected = null;
-let currentSeries = null, view = "1m", zoom = 1.0, offset = 0;
+let currentSeries = null, view = "1d", zoom = 1.0, offset = 0;
 let hoverIdx = null;
 let selectedAbsIdx = null;
 let membersOn = localStorage.getItem('ge_members') === 'true';
