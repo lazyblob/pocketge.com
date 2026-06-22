@@ -1139,11 +1139,23 @@ function updateCalculator() {
 }
 
 function restoreCalculator(itemLimit, recBuy, recSell) {
+  /* Some OSRS items (potions, food, seeds, raw materials, etc.) have no GE
+     buy limit at all — the mapping returns null/undefined for `.limit`. We
+     used to fall back to 1, which made the calculator default to a single-
+     unit flip and hide the actual flipping potential. Now we treat "no
+     limit" explicitly: default the qty input to 1,000 as a reasonable
+     starting batch (user can edit), and label the sub-text honestly. */
+  const hasLimit = itemLimit != null && itemLimit > 0;
+  const defaultQty = hasLimit ? itemLimit : 1000;
+  const subText = hasLimit
+    ? `${itemLimit.toLocaleString()} units @ 4h limit · tap to ${isCalcOpen ? 'collapse' : 'expand'}`
+    : `No GE buy limit · default 1,000 units · tap to ${isCalcOpen ? 'collapse' : 'expand'}`;
+  const qtyLabel = hasLimit ? 'Qty (4H)' : 'Qty (any)';
   $("#sideModule").innerHTML = `
     <div class="calc-headline" id="calcToggle" role="button" tabindex="0" aria-expanded="${isCalcOpen}">
       <div class="calc-headline-left">
         <span class="calc-headline-label">Potential Profit</span>
-        <span class="calc-headline-sub">${(itemLimit || 1).toLocaleString()} units @ 4h limit · tap to ${isCalcOpen ? 'collapse' : 'expand'}</span>
+        <span class="calc-headline-sub">${subText}</span>
       </div>
       <div class="calc-headline-right">
         <span class="res-profit" id="calcProfitValue">—</span>
@@ -1152,7 +1164,7 @@ function restoreCalculator(itemLimit, recBuy, recSell) {
     </div>
     <div id="calcInputs" class="calc-body" style="display:${isCalcOpen ? 'block' : 'none'};">
       <div class="calc-grid">
-        <div class="calc-input"><label>Qty (4H)</label><input type="text" id="calcQty" value="${(itemLimit || 1).toLocaleString()}" placeholder="Limit"></div>
+        <div class="calc-input"><label>${qtyLabel}</label><input type="text" id="calcQty" value="${defaultQty.toLocaleString()}" placeholder="Enter qty"></div>
         <div class="calc-input"><label>Buy (ea)</label><input type="text" id="calcBuy" value="${recBuy || 0}" placeholder="0"></div>
         <div class="calc-input"><label>Sell (ea)</label><input type="text" id="calcSell" value="${recSell || 0}" placeholder="0"></div>
       </div>
@@ -1167,7 +1179,9 @@ function restoreCalculator(itemLimit, recBuy, recSell) {
     const hl = $('#calcToggle');
     if (hl) hl.setAttribute('aria-expanded', isCalcOpen);
     const sub = hl && hl.querySelector('.calc-headline-sub');
-    if (sub) sub.textContent = `${(itemLimit || 1).toLocaleString()} units @ 4h limit · tap to ${isCalcOpen ? 'collapse' : 'expand'}`;
+    if (sub) sub.textContent = hasLimit
+      ? `${itemLimit.toLocaleString()} units @ 4h limit · tap to ${isCalcOpen ? 'collapse' : 'expand'}`
+      : `No GE buy limit · default 1,000 units · tap to ${isCalcOpen ? 'collapse' : 'expand'}`;
   };
   $('#calcToggle').onclick = toggleCalc;
   $('#calcToggle').onkeydown = (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); toggleCalc(); } };
@@ -3271,7 +3285,7 @@ function refreshChart() {
   recommendedBuy = targets.buy; recommendedSell = targets.sell;
   $("#buyPrice").innerHTML = `<div class="price-label">Target Buy <span class="live-val">Live: ${fmtGp(liveBuyRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedBuy)}</span></div><div class="price-grade" id="buyGrade"></div>`;
   $("#sellPrice").innerHTML = `<div class="price-label">Target Sell <span class="live-val">Live: ${fmtGp(liveSellRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedSell)}</span></div><div class="price-grade" id="sellGrade"></div>`;
-  restoreCalculator(selected.limit ? selected.limit : 1, recommendedBuy, recommendedSell);
+  restoreCalculator(selected.limit, recommendedBuy, recommendedSell);
   updateGradeBadge();
   resizeCanvas();
 }
@@ -3367,7 +3381,7 @@ async function setItem(m) {
   $("#buyPrice").innerHTML = `<div class="price-label">Target Buy <span class="live-val">Live: ${fmtGp(liveBuyRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedBuy)}</span></div><div class="price-grade" id="buyGrade"></div>`;
   $("#sellPrice").innerHTML = `<div class="price-label">Target Sell <span class="live-val">Live: ${fmtGp(liveSellRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedSell)}</span></div><div class="price-grade" id="sellGrade"></div>`;
 
-  restoreCalculator(m.limit ? m.limit : 1, recommendedBuy, recommendedSell);
+  restoreCalculator(m.limit, recommendedBuy, recommendedSell);
   offset = Math.max(0, currentSeries.labels.length - Math.floor(currentSeries.labels.length / zoom));
   updateGradeBadge();
   resizeCanvas();
