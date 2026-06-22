@@ -585,6 +585,8 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-edit-btn { background: transparent; border: 1px solid var(--border-light); color: var(--text-muted); border-radius: 3px; font-size: 9px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; padding: 2px 8px; margin-right: 8px; cursor: pointer; transition: all 0.15s ease; }
 .wl-edit-btn:hover { color: var(--text-main); border-color: var(--border-active); }
 .wl-edit-btn.active { color: #fff; background: var(--border-active); border-color: var(--border-active); }
+.wl-sort-btn { background: transparent; border: 1px solid var(--border-light); color: var(--text-muted); border-radius: 3px; font-size: 9px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; padding: 2px 7px; margin-right: 8px; cursor: pointer; transition: all 0.15s ease; white-space: nowrap; }
+.wl-sort-btn:hover { color: var(--text-main); border-color: var(--border-active); }
 .cat-title-right { display: inline-flex; align-items: center; }
 .wl-fav-remove { background: transparent; border: 1px solid var(--border-light); color: var(--text-muted); border-radius: 3px; width: 24px; height: 24px; cursor: pointer; line-height: 1; font-size: 16px; padding: 0; display: none; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s ease; }
 .wl-fav-reorder { display: none; flex-direction: column; gap: 2px; flex-shrink: 0; }
@@ -1007,6 +1009,11 @@ let groupOpenStates = {
 /* Favorites "Edit" mode — when on, rows reveal reorder/remove controls and
    stop navigating on tap. Off by default so the resting list stays clean. */
 let favEditMode = false;
+/* Favorites sort — 'manual' respects the user's drag order (and is the only
+   mode where reorder arrows make sense); the others sort the displayed list
+   without mutating the saved order. Persisted. */
+let favSort = (() => { try { return localStorage.getItem('ge_favSort') || 'manual'; } catch (e) { return 'manual'; } })();
+const FAV_SORT_LABELS = { manual: 'Manual', price: 'Price', change: '24h %', name: 'A–Z' };
 
 const canvas = document.getElementById("chart");
 const ctx = canvas.getContext("2d");
@@ -1646,13 +1653,23 @@ function renderWatchlist() {
   const marginEntries = (rows, tag) => rows.slice(0, 30).map(r => ({ item: r.item, price: priceOf(r.item), sub: `<span class="wl-trend up">+${abbreviateNumber(r.margin)} ${tag}</span>` }));
   const moverEntries = (rows) => rows.map(r => ({ item: r.item, price: priceOf(r.item), sub: `<span class="wl-trend ${r.pct >= 0 ? 'up' : 'down'}" title="Live price vs its 24-hour average.">${r.pct >= 0 ? '+' : ''}${r.pct.toFixed(1)}%</span>` }));
 
+  /* Apply the favorites sort (display-only — never mutates the saved order,
+     so switching back to Manual restores the user's drag arrangement). */
+  let favsSorted = favs;
+  if (favSort !== 'manual') {
+    favsSorted = [...favs];
+    if (favSort === 'price') favsSorted.sort((a, b) => priceOf(b) - priceOf(a));
+    else if (favSort === 'name') favsSorted.sort((a, b) => a.name.localeCompare(b.name));
+    else if (favSort === 'change') favsSorted.sort((a, b) => (mover1dPct[String(b.id)] ?? -Infinity) - (mover1dPct[String(a.id)] ?? -Infinity));
+  }
+
   /* Final scanner ordering — favorites pinned on top, then current live
      margins (the bread-and-butter "flip now" view), then the 5-day extreme
      breakouts. Long-term lows, 1M-averaged margins, manipulation hints, and
      over-max rares were dropped: clutter that drifted from the core flipping
      workflow. */
   const groups = [
-    { name: "⭐ Favorites", className: "fav-title", entries: favEntries(favs), alwaysShow: true },
+    { name: "⭐ Favorites", className: "fav-title", entries: favEntries(favsSorted), alwaysShow: true },
     { name: "💰 High Vol Margins", className: "margin-title", entries: marginEntries(marginHigh1d, "ea") },
     { name: "💎 Low Vol Margins", className: "marginlo-title", entries: marginEntries(marginLow1d, "ea") },
     { name: "🚀 Biggest Winners (24H)", className: "gain-title", entries: moverEntries(winners) },
@@ -1671,10 +1688,13 @@ function renderWatchlist() {
     const titleDiv = document.createElement("div");
     titleDiv.className = `category-title ${group.className}`;
     const isFavTitle = group.name === "⭐ Favorites";
+    const sortBtnHTML = isFavTitle && group.entries.length
+      ? `<button type="button" class="wl-sort-btn" title="Sort favorites">⇅ ${FAV_SORT_LABELS[favSort]}</button>`
+      : '';
     const editBtnHTML = isFavTitle && group.entries.length
       ? `<button type="button" class="wl-edit-btn ${favEditMode ? 'active' : ''}">${favEditMode ? 'Done' : 'Edit'}</button>`
       : '';
-    titleDiv.innerHTML = `<span>${group.name}</span><span class="cat-title-right">${editBtnHTML}<span class="cat-chevron">${isGroupOpen ? "▼" : "▶"}</span></span>`;
+    titleDiv.innerHTML = `<span>${group.name}</span><span class="cat-title-right">${sortBtnHTML}${editBtnHTML}<span class="cat-chevron">${isGroupOpen ? "▼" : "▶"}</span></span>`;
     const listDiv = document.createElement("div");
     listDiv.className = `category-list ${isGroupOpen ? "" : "collapsed"}`;
     titleDiv.onclick = () => {
@@ -1693,6 +1713,22 @@ function renderWatchlist() {
         container.classList.toggle('fav-editing', favEditMode);
         editBtn.textContent = favEditMode ? 'Done' : 'Edit';
         editBtn.classList.toggle('active', favEditMode);
+      };
+    }
+    const sortBtn = titleDiv.querySelector('.wl-sort-btn');
+    if (sortBtn) {
+      sortBtn.onclick = (ev) => {
+        ev.stopPropagation(); // don't collapse the group
+        /* Cycle Manual → Price → 24h % → A–Z → Manual. Leaving manual exits
+           edit mode (reorder arrows are meaningless when not in drag order). */
+        const order = ['manual', 'price', 'change', 'name'];
+        favSort = order[(order.indexOf(favSort) + 1) % order.length];
+        try { localStorage.setItem('ge_favSort', favSort); } catch (e) {}
+        if (favSort !== 'manual' && favEditMode) {
+          favEditMode = false;
+          container.classList.remove('fav-editing');
+        }
+        renderWatchlist();
       };
     }
 
@@ -1727,7 +1763,10 @@ function renderWatchlist() {
            left gesture. The swipe target is a red "REMOVE" backdrop revealed
            under the row. */
         const favIdx = isFavGroup ? favorites.indexOf(String(item.id)) : -1;
-        const reorderBtns = isFavGroup ? `
+        /* Reorder arrows only when in Manual sort — in any other sort the
+           displayed order doesn't match the saved order, so moving rows would
+           be confusing. The × remove still shows in edit mode regardless. */
+        const reorderBtns = (isFavGroup && favSort === 'manual') ? `
           <div class="wl-fav-reorder">
             <button type="button" class="wl-fav-up" data-fav-id="${item.id}" ${favIdx === 0 ? 'disabled' : ''} title="Move up" aria-label="Move ${item.name} up">▲</button>
             <button type="button" class="wl-fav-down" data-fav-id="${item.id}" ${favIdx === favorites.length - 1 ? 'disabled' : ''} title="Move down" aria-label="Move ${item.name} down">▼</button>
