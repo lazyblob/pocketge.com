@@ -143,9 +143,24 @@
   --rs-parchment: #F2D49B;
 }
 * { box-sizing: border-box; }
-html, body { height: 100%; width: 100%; position: fixed; overflow: hidden; }
-body { margin: 0; background: var(--bg-base); color: var(--text-main); font-family: -apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif; -webkit-font-smoothing: antialiased; }
+/* Body is allowed to scroll naturally so the footer (with the suggest-a-
+   feature link, FAQ jump, etc.) and the long-form About section below the
+   app viewport are reachable. .wrap stays at 100dvh so the app dashboard
+   fills the initial paint — anything below sits past the fold. */
+html, body { width: 100%; }
+body { margin: 0; min-height: 100dvh; background: var(--bg-base); color: var(--text-main); font-family: -apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif; -webkit-font-smoothing: antialiased; }
 button, input { touch-action: manipulation; }
+/* Themed scrollbars — the browser default light/grey bars looked out of
+   place on the dark UI. WebKit (Chrome / Safari / Edge / Brave / Opera)
+   uses the ::-webkit-scrollbar pseudo-elements; Firefox uses the
+   scrollbar-width / scrollbar-color properties. Mobile native scrollers
+   ignore both, which is fine — they're invisible by default anyway. */
+* { scrollbar-width: thin; scrollbar-color: var(--border-light) transparent; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border-light); border-radius: 6px; border: 2px solid var(--bg-base); transition: background 0.15s ease; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-active); }
+::-webkit-scrollbar-corner { background: transparent; }
 /* Visually-hidden but readable to screen readers and search-engine crawlers.
    Used for the page H1 so the app keeps its dense dashboard layout without
    sacrificing semantic structure. */
@@ -608,11 +623,11 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-item .wl-swipe-bg { position: absolute; top: 0; right: 0; bottom: 0; width: 56px; display: flex; align-items: center; justify-content: center; background: var(--negative); color: #fff; font-weight: 800; font-size: 11px; letter-spacing: 0.5px; pointer-events: none; opacity: 0; transition: opacity 0.18s ease; }
 .wl-item.swipe-revealed .wl-swipe-bg { opacity: 1; }
 .wl-item-price { font-weight: 700; font-size: 13px; color: var(--text-main); }
-.wl-trend { font-size: 10px; cursor: help;}
+.wl-trend { font-size: 10px; cursor: help; white-space: nowrap; }
 .wl-trend.up { color: var(--positive); }
 .wl-trend.down { color: var(--negative); }
 .wl-trend.neutral { color: var(--text-muted); }
-.wl-vol { display: block; font-size: 9px; color: var(--text-muted); cursor: help; margin-top: 1px; letter-spacing: 0.2px; }
+.wl-vol { display: block; font-size: 9px; color: var(--text-muted); cursor: help; margin-top: 1px; letter-spacing: 0.2px; white-space: nowrap; }
 
 @media screen and (max-width: 1023px) and (orientation: portrait) {
   /* Mobile portrait: every gap above the chart is collapsed so the chart
@@ -1763,7 +1778,11 @@ function renderWatchlist() {
   const favEntries = (items) => items.map(item => ({ item, price: priceOf(item), sub: moveChip(item.id) }));
   const marginEntries = (rows, tag) => rows.slice(0, 30).map(r => ({
     item: r.item, price: priceOf(r.item),
-    sub: `<span class="wl-trend up">+${abbreviateNumber(r.margin)} ${tag}</span><span class="wl-vol" title="Daily trade volume — how fast this flip will fill">${abbreviateNumber(dailyVolume(r.item.id))} vol</span>`
+    /* Dropped the "ea" / "vol" suffix words — at narrow sidebar widths
+       they were causing "+286 ea" to wrap onto two lines and "+5.11M ea"
+       to overflow. The column context makes them obvious; tooltips on
+       hover still spell out what each number is. */
+    sub: `<span class="wl-trend up" title="${tag === 'ea avg' ? '14-day average margin per item, after 2% GE tax' : 'Margin per item, after 2% GE tax'}">+${abbreviateNumber(r.margin)}</span><span class="wl-vol" title="Daily traded volume — how fast this flip fills">${abbreviateNumber(dailyVolume(r.item.id))}</span>`
   }));
   const moverEntries = (rows) => rows.map(r => ({ item: r.item, price: priceOf(r.item), sub: `<span class="wl-trend ${r.pct >= 0 ? 'up' : 'down'}" title="Live price vs its 24-hour average.">${r.pct >= 0 ? '+' : ''}${r.pct.toFixed(1)}%</span>` }));
 
@@ -1781,7 +1800,7 @@ function renderWatchlist() {
      "ea avg" tag distinguishes it from the live snapshot margins above. */
   const steadyEntries = steadyFlipsCache.slice(0, 30).map(r => ({
     item: r.item, price: priceOf(r.item),
-    sub: `<span class="wl-trend up" title="Average daily margin after 2% tax over the last ${r.days} days — consistent">+${abbreviateNumber(r.meanMargin)} ea avg</span><span class="wl-vol" title="Average daily traded volume">${abbreviateNumber(r.vol)} vol</span>`
+    sub: `<span class="wl-trend up" title="${r.days}-day average margin per item after 2% GE tax">+${abbreviateNumber(r.meanMargin)}</span><span class="wl-vol" title="Average daily traded volume">${abbreviateNumber(r.vol)}</span>`
   }));
 
   /* Final scanner ordering — favorites pinned on top, then live margins
