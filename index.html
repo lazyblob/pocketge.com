@@ -636,7 +636,14 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
      because it stacked label / value / grade vertically. Below it now
      renders single-row (label-on-left, value, then grade-chip right), like
      the desktop layout but smaller. Saves ~30px above the chart. */
-  .wrap { padding: 4px; overflow-y: auto; gap: 4px; }
+  /* Override the desktop "height: 100dvh" so .wrap can grow tall enough
+     to fit the stacked-column mobile layout. Without this, content (chart
+     + watchlist + below-the-fold sections) overflowed the fixed-height
+     wrap, and even after unfixing the body the in-wrap scroll trapped
+     the user inside .wrap — they could never scroll past it to reach the
+     footer / about section / FAQ. Now .wrap sizes naturally; the body
+     scrolls the whole document. */
+  .wrap { padding: 4px; gap: 4px; height: auto; min-height: 100dvh; overflow-y: visible; }
   .main-column { gap: 3px; }
   .top-row-wrapper { gap: 2px; }
   /* overflow:hidden on the top panel is a guard against icons clipping past
@@ -678,8 +685,14 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
     margin-left: auto; font-size: 9px; flex-shrink: 1; min-width: 0;
   }
   .price-grade .pg-num { font-size: 13px; }
-  .price-grade .pg-verdict { font-size: 9px; letter-spacing: 0.3px; }
-  .price-grade .pg-ctx { font-size: 9px; opacity: 0.7; }
+  .price-grade .pg-verdict { font-size: 9px; letter-spacing: 0.3px; white-space: nowrap; }
+  /* Hide the "1D" timeframe chip and the "?" help button on narrow phones —
+     they were pushing the verdict text into a two-line wrap ("TOP / SELL")
+     and clipping the "?" past the right edge of the box. The timeframe is
+     already visible in the toolbar above, and the in-app "?" Help button
+     in the top panel reaches the glossary. */
+  .price-grade .pg-ctx { display: none; }
+  .price-grade .pg-help { display: none; }
   .calc-container input { font-size: 16px; }
 }
 @media screen and (max-width: 1023px) and (orientation: landscape), screen and (max-height: 600px) and (orientation: landscape) {
