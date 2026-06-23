@@ -624,14 +624,19 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
   .wrap { padding: 4px; overflow-y: auto; gap: 4px; }
   .main-column { gap: 3px; }
   .top-row-wrapper { gap: 2px; }
-  .top-panel { padding: 3px 8px; }
-  .panel-left { width: 100%; flex-wrap: nowrap; justify-content: space-between; gap: 6px; }
+  /* overflow:hidden on the top panel is a guard against icons clipping past
+     the right edge of the viewport — if the math is off on a future device,
+     the row will scroll-clip cleanly instead of running off the screen. */
+  .top-panel { padding: 3px 6px; overflow: hidden; }
+  .panel-left { width: 100%; flex-wrap: nowrap; justify-content: space-between; gap: 4px; min-width: 0; }
   .brand-logo { display: none !important; }
-  .mode-pill { flex-shrink: 0; height: 26px; }
-  .search-group { flex: 1; min-width: 0; }
-  .sbar { flex: 1 1 0; min-width: 80px; width: auto; }
-  .sbar input { padding-top: 3px; padding-bottom: 3px; height: 28px; }
-  .icon-btn { flex: 0 0 auto; padding: 3px 7px; }
+  .mode-pill { flex-shrink: 0; height: 26px; padding: 1px; }
+  .mode-pill button { padding: 0 5px; font-size: 10px; }
+  .search-group { flex: 1 1 0; min-width: 0; gap: 3px; }
+  .sbar { flex: 1 1 0; min-width: 60px; width: auto; }
+  .sbar input { padding: 3px 6px 3px 26px; height: 28px; font-size: 14px; }
+  .icon-btn { flex: 0 0 auto; padding: 3px 5px; font-size: 13px; gap: 0; }
+  .fav-btn { padding: 3px 5px; gap: 0; }
   .content-area { flex-direction: column; gap: 3px; }
   .ticker-title-group { display: none !important; }
   .ticker-header { padding: 0; border: none; background: transparent; gap: 0; height: auto; }
@@ -960,7 +965,11 @@ const LOW_VOL_THRESHOLD = 100000;
 const SCAN_VOL_POOL = 60;
 const SCAN_PRICE_POOL = 40;
 const SCAN_CONCURRENCY = 4;
-const LANDING_ID = "12389"; /* Gilded scimitar (F2P, GE-tradeable) */
+/* Default landing item — Uncut diamond (id 1617) replaces Gilded scimitar.
+   A high-volume staple gives the first-paint a dense, busy, "real market"
+   chart instead of the sparse low-volume Gilded scimitar tape that looked
+   broken to bouncing first-time visitors. F2P, GE-tradeable, well-known. */
+const LANDING_ID = "1617";
 
 let mapping = [], latest = null, past24h = null, volumes = null, selected = null;
 let currentSeries = null, view = "1d", zoom = 1.0, offset = 0;
@@ -3444,10 +3453,17 @@ async function setItem(m) {
     }
     updateMetaForItem(m);
     if (typeof gtag === 'function') {
+      /* Virtual page tracking for GA4. The real browser URL stays /?q=Item
+         (good for sharing), but we report a fake hierarchical path
+         /item/<Slug> to GA — its "Page path and screen class" report uses
+         location.pathname by default and would otherwise collapse every
+         item visit into "/". Setting both page_location AND page_path to
+         a virtual URL is the documented GA4 SPA pattern. */
+      const virtualUrl = `https://pocketge.com/item/${slug}`;
       gtag('event', 'page_view', {
         page_title: `${m.name} - PocketGE`,
-        page_location: window.location.href,
-        page_path: `/?q=${slug}`,
+        page_location: virtualUrl,
+        page_path: `/item/${slug}`,
         item_id: String(m.id),
         item_name: m.name
       });
