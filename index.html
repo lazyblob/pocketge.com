@@ -746,7 +746,11 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 }
 .site-footer .foot-row { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; margin-bottom: 8px; }
 .site-footer .foot-brand { color: var(--text-main); font-weight: 800; }
+.site-footer .foot-version { color: var(--text-muted); font-size: 10.5px; padding: 1px 7px; border: 1px solid var(--border-light); border-radius: 4px; letter-spacing: 0.4px; font-weight: 700; }
 .site-footer .foot-fresh { color: var(--positive); }
+.site-footer .foot-updated { color: var(--text-muted); }
+.site-footer .foot-cta { color: var(--border-active); font-weight: 700; }
+.site-footer .foot-sources { font-size: 10.5px; opacity: 0.8; }
 .site-footer a { color: var(--border-active); text-decoration: none; }
 .site-footer a:hover { text-decoration: underline; }
 .site-footer .foot-disclaimer { opacity: 0.7; font-size: 10.5px; }
@@ -1595,6 +1599,27 @@ function updateFootFresh() {
   if (!el) return;
   const t = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   el.textContent = `Live prices · last updated ${t} · refreshes every 5 min`;
+}
+
+/* Build-stamp: bumped whenever a meaningful change ships. The displayed
+   value auto-degrades to "Updated N days ago", so even if we forget to
+   bump it for a week the footer doesn't go suspiciously stale-looking
+   (which would HURT trust). Updated in the same commit as user-facing
+   changes — git history is the source of truth, this is the surface. */
+const BUILD_DATE = '2026-06-22';
+function updateFootUpdated() {
+  const el = document.getElementById('footUpdated');
+  if (!el) return;
+  try {
+    const built = new Date(BUILD_DATE + 'T00:00:00Z');
+    const days = Math.max(0, Math.floor((Date.now() - built.getTime()) / 86400000));
+    const label = days === 0 ? 'Updated today'
+                : days === 1 ? 'Updated yesterday'
+                : days < 14 ? `Updated ${days} days ago`
+                : days < 60 ? `Updated ${Math.floor(days / 7)} weeks ago`
+                : `Updated ${Math.floor(days / 30)} months ago`;
+    el.textContent = label;
+  } catch (e) {}
 }
 
 /* Per-item meta refresh. Updates description / OG / Twitter / canonical so a
@@ -3754,6 +3779,7 @@ setItem._userPicked = false;
       setItem(landing);
     }
     updateFootFresh();
+    updateFootUpdated();
   } catch (e) {
     $("#status").textContent = "API Error"; $("#status").classList.remove("live");
     console.error(e);
@@ -3985,19 +4011,27 @@ if ('serviceWorker' in navigator) {
 <footer class="site-footer">
   <div class="foot-row">
     <span class="foot-brand">PocketGE</span>
+    <span class="foot-version" id="footVersion">v1.0</span>
     <span>·</span>
     <span class="foot-fresh" id="footFresh">Live prices · updates every 5 min</span>
+    <span>·</span>
+    <span class="foot-updated" id="footUpdated">Updated recently</span>
   </div>
   <div class="foot-row">
-    <span>Price data: <a href="https://prices.runescape.wiki/" rel="noopener" target="_blank">OSRS Wiki real-time API</a></span>
+    <a href="https://github.com/lazyblob/grantexchange/issues/new?labels=feedback&amp;title=Feature+idea%3A+" rel="noopener" target="_blank" class="foot-cta">💡 Suggest a feature</a>
     <span>·</span>
-    <span>History: <a href="https://api.weirdgloop.org/" rel="noopener" target="_blank">Weird Gloop</a></span>
+    <a href="https://github.com/lazyblob/grantexchange/issues/new?labels=bug&amp;title=Bug%3A+" rel="noopener" target="_blank">Report a bug</a>
     <span>·</span>
     <a href="https://github.com/lazyblob/grantexchange" rel="noopener" target="_blank">Open source on GitHub</a>
     <span>·</span>
     <a href="/flipping-guide.html">OSRS Flipping Guide</a>
     <span>·</span>
     <a href="#faq">FAQ</a>
+  </div>
+  <div class="foot-row foot-sources">
+    <span>Price data: <a href="https://prices.runescape.wiki/" rel="noopener" target="_blank">OSRS Wiki real-time API</a></span>
+    <span>·</span>
+    <span>History: <a href="https://api.weirdgloop.org/" rel="noopener" target="_blank">Weird Gloop</a></span>
   </div>
   <div class="foot-disclaimer">
     PocketGE is a free, independent fan tool. Not affiliated with, endorsed by, or sponsored by Jagex Ltd. RuneScape and Old School RuneScape are trademarks of Jagex. No account or login required — your data stays in your browser.
