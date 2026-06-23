@@ -1695,8 +1695,12 @@ function renderWatchlist() {
       if (avgMid > 0) {
         const pct = (curMid - avgMid) / avgMid * 100;
         mover1dPct[id] = pct;
+        /* Volume floor matches LOW_VOL_THRESHOLD (100k/day) — anything below
+           that, a single seller's dump can fake a 5% drop. Restricting
+           movers to high-volume names means a -5% on Coal or Adamantite bar
+           is a real dip-buy candidate, not one whale liquidating a niche. */
         const vol = (p24.highPriceVolume || 0) + (p24.lowPriceVolume || 0);
-        if (curMid >= 100 && vol >= 10000 && Math.abs(pct) >= 3) movers.push({ item, pct });
+        if (curMid >= 100 && vol >= LOW_VOL_THRESHOLD && Math.abs(pct) >= 3) movers.push({ item, pct });
       }
     }
   });
