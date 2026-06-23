@@ -1012,7 +1012,7 @@ let groupOpenStates = {
   "⭐ Favorites": true,
   "💰 High Vol Margins": false,
   "💎 Low Vol Margins": false,
-  "🔁 Steady Flips": false,
+  "📅 Reliable 14D Margins": false,
   "🔻 Biggest Losers (24H)": false,
   "📈 At 5D Highs": false,
   "📉 At 5D Lows": false
@@ -1468,15 +1468,19 @@ async function runSteadyFlipsScan() {
       }
       const days = ts.labels.length - start;
       if (days < 10) return;
-      /* Steady = at least 80% of days had a positive after-tax margin AND
-         the coefficient of variation is low (mean / stdev > 2). Filters out
-         items that had one fluke 10K margin day next to a bunch of zeros. */
-      if (dayMargins.length < Math.ceil(days * 0.8)) return;
+      /* Looser thresholds than the original "Steady Flips" version, which
+         was so strict that common potions/bars/gems would drop out for a
+         single noisy day. Now: at least 60% of the last ~14 days had a
+         positive after-tax margin (8 of 14), mean is >=3 gp, and stdev is
+         <=80% of mean (filters fluke-driven items where one big day
+         masquerades as a trend). Still rules out true noise; doesn't
+         exclude perfectly reasonable grinds. */
+      if (dayMargins.length < Math.ceil(days * 0.6)) return;
       const mean = dayMargins.reduce((a, b) => a + b, 0) / dayMargins.length;
-      if (mean < 5) return; // too thin to bother
+      if (mean < 3) return;
       const variance = dayMargins.reduce((a, b) => a + (b - mean) ** 2, 0) / dayMargins.length;
       const stdev = Math.sqrt(variance);
-      if (stdev > mean * 0.5) return; // too noisy to call "steady"
+      if (stdev > mean * 0.8) return;
       results.push({
         id: String(m.id), item: m,
         meanMargin: Math.round(mean),
@@ -1755,7 +1759,7 @@ function renderWatchlist() {
     { name: "⭐ Favorites", className: "fav-title", entries: favEntries(favsSorted), alwaysShow: true },
     { name: "💰 High Vol Margins", className: "margin-title", entries: marginEntries(marginHigh1d, "ea") },
     { name: "💎 Low Vol Margins", className: "marginlo-title", entries: marginEntries(marginLow1d, "ea") },
-    { name: "🔁 Steady Flips", className: "steady-title", entries: steadyEntries, scan: "steady" },
+    { name: "📅 Reliable 14D Margins", className: "steady-title", entries: steadyEntries, scan: "steady" },
     { name: "🔻 Biggest Losers (24H)", className: "fall-title", entries: moverEntries(losers) },
     { name: "📈 At 5D Highs", className: "high-title", entries: plainEntries(dayHighs.slice(0, 30)), scan: "fived" },
     { name: "📉 At 5D Lows", className: "low-title", entries: plainEntries(dayLows.slice(0, 30)), scan: "fived" }
@@ -1818,12 +1822,15 @@ function renderWatchlist() {
 
     let inner = "";
     if (hasScan && scanState !== 'done' && group.entries.length === 0) {
-      const loadLabel = group.scan === 'steady' ? 'Scanning 14 days of margins…' : 'Scanning 5-day extremes…';
-      const idleLabel = group.scan === 'steady' ? 'Tap to scan steady flippers (top items)' : 'Tap to scan 5-day extremes (top items)';
+      const loadLabel = group.scan === 'steady' ? 'Scanning the last 14 days of margins…' : 'Scanning 5-day extremes…';
+      const idleLabel = group.scan === 'steady' ? 'Tap to scan 14-day reliable margins' : 'Tap to scan 5-day extremes (top items)';
       if (scanState === 'loading') inner = `<div class="scan-row loading">⏳ ${loadLabel}</div>`;
       else inner = `<div class="scan-row" data-scan="${group.scan}">🔍 ${idleLabel}</div>`;
     } else if (group.entries.length === 0) {
-      inner = `<div class="wl-item" style="color:var(--text-muted); justify-content:center;">Nothing at a 5-day extreme right now</div>`;
+      const emptyMsg = group.scan === 'steady'
+        ? 'No items met the consistency bar over the last 14 days'
+        : 'Nothing at a 5-day extreme right now';
+      inner = `<div class="wl-item" style="color:var(--text-muted); justify-content:center;">${emptyMsg}</div>`;
     } else {
       const isFavGroup = group.name === "⭐ Favorites";
       group.entries.forEach(e => {
