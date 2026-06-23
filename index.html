@@ -411,6 +411,19 @@ button, input { touch-action: manipulation; }
   .price-grade .pg-ctx { margin-left: 2px; }
   .price-grade .pg-num { font-size: 20px; }
 }
+/* Medium-desktop band: viewports between the mobile breakpoint (1024px)
+   and a comfortable wide-desktop width were overflowing for items with
+   very large prices (e.g. Gilded platebody at 10.6M — 8-digit numbers
+   at 28px overflowed the price box and clipped the grade chip). Cap the
+   hero font at 22px and tighten gaps/padding in this band; everything
+   above 1280px keeps the full 28px hero size. */
+@media screen and (min-width: 1024px) and (max-width: 1279px) {
+  .price-box { gap: 12px; padding: 8px 14px 8px 16px; }
+  .price-val { font-size: 22px; letter-spacing: -0.4px; }
+  .price-grade, .price-box.selected .price-grade { gap: 6px; padding: 2px 0 2px 10px; font-size: 10px; }
+  .price-grade .pg-num { font-size: 16px; }
+  .price-grade .pg-verdict { font-size: 9px; }
+}
 .chart-tip { position: absolute; display: none; background: rgba(19, 23, 34, 0.95); color: var(--text-main); padding: 8px 10px; border-radius: 4px; font-size: 10px; pointer-events: none; white-space: nowrap; border: 1px solid var(--border-light); box-shadow: 0 4px 12px var(--shadow); z-index: 50; }
 @media (min-width: 1024px) { .chart-tip { font-size: 12px; padding: 10px 12px; } }
 .chart-tip strong { display: block; margin-bottom: 3px; color: #fff; border-bottom: 1px solid var(--border-main); padding-bottom: 3px;}
@@ -628,6 +641,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-trend.down { color: var(--negative); }
 .wl-trend.neutral { color: var(--text-muted); }
 .wl-vol { display: block; font-size: 9px; color: var(--text-muted); cursor: help; margin-top: 1px; letter-spacing: 0.2px; white-space: nowrap; }
+.wl-fav-meta { display: block; font-size: 9px; color: var(--text-muted); cursor: help; margin-top: 1px; letter-spacing: 0.2px; white-space: nowrap; }
 
 @media screen and (max-width: 1023px) and (orientation: portrait) {
   /* Mobile portrait: every gap above the chart is collapsed so the chart
@@ -1786,9 +1800,26 @@ function renderWatchlist() {
     return `<span class="wl-trend ${cls}" title="Live price vs its 24-hour average — a momentum read, not change-since-yesterday.">${display}</span>`;
   };
 
-  /* Favorites carry an inline 1D-move chip; other plain lists stay bare. */
+  /* Generic compact rows for groups that don't show a margin/vol meta line. */
   const plainEntries = (items) => items.map(item => ({ item, price: priceOf(item), sub: '' }));
-  const favEntries = (items) => items.map(item => ({ item, price: priceOf(item), sub: moveChip(item.id) }));
+  /* Favorites entries now mirror the margin lists for consistency: each row
+     shows the % move chip + a meta line with ea margin (when there's a real
+     positive spread after tax) and daily volume. Margin omitted silently
+     when the spread is unprofitable so the row doesn't shout fake noise. */
+  const favEntries = (items) => items.map(item => {
+    const id = String(item.id);
+    const node = latest?.data?.[id];
+    let mgPart = '';
+    if (node && node.high > 0 && node.low > 0 && node.high > node.low) {
+      const margin = node.high - node.low - calculateTax(node.high);
+      if (margin > 0 && margin < node.high * 0.7) mgPart = `+${abbreviateNumber(margin)} · `;
+    }
+    const vol = dailyVolume(item.id);
+    const volPart = vol > 0 ? abbreviateNumber(vol) : '';
+    const metaText = mgPart + volPart;
+    const meta = metaText ? `<span class="wl-fav-meta" title="Current live margin per item (after 2% GE tax) · daily traded volume">${metaText}</span>` : '';
+    return { item, price: priceOf(item), sub: `${moveChip(item.id)}${meta}` };
+  });
   const marginEntries = (rows, tag) => rows.slice(0, 30).map(r => ({
     item: r.item, price: priceOf(r.item),
     /* Dropped the "ea" / "vol" suffix words — at narrow sidebar widths
