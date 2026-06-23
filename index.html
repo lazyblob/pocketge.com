@@ -3213,12 +3213,62 @@ function drawChart(series) {
       }
     }
   }
-  /* Single-price historical → one neutral series (both calls keep the period
-     high & low halos). Otherwise the normal two-tone buy/sell scatter; highs
-     first so gold buy dots stay readable where they overlap. */
+  /* Single-price historical (1Y/5Y where buy === sell daily) → render as a
+     proper area line chart instead of pale dot-scatter. Daily aggregated
+     prices read as a continuous series, not a cloud of independent prints,
+     so a connected line + soft gradient fill is the conventional viz AND
+     fits the dark theme far better than the washed-out grey dots did. The
+     period-high / period-low halos still anchor the extremes. Two-tone
+     intraday scatter takes the regular branch. */
   if (singlePrice) {
-    drawSeries(HI, priceColor, true);
-    drawSeries(LO, priceColor, false);
+    /* Build the smoothed series — daily 1Y has 365 points; 5Y has ~1800.
+       Use HI (which equals LO here) as the canonical price track. */
+    const xs = (k) => x0 + k * stepX;
+    /* Soft area fill from the line down to the chart baseline. */
+    ctx.save();
+    const grad = ctx.createLinearGradient(0, y0, 0, y0 + h_price);
+    grad.addColorStop(0, 'rgba(38, 166, 154, 0.28)');
+    grad.addColorStop(1, 'rgba(38, 166, 154, 0.02)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    let started = false, firstX = 0, lastX = 0;
+    for (let i = 0; i < HI.length; i++) {
+      if (HI[i] == null) continue;
+      const x = xs(i), y = ypx(HI[i], vmin, vmax, y0, h_price);
+      if (!started) { ctx.moveTo(x, y0 + h_price); ctx.lineTo(x, y); started = true; firstX = x; }
+      else ctx.lineTo(x, y);
+      lastX = x;
+    }
+    if (started) {
+      ctx.lineTo(lastX, y0 + h_price);
+      ctx.lineTo(firstX, y0 + h_price);
+      ctx.closePath();
+      ctx.fill();
+    }
+    /* Crisp line on top. */
+    ctx.strokeStyle = '#5DD5C5'; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    ctx.beginPath();
+    started = false;
+    for (let i = 0; i < HI.length; i++) {
+      if (HI[i] == null) { started = false; continue; }
+      const x = xs(i), y = ypx(HI[i], vmin, vmax, y0, h_price);
+      if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+    }
+    ctx.stroke();
+    ctx.restore();
+    /* Period high / low halos — drawn as standalone marks instead of
+       riding on the (now-absent) dot scatter, so the extremes still stand
+       out against the line. */
+    const drawHalo = (idx, halo) => {
+      if (idx < 0 || HI[idx] == null) return;
+      const x = xs(idx), y = ypx(HI[idx], vmin, vmax, y0, h_price);
+      ctx.save();
+      ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2); ctx.fillStyle = halo; ctx.globalAlpha = 0.9; ctx.fill();
+      ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI * 2); ctx.fillStyle = '#fff'; ctx.globalAlpha = 1; ctx.fill();
+      ctx.restore();
+    };
+    drawHalo(viewMaxIdx, sellColor);
+    drawHalo(viewMinIdx, buyColor);
   } else {
     drawSeries(HI, sellColor, true);
     drawSeries(LO, buyColor, false);
