@@ -624,14 +624,19 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
   .wrap { padding: 4px; overflow-y: auto; gap: 4px; }
   .main-column { gap: 3px; }
   .top-row-wrapper { gap: 2px; }
-  .top-panel { padding: 3px 8px; }
-  .panel-left { width: 100%; flex-wrap: nowrap; justify-content: space-between; gap: 6px; }
+  /* overflow:hidden on the top panel is a guard against icons clipping past
+     the right edge of the viewport — if the math is off on a future device,
+     the row will scroll-clip cleanly instead of running off the screen. */
+  .top-panel { padding: 3px 6px; overflow: hidden; }
+  .panel-left { width: 100%; flex-wrap: nowrap; justify-content: space-between; gap: 4px; min-width: 0; }
   .brand-logo { display: none !important; }
-  .mode-pill { flex-shrink: 0; height: 26px; }
-  .search-group { flex: 1; min-width: 0; }
-  .sbar { flex: 1 1 0; min-width: 80px; width: auto; }
-  .sbar input { padding-top: 3px; padding-bottom: 3px; height: 28px; }
-  .icon-btn { flex: 0 0 auto; padding: 3px 7px; }
+  .mode-pill { flex-shrink: 0; height: 26px; padding: 1px; }
+  .mode-pill button { padding: 0 5px; font-size: 10px; }
+  .search-group { flex: 1 1 0; min-width: 0; gap: 3px; }
+  .sbar { flex: 1 1 0; min-width: 60px; width: auto; }
+  .sbar input { padding: 3px 6px 3px 26px; height: 28px; font-size: 14px; }
+  .icon-btn { flex: 0 0 auto; padding: 3px 5px; font-size: 13px; gap: 0; }
+  .fav-btn { padding: 3px 5px; gap: 0; }
   .content-area { flex-direction: column; gap: 3px; }
   .ticker-title-group { display: none !important; }
   .ticker-header { padding: 0; border: none; background: transparent; gap: 0; height: auto; }
@@ -960,7 +965,11 @@ const LOW_VOL_THRESHOLD = 100000;
 const SCAN_VOL_POOL = 60;
 const SCAN_PRICE_POOL = 40;
 const SCAN_CONCURRENCY = 4;
-const LANDING_ID = "12389"; /* Gilded scimitar (F2P, GE-tradeable) */
+/* Default landing item — Uncut diamond (id 1617) replaces Gilded scimitar.
+   A high-volume staple gives the first-paint a dense, busy, "real market"
+   chart instead of the sparse low-volume Gilded scimitar tape that looked
+   broken to bouncing first-time visitors. F2P, GE-tradeable, well-known. */
+const LANDING_ID = "1617";
 
 let mapping = [], latest = null, past24h = null, volumes = null, selected = null;
 let currentSeries = null, view = "1d", zoom = 1.0, offset = 0;
@@ -1003,7 +1012,7 @@ let groupOpenStates = {
   "⭐ Favorites": true,
   "💰 High Vol Margins": false,
   "💎 Low Vol Margins": false,
-  "🔁 Steady Flips": false,
+  "📅 Reliable 14D Margins": false,
   "🔻 Biggest Losers (24H)": false,
   "📈 At 5D Highs": false,
   "📉 At 5D Lows": false
@@ -1459,15 +1468,19 @@ async function runSteadyFlipsScan() {
       }
       const days = ts.labels.length - start;
       if (days < 10) return;
-      /* Steady = at least 80% of days had a positive after-tax margin AND
-         the coefficient of variation is low (mean / stdev > 2). Filters out
-         items that had one fluke 10K margin day next to a bunch of zeros. */
-      if (dayMargins.length < Math.ceil(days * 0.8)) return;
+      /* Looser thresholds than the original "Steady Flips" version, which
+         was so strict that common potions/bars/gems would drop out for a
+         single noisy day. Now: at least 60% of the last ~14 days had a
+         positive after-tax margin (8 of 14), mean is >=3 gp, and stdev is
+         <=80% of mean (filters fluke-driven items where one big day
+         masquerades as a trend). Still rules out true noise; doesn't
+         exclude perfectly reasonable grinds. */
+      if (dayMargins.length < Math.ceil(days * 0.6)) return;
       const mean = dayMargins.reduce((a, b) => a + b, 0) / dayMargins.length;
-      if (mean < 5) return; // too thin to bother
+      if (mean < 3) return;
       const variance = dayMargins.reduce((a, b) => a + (b - mean) ** 2, 0) / dayMargins.length;
       const stdev = Math.sqrt(variance);
-      if (stdev > mean * 0.5) return; // too noisy to call "steady"
+      if (stdev > mean * 0.8) return;
       results.push({
         id: String(m.id), item: m,
         meanMargin: Math.round(mean),
@@ -1682,8 +1695,12 @@ function renderWatchlist() {
       if (avgMid > 0) {
         const pct = (curMid - avgMid) / avgMid * 100;
         mover1dPct[id] = pct;
+        /* Volume floor matches LOW_VOL_THRESHOLD (100k/day) — anything below
+           that, a single seller's dump can fake a 5% drop. Restricting
+           movers to high-volume names means a -5% on Coal or Adamantite bar
+           is a real dip-buy candidate, not one whale liquidating a niche. */
         const vol = (p24.highPriceVolume || 0) + (p24.lowPriceVolume || 0);
-        if (curMid >= 100 && vol >= 10000 && Math.abs(pct) >= 3) movers.push({ item, pct });
+        if (curMid >= 100 && vol >= LOW_VOL_THRESHOLD && Math.abs(pct) >= 3) movers.push({ item, pct });
       }
     }
   });
@@ -1746,7 +1763,7 @@ function renderWatchlist() {
     { name: "⭐ Favorites", className: "fav-title", entries: favEntries(favsSorted), alwaysShow: true },
     { name: "💰 High Vol Margins", className: "margin-title", entries: marginEntries(marginHigh1d, "ea") },
     { name: "💎 Low Vol Margins", className: "marginlo-title", entries: marginEntries(marginLow1d, "ea") },
-    { name: "🔁 Steady Flips", className: "steady-title", entries: steadyEntries, scan: "steady" },
+    { name: "📅 Reliable 14D Margins", className: "steady-title", entries: steadyEntries, scan: "steady" },
     { name: "🔻 Biggest Losers (24H)", className: "fall-title", entries: moverEntries(losers) },
     { name: "📈 At 5D Highs", className: "high-title", entries: plainEntries(dayHighs.slice(0, 30)), scan: "fived" },
     { name: "📉 At 5D Lows", className: "low-title", entries: plainEntries(dayLows.slice(0, 30)), scan: "fived" }
@@ -1809,12 +1826,15 @@ function renderWatchlist() {
 
     let inner = "";
     if (hasScan && scanState !== 'done' && group.entries.length === 0) {
-      const loadLabel = group.scan === 'steady' ? 'Scanning 14 days of margins…' : 'Scanning 5-day extremes…';
-      const idleLabel = group.scan === 'steady' ? 'Tap to scan steady flippers (top items)' : 'Tap to scan 5-day extremes (top items)';
+      const loadLabel = group.scan === 'steady' ? 'Scanning the last 14 days of margins…' : 'Scanning 5-day extremes…';
+      const idleLabel = group.scan === 'steady' ? 'Tap to scan 14-day reliable margins' : 'Tap to scan 5-day extremes (top items)';
       if (scanState === 'loading') inner = `<div class="scan-row loading">⏳ ${loadLabel}</div>`;
       else inner = `<div class="scan-row" data-scan="${group.scan}">🔍 ${idleLabel}</div>`;
     } else if (group.entries.length === 0) {
-      inner = `<div class="wl-item" style="color:var(--text-muted); justify-content:center;">Nothing at a 5-day extreme right now</div>`;
+      const emptyMsg = group.scan === 'steady'
+        ? 'No items met the consistency bar over the last 14 days'
+        : 'Nothing at a 5-day extreme right now';
+      inner = `<div class="wl-item" style="color:var(--text-muted); justify-content:center;">${emptyMsg}</div>`;
     } else {
       const isFavGroup = group.name === "⭐ Favorites";
       group.entries.forEach(e => {
@@ -3444,10 +3464,17 @@ async function setItem(m) {
     }
     updateMetaForItem(m);
     if (typeof gtag === 'function') {
+      /* Virtual page tracking for GA4. The real browser URL stays /?q=Item
+         (good for sharing), but we report a fake hierarchical path
+         /item/<Slug> to GA — its "Page path and screen class" report uses
+         location.pathname by default and would otherwise collapse every
+         item visit into "/". Setting both page_location AND page_path to
+         a virtual URL is the documented GA4 SPA pattern. */
+      const virtualUrl = `https://pocketge.com/item/${slug}`;
       gtag('event', 'page_view', {
         page_title: `${m.name} - PocketGE`,
-        page_location: window.location.href,
-        page_path: `/?q=${slug}`,
+        page_location: virtualUrl,
+        page_path: `/item/${slug}`,
         item_id: String(m.id),
         item_name: m.name
       });
