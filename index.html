@@ -143,8 +143,12 @@
   --rs-parchment: #F2D49B;
 }
 * { box-sizing: border-box; }
-html, body { height: 100%; width: 100%; position: fixed; overflow: hidden; }
-body { margin: 0; background: var(--bg-base); color: var(--text-main); font-family: -apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif; -webkit-font-smoothing: antialiased; }
+/* Body is allowed to scroll naturally so the footer (with the suggest-a-
+   feature link, FAQ jump, etc.) and the long-form About section below the
+   app viewport are reachable. .wrap stays at 100dvh so the app dashboard
+   fills the initial paint — anything below sits past the fold. */
+html, body { width: 100%; }
+body { margin: 0; min-height: 100dvh; background: var(--bg-base); color: var(--text-main); font-family: -apple-system, BlinkMacSystemFont, 'Trebuchet MS', Roboto, Ubuntu, sans-serif; -webkit-font-smoothing: antialiased; }
 button, input { touch-action: manipulation; }
 /* Visually-hidden but readable to screen readers and search-engine crawlers.
    Used for the page H1 so the app keeps its dense dashboard layout without
