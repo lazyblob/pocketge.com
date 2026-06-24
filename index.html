@@ -688,7 +688,9 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
      room for the item title below. */
   .search-group { flex: 1 1 0; min-width: 0; gap: 5px; flex-wrap: nowrap; align-items: center; }
   .sbar { flex: 1 1 auto; min-width: 0; width: auto; }
-  .sbar input { padding: 3px 6px 3px 26px; height: 30px; font-size: 14px; }
+  /* font-size MUST be >= 16px on touch inputs or iOS Safari auto-zooms in
+     when the user taps to type, distorting the entire layout. Keep 16px. */
+  .sbar input { padding: 3px 6px 3px 26px; height: 30px; font-size: 16px; }
   .icon-btn { flex: 0 0 auto; padding: 5px 9px; font-size: 15px; gap: 0; }
   .fav-btn { padding: 5px 8px; gap: 0; flex: 0 0 auto; }
   /* ⋯ overflow menu on mobile: button shows, container becomes a dropdown */
@@ -719,9 +721,14 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
   .chart-container { flex: none; height: 48vh; min-height: 300px; margin-bottom: 0; }
   .watchlist-container { width: 100%; flex: 1; min-height: 400px; }
   .status-text { display: none; }
-  /* Single-row price boxes — the big space saver. */
+  /* Single-row price boxes — but at narrow iPhone widths (< 430px) the two
+     boxes side-by-side can't fit BOTH the price + the verdict chip without
+     clipping ("OK BU" / "TOP SEL"). Use min-width to force them to wrap to
+     two rows on narrow phones so each gets the full width and content
+     never clips. Wider phones / tablets keep them side-by-side. */
   .price-strip { gap: 4px; }
-  .price-box { display: flex; align-items: center; gap: 8px; padding: 3px 8px; min-width: 0; }
+  .price-strip .price-box { flex: 1 1 200px; }
+  .price-box { display: flex; align-items: center; gap: 8px; padding: 4px 10px; min-width: 0; }
   .price-label { flex-direction: column; align-items: flex-start; gap: 0; flex-shrink: 0; font-size: 9px; }
   .live-val { font-size: 9px; }
   .price-val { font-size: 19px; margin-top: 0; flex-shrink: 0; white-space: nowrap; line-height: 1.1; letter-spacing: -0.4px; }
