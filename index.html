@@ -695,7 +695,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
   .fav-btn { padding: 5px 8px; gap: 0; flex: 0 0 auto; }
   /* ⋯ overflow menu on mobile: button shows, container becomes a dropdown */
   .more-wrap { display: inline-flex; position: relative; flex: 0 0 auto; }
-  .more-toggle { display: inline-flex; font-size: 18px; line-height: 1; padding: 4px 9px; }
+  .more-toggle { display: inline-flex !important; font-size: 18px; line-height: 1; padding: 5px 10px; min-width: 38px; justify-content: center; }
   .more-actions {
     display: none; position: absolute; top: calc(100% + 6px); right: 0; z-index: 60;
     flex-direction: column; gap: 2px; min-width: 168px; padding: 6px;
@@ -721,14 +721,14 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
   .chart-container { flex: none; height: 48vh; min-height: 300px; margin-bottom: 0; }
   .watchlist-container { width: 100%; flex: 1; min-height: 400px; }
   .status-text { display: none; }
-  /* Single-row price boxes — but at narrow iPhone widths (< 430px) the two
-     boxes side-by-side can't fit BOTH the price + the verdict chip without
-     clipping ("OK BU" / "TOP SEL"). Use min-width to force them to wrap to
-     two rows on narrow phones so each gets the full width and content
-     never clips. Wider phones / tablets keep them side-by-side. */
-  .price-strip { gap: 4px; }
-  .price-strip .price-box { flex: 1 1 200px; }
-  .price-box { display: flex; align-items: center; gap: 8px; padding: 4px 10px; min-width: 0; }
+  /* Stack price boxes vertically on portrait mobile — explicit column layout
+     so we don't depend on flex-basis wrap math (which was leaving the boxes
+     narrower than full width and still clipping the verdict chip). Buy on
+     top, Sell below; each box gets the full strip width with room for the
+     verdict chip ("STRONG ENTRY" / "TOP SELL"). */
+  .price-strip { flex-direction: column; gap: 4px; }
+  .price-strip .price-box { width: 100%; flex: 0 0 auto; min-width: 0; }
+  .price-box { display: flex; align-items: center; gap: 8px; padding: 4px 10px; min-width: 0; overflow: hidden; }
   .price-label { flex-direction: column; align-items: flex-start; gap: 0; flex-shrink: 0; font-size: 9px; }
   .live-val { font-size: 9px; }
   .price-val { font-size: 19px; margin-top: 0; flex-shrink: 0; white-space: nowrap; line-height: 1.1; letter-spacing: -0.4px; }
@@ -874,7 +874,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
                 <span class="icon-label">Favorite</span>
               </button>
               <div class="more-wrap">
-                <button id="btnMore" class="icon-btn more-toggle" title="More" aria-label="More actions" aria-expanded="false"><span>⋯</span></button>
+                <button id="btnMore" class="icon-btn more-toggle" title="More" aria-label="More actions" aria-expanded="false"><span aria-hidden="true">☰</span></button>
                 <div class="more-actions" id="moreActions">
                   <button id="btnFlip" class="icon-btn" title="Simple View — huge buy/sell prices, minimal chart. Good for a quick glance or checking at work."><span>🔍</span><span class="icon-label">Simple</span></button>
                   <button id="btnNotif" class="icon-btn" title="Enable Browser Push Notifications"><span>🔕</span><span class="icon-label">Alerts</span></button>
