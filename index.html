@@ -10,14 +10,14 @@
 <meta name="application-name" content="PocketGE">
 <meta name="theme-color" content="#0B0E14">
 
-<title>PocketGE | Live OSRS Mobile Flipping Tool & Bank Tracker</title>
-<meta name="description" content="Mobile-first OSRS Grand Exchange tracker — live margins with GE tax, 5-day breakout scanner, Bank stack tracker, and push notifications for favorite breakouts.">
+<title>PocketGE — Live OSRS Grand Exchange Prices & Flipping Margins</title>
+<meta name="description" content="Find profitable OSRS flips in seconds. Live Grand Exchange prices with the 2% GE tax built in, reliable-margin finder, 5-day breakouts, Bank tracker. Free, no login.">
 <meta name="keywords" content="OSRS GE tracker, OSRS flipping app, Old School RuneScape price alerts, OSRS bank portfolio tracker, OSRS live margins, OSRS 5-day price breakouts, Grand Exchange tax calculator, OSRS merchanting tools">
 <link rel="canonical" href="https://pocketge.com/">
 <link rel="manifest" href="/manifest.json">
 
-<meta property="og:title" content="PocketGE | Live OSRS Mobile Flipping Tool & Bank Tracker">
-<meta property="og:description" content="Live OSRS margins with GE tax baked in, 5-day breakout scanner, Bank stack alerts, and push notifications when your favorites break out. Built mobile-first.">
+<meta property="og:title" content="PocketGE — Live OSRS Grand Exchange Prices & Flipping Margins">
+<meta property="og:description" content="Find profitable OSRS flips in seconds. Live GE prices, target buy/sell with the 2% tax built in, reliable-margin finder, 5-day breakouts, Bank tracker. Free, no login.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://pocketge.com/">
 <meta property="og:image" content="https://oldschool.runescape.wiki/images/Gilded_scimitar.png">
@@ -28,8 +28,8 @@
 <meta property="og:locale" content="en_US">
 
 <meta name="twitter:card" content="summary">
-<meta name="twitter:title" content="PocketGE | Live OSRS Flipping Tool & Bank Tracker">
-<meta name="twitter:description" content="Live OSRS margins, 5-day breakout scanner, Bank stack alerts, and push notifications. Mobile-first.">
+<meta name="twitter:title" content="PocketGE — Live OSRS Grand Exchange Prices & Flipping Margins">
+<meta name="twitter:description" content="Find profitable OSRS flips in seconds. Live GE prices, 2% tax built in, reliable-margin finder, Bank tracker. Free.">
 <meta name="twitter:image" content="https://oldschool.runescape.wiki/images/Gilded_scimitar.png">
 <meta name="twitter:image:alt" content="PocketGE — OSRS Grand Exchange flipping tracker">
 
@@ -1633,10 +1633,32 @@ function countFavoriteBreakouts() {
   return count;
 }
 
+/* Brand title for the homepage (no ?q=) — the page Google should index for
+   "pocketge" and generic flipping terms. Item pages get "<Item> price -
+   PocketGE". isHomepageDefault is true while showing the boot default
+   landing (not an explicit item navigation), which keeps the crawler-
+   visible title/meta/canonical brand-focused instead of itemising "/". */
+const BRAND_TITLE = 'PocketGE — Live OSRS Grand Exchange Prices & Flipping Margins';
+let isHomepageDefault = false;
 function applyTitleBadge() {
-  const base = selected ? `${selected.name} - PocketGE` : 'PocketGE';
+  const base = isHomepageDefault ? BRAND_TITLE
+             : selected ? `${selected.name} price - PocketGE`
+             : BRAND_TITLE;
   const n = countFavoriteBreakouts();
   document.title = n > 0 ? `(${n}) ${base}` : base;
+}
+
+/* Restore the brand-level meta/canonical for the homepage so a crawl of "/"
+   indexes the brand page, not whatever item happens to be displayed. */
+function restoreBrandMeta() {
+  const desc = 'Find profitable OSRS flips in seconds. Live Grand Exchange prices with the 2% GE tax built in, reliable-margin finder, 5-day breakouts, Bank tracker. Free, no login.';
+  setMetaTag('description', desc);
+  setMetaTag('og:title', BRAND_TITLE, true);
+  setMetaTag('og:description', desc, true);
+  setMetaTag('og:url', 'https://pocketge.com/', true);
+  setMetaTag('twitter:title', BRAND_TITLE);
+  setMetaTag('twitter:description', desc);
+  setCanonicalLink('https://pocketge.com/');
 }
 
 /* Footer freshness signal — stamps the last successful price refresh so a
@@ -1695,8 +1717,8 @@ function setCanonicalLink(url) {
 }
 function updateMetaForItem(m) {
   if (!m) return;
-  const title = `${m.name} - PocketGE`;
-  const desc = `Live OSRS ${m.name} price, flipping margins, target buy and sell with the 2% Grand Exchange tax already applied, plus 5-day breakout markers and support/resistance walls. Mobile-first, free, no signup.`;
+  const title = `${m.name} price - PocketGE`;
+  const desc = `Live OSRS ${m.name} price, flipping margins, target buy and sell with the 2% Grand Exchange tax already applied, plus 5-day breakout markers. Mobile-first, free, no signup.`;
   const url = window.location.href;
   setMetaTag('description', desc);
   setMetaTag('og:title', title, true);
@@ -3582,8 +3604,15 @@ function refreshChart() {
   resizeCanvas();
 }
 
-async function setItem(m) {
+async function setItem(m, opts = {}) {
   selected = m;
+  /* keepHomepage = true when we're showing the default boot item (no ?q=
+     in the URL) — restore the brand-level title / meta / canonical so a
+     Googlebot crawl of "/" indexes the BRAND page, not a stale "(1) Gilded
+     scimitar - PocketGE" because we happened to have an item loaded. The
+     app still SHOWS the item internally; only the document-level metadata
+     stays brand-aligned for the homepage URL. */
+  isHomepageDefault = !!opts.keepHomepage;
   /* Persist the last-viewed item so refresh / reopen lands you back on it
      instead of the default landing item. Recent items list tracks the last
      ~10 picks so the search bar can offer quick-toggle between them. */
@@ -3598,29 +3627,45 @@ async function setItem(m) {
      preview of a shared /?q=Cake link shows the generic homepage text.
      Mirror the item into the URL via history.replaceState, refresh every
      meta tag / canonical to the item's context, then fire a virtual GA4
-     page_view. */
+     page_view.
+     EXCEPT when keepHomepage is set: leave the URL as "/", restore brand
+     meta, and fire a homepage pageview to GA so the SERP and analytics
+     both treat "/" as the clean brand page it's meant to be. */
   try {
-    const slug = encodeURIComponent(m.name);
-    const newUrl = `${window.location.pathname}?q=${slug}`;
-    if (window.location.search !== `?q=${slug}`) {
-      history.replaceState(null, '', newUrl);
-    }
-    updateMetaForItem(m);
-    if (typeof gtag === 'function') {
-      /* Virtual page tracking for GA4. The real browser URL stays /?q=Item
-         (good for sharing), but we report a fake hierarchical path
-         /item/<Slug> to GA — its "Page path and screen class" report uses
-         location.pathname by default and would otherwise collapse every
-         item visit into "/". Setting both page_location AND page_path to
-         a virtual URL is the documented GA4 SPA pattern. */
-      const virtualUrl = `https://pocketge.com/item/${slug}`;
-      gtag('event', 'page_view', {
-        page_title: `${m.name} - PocketGE`,
-        page_location: virtualUrl,
-        page_path: `/item/${slug}`,
-        item_id: String(m.id),
-        item_name: m.name
-      });
+    if (isHomepageDefault) {
+      /* Strip any stale ?q= the previous build might have left behind. */
+      if (window.location.search) history.replaceState(null, '', window.location.pathname);
+      restoreBrandMeta();
+      if (typeof gtag === 'function') {
+        gtag('event', 'page_view', {
+          page_title: BRAND_TITLE,
+          page_location: 'https://pocketge.com/',
+          page_path: '/'
+        });
+      }
+    } else {
+      const slug = encodeURIComponent(m.name);
+      const newUrl = `${window.location.pathname}?q=${slug}`;
+      if (window.location.search !== `?q=${slug}`) {
+        history.replaceState(null, '', newUrl);
+      }
+      updateMetaForItem(m);
+      if (typeof gtag === 'function') {
+        /* Virtual page tracking for GA4. The real browser URL stays /?q=Item
+           (good for sharing), but we report a fake hierarchical path
+           /item/<Slug> to GA — its "Page path and screen class" report uses
+           location.pathname by default and would otherwise collapse every
+           item visit into "/". Setting both page_location AND page_path to
+           a virtual URL is the documented GA4 SPA pattern. */
+        const virtualUrl = `https://pocketge.com/item/${slug}`;
+        gtag('event', 'page_view', {
+          page_title: `${m.name} price - PocketGE`,
+          page_location: virtualUrl,
+          page_path: `/item/${slug}`,
+          item_id: String(m.id),
+          item_name: m.name
+        });
+      }
     }
   } catch (e) {}
   const iconURL = itemIconUrl(m.id);
@@ -3894,7 +3939,11 @@ setItem._userPicked = false;
                   : mapping.find(x => x.name.toLowerCase() === "ruby");
     if (landing) {
       setItem._userPicked = false;
-      setItem(landing);
+      /* Only "itemize" the page (rewrite URL to /?q=Name, canonical to item,
+         title to "<Item> - PocketGE") when the visitor came in with an
+         explicit ?q= deep link. Otherwise the homepage stays clean brand
+         metadata so a Google crawl of "/" indexes the BRAND page. */
+      setItem(landing, { keepHomepage: !eligible(urlItem) });
     }
     updateFootFresh();
     updateFootUpdated();
