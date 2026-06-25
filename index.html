@@ -666,11 +666,19 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-meta .meta-ea.up { color: var(--positive); }
 .wl-meta .meta-ea.neutral { color: var(--text-muted); }
 .wl-meta .meta-vol { color: var(--text-muted); }
-/* Column-customize control above the watchlist — compact bar with a
-   single ⋯ button on the right that opens a dropdown of column toggles
-   (TradingView pattern). */
-.col-toggles { display: flex; justify-content: flex-end; align-items: center; padding: 4px 8px; border-top: 1px solid var(--border-main); background: var(--bg-panel); }
-.col-menu-wrap { position: relative; display: inline-block; }
+/* Column-customize control above the watchlist — sort labels on the left
+   (for Favorites), ⋯ button on the right opens column-visibility menu. */
+.col-toggles { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; gap: 6px; border-top: 1px solid var(--border-main); background: var(--bg-panel); }
+.col-sort-strip { display: inline-flex; align-items: center; gap: 2px; min-width: 0; flex-wrap: wrap; }
+.col-sort-label { font-size: 9px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+.col-sort-btn {
+  background: transparent; border: 1px solid transparent; color: var(--text-muted);
+  border-radius: 3px; font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
+  padding: 3px 7px; cursor: pointer; transition: all 0.15s ease;
+}
+.col-sort-btn:hover { color: var(--text-main); border-color: var(--border-light); }
+.col-sort-btn.active { color: #fff; background: var(--border-active); border-color: var(--border-active); }
+.col-menu-wrap { position: relative; display: inline-block; flex-shrink: 0; }
 .col-menu-btn {
   background: transparent; border: 1px solid transparent; color: var(--text-muted);
   border-radius: 4px; font-size: 16px; line-height: 1;
@@ -1176,7 +1184,10 @@ let favEditMode = false;
    mode where reorder arrows make sense); the others sort the displayed list
    without mutating the saved order. Persisted. */
 let favSort = (() => { try { return localStorage.getItem('ge_favSort') || 'manual'; } catch (e) { return 'manual'; } })();
-const FAV_SORT_LABELS = { manual: 'Manual', price: 'Price', change: '24h %', name: 'A–Z' };
+/* Sort options for favorites. Margin / Volume were added when the
+   col-toggles bar grew sort labels next to the ⋯ menu — the buttons
+   set favSort directly. */
+const FAV_SORT_LABELS = { manual: 'Manual', price: 'Price', change: '24h %', margin: 'Margin', volume: 'Vol', name: 'A–Z' };
 /* Column visibility — TradingView-style. Every list row builds the same meta
    triplet (change · ea · vol) so the sidebar is finally consistent. Users
    toggle which columns they want via pills at the top of the watchlist; the
@@ -1841,16 +1852,34 @@ function updateMetaForItem(m) {
   setCanonicalLink(url.split('#')[0]);
 }
 
-/* Render the column-customize dropdown. A single ⋯ button in a compact
-   bar opens a small popover with one checkbox per toggleable column.
-   Replaces the previous inline-pill bar — same state model, sleeker look,
-   matches the TradingView watchlist customise-columns affordance. */
+/* Render the column-customize dropdown PLUS inline sort labels. The ⋯
+   button opens column-visibility checkboxes; the sort labels next to it
+   one-tap sort the Favorites list (other lists keep their inherent sort
+   because the list's name describes its sort — "High Vol Margins" is
+   sorted by margin by definition, etc.). */
 function renderColToggles() {
   const host = document.getElementById('colToggles');
   if (!host) return;
+  const sortBtn = (key, label) => {
+    const active = favSort === key;
+    return `<button type="button" class="col-sort-btn ${active ? 'active' : ''}" data-sort="${key}" title="Sort Favorites by ${label}">${label}</button>`;
+  };
   const row = (key, label) =>
     `<label class="col-menu-row"><input type="checkbox" data-col="${key}" ${columnPrefs[key] ? 'checked' : ''}><span>${label}</span></label>`;
+  /* Sort labels are visible only when the user has Favorites — they don't
+     sort anything else, so showing them when there are no favorites would
+     be misleading. */
+  const showSort = Array.isArray(favorites) && favorites.length > 0;
+  const sortLabels = showSort ? `
+    <span class="col-sort-strip">
+      <span class="col-sort-label">Sort favs</span>
+      ${sortBtn('manual', 'Manual')}
+      ${columnPrefs.change ? sortBtn('change', 'Chg%') : ''}
+      ${columnPrefs.margin ? sortBtn('margin', 'Ea') : ''}
+      ${columnPrefs.volume ? sortBtn('volume', 'Vol') : ''}
+    </span>` : '';
   host.innerHTML = `
+    ${sortLabels}
     <div class="col-menu-wrap">
       <button type="button" id="btnCols" class="col-menu-btn" aria-label="Customize columns" title="Customize columns" aria-expanded="false">⋯</button>
       <div class="col-menu" id="colMenu" role="menu">
@@ -1860,6 +1889,15 @@ function renderColToggles() {
         ${row('volume', 'Daily volume')}
       </div>
     </div>`;
+  /* Wire the sort buttons — click sets favSort, persists, re-renders. */
+  host.querySelectorAll('.col-sort-btn').forEach(b => {
+    b.onclick = () => {
+      favSort = b.getAttribute('data-sort');
+      try { localStorage.setItem('ge_favSort', favSort); } catch (e) {}
+      renderColToggles();
+      renderWatchlist();
+    };
+  });
   const btn = host.querySelector('#btnCols');
   const menu = host.querySelector('#colMenu');
   const closeMenu = () => { menu.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); };
@@ -1874,6 +1912,7 @@ function renderColToggles() {
       const key = cb.getAttribute('data-col');
       columnPrefs[key] = cb.checked;
       saveColPrefs();
+      renderColToggles();
       renderWatchlist();
     };
   });
@@ -2021,9 +2060,17 @@ function renderWatchlist() {
   let favsSorted = favs;
   if (favSort !== 'manual') {
     favsSorted = [...favs];
+    const liveMargin = (it) => {
+      const n = latest && latest.data ? latest.data[String(it.id)] : null;
+      if (!n || !(n.high > 0) || !(n.low > 0) || n.high <= n.low) return -Infinity;
+      const m = n.high - n.low - calculateTax(n.high);
+      return (m > 0 && m < n.high * 0.7) ? m : -Infinity;
+    };
     if (favSort === 'price') favsSorted.sort((a, b) => priceOf(b) - priceOf(a));
     else if (favSort === 'name') favsSorted.sort((a, b) => a.name.localeCompare(b.name));
     else if (favSort === 'change') favsSorted.sort((a, b) => (mover1dPct[String(b.id)] ?? -Infinity) - (mover1dPct[String(a.id)] ?? -Infinity));
+    else if (favSort === 'margin') favsSorted.sort((a, b) => liveMargin(b) - liveMargin(a));
+    else if (favSort === 'volume') favsSorted.sort((a, b) => dailyVolume(b.id) - dailyVolume(a.id));
   }
 
   /* Reliable 14D Margins entries — uses cache populated by
@@ -3880,8 +3927,12 @@ async function setItem(m, opts = {}) {
     b.innerHTML = `${p.toUpperCase()}<br/><span class="pct-chg ${cls}">${val > 0 ? '+' : ''}${val.toFixed(2)}%</span>`;
   });
 
-  const dailyVal = changes['1d'];
-  $("#tickerChange").innerHTML = `<span class="${dailyVal > 0 ? 'positive' : dailyVal < 0 ? 'negative' : 'neutral'}">${dailyVal > 0 ? '+' : ''}${dailyVal.toFixed(2)}%</span>`;
+  /* The headline % change used to live here (always the 1D change), but it
+     duplicated the 1D toolbar button exactly — and on other timeframes it
+     contradicted the chart by still showing 1D. The toolbar already shows
+     the % for every timeframe with the active one highlighted, so that's the
+     single source of truth. Header keeps just the item name + live price. */
+  $("#tickerChange").innerHTML = '';
 
   currentSeries = filterSeries(seriesForView(view, currentItemSrc, currentItemLowVol), getPeriod(view));
   selectedAbsIdx = null;
