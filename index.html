@@ -327,6 +327,12 @@ button, input { touch-action: manipulation; }
 .ticker-name-link:hover h2 { text-decoration: underline; text-decoration-color: var(--text-muted); text-underline-offset: 3px; }
 .ticker-wiki-link:focus-visible { outline: 2px solid var(--accent, #6aa9ff); outline-offset: 2px; border-radius: 4px; }
 .ticker-info h2 { margin: 0; font-size: 28px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
+/* Explicit "Wiki ↗" indicator on the ticker title link — desktop is wide
+   enough that the wiki affordance is obvious, but on mobile the title block
+   looked exactly like a search bar and users were tapping it by accident
+   reaching for the timeframe buttons. The chip is hidden by default
+   (desktop) and revealed by the mobile media queries below. */
+.wiki-hint { display: none; }
 .ticker-price-row { margin-top: 2px; display: flex; align-items: center; gap: 10px; }
 .ticker-price-row .price { font-size: 18px; font-weight: 700; color: var(--text-main); }
 .ticker-price-row .change { font-size: 14px; font-weight: 600; }
@@ -707,13 +713,20 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
   .more-actions .icon-btn:hover, .more-actions .icon-btn:active { background: var(--bg-input); }
   .more-actions .icon-label { display: inline; font-size: 13px; }
   .content-area { flex-direction: column; gap: 3px; }
-  /* Show the item title + icon (tappable to the OSRS Wiki, like desktop)
-     since mobile previously had no wiki access. Compact: small icon +
-     name, price row hidden (the price boxes below already show it). */
-  .ticker-title-group { display: flex !important; align-items: center; gap: 8px; padding: 1px 2px; }
-  .ticker-title-group img { width: 26px; height: 26px; }
-  .ticker-info h2 { font-size: 17px; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60vw; }
-  .ticker-price-row { display: none; }
+  /* Item title + wiki link on mobile. The previous version looked like a
+     second search bar (icon + name in a horizontal pill), and users were
+     tapping it by accident going for the timeframe row below. Reworked:
+     icon is small and inline-aligned with the name; the name reads as a
+     PAGE TITLE (larger, no background pill); an explicit "Wiki ↗" chip
+     after the name makes the affordance unmistakable. The whole strip is
+     left-aligned with extra bottom margin so accidental thumb-taps from
+     the timeframe row below don't reach it. */
+  .ticker-title-group { display: flex !important; align-items: baseline; gap: 7px; padding: 2px 2px 6px; }
+  .ticker-title-group img { width: 20px; height: 20px; align-self: center; }
+  .ticker-info { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
+  .ticker-info h2 { font-size: 19px; font-weight: 800; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 50vw; }
+  .ticker-info .ticker-price-row { display: none; }
+  .ticker-info .wiki-hint { display: inline-block; font-size: 9px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; padding: 2px 6px; border: 1px solid var(--border-light); border-radius: 3px; }
   .ticker-header { padding: 0; border: none; background: transparent; gap: 4px; height: auto; flex-direction: column; align-items: stretch; }
   .toolbar { width: 100%; justify-content: space-between; padding: 2px; }
   .toolbar button { flex: 1; padding: 4px 2px; font-size: 12px; min-width: 0; }
@@ -763,8 +776,15 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
   .sbar { flex: 1 1 0; min-width: 80px; width: auto; }
   .sbar input { padding-top: 2px; padding-bottom: 2px; height: 28px; font-size: 16px; }
   .brand-logo { display: none !important; }
-  .ticker-title-group { display: none !important; }
-  .ticker-header { flex: 0 0 auto; min-width: 0; padding: 2px; border: 1px solid var(--border-main); background: var(--bg-panel); border-radius: 6px; display: flex; }
+  /* Show the item title + wiki link on landscape too — phones in landscape
+     and small laptops in this band previously had no way to open the wiki.
+     Compact: icon + name + "Wiki ↗" chip, all clickable. */
+  .ticker-title-group { display: flex !important; align-items: center; gap: 6px; flex: 0 0 auto; padding: 0 6px; }
+  .ticker-title-group img { width: 22px; height: 22px; }
+  .ticker-info h2 { font-size: 14px; letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30vw; }
+  .ticker-info .ticker-price-row { display: none; }
+  .ticker-info .wiki-hint { display: inline-block; font-size: 8.5px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.4px; text-transform: uppercase; padding: 1px 5px; border: 1px solid var(--border-light); border-radius: 3px; margin-left: 6px; }
+  .ticker-header { flex: 0 0 auto; min-width: 0; padding: 2px; border: 1px solid var(--border-main); background: var(--bg-panel); border-radius: 6px; display: flex; gap: 8px; }
   .toolbar { width: 100%; padding: 0; gap: 3px; }
   .toolbar button { flex: 1; min-width: 0; padding: 6px 0; font-size: 13px; min-height: 32px; }
   .pct-chg { display: none !important; }
@@ -905,6 +925,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
             <div class="ticker-info">
               <a id="tickerNameLink" class="ticker-wiki-link ticker-name-link" target="_blank" rel="noopener noreferrer" href="https://oldschool.runescape.wiki/">
                 <h2 id="tickerName">Loading...</h2>
+                <span class="wiki-hint" aria-hidden="true">Wiki ↗</span>
               </a>
               <div class="ticker-price-row">
                 <span id="tickerLivePrice" class="price">---</span>
@@ -3663,7 +3684,13 @@ async function setItem(m, opts = {}) {
   try { localStorage.setItem('ge_lastItem', String(m.id)); } catch (e) {}
   recentItems = [String(m.id), ...recentItems.filter(id => id !== String(m.id))].slice(0, 10);
   try { localStorage.setItem('ge_recentItems', JSON.stringify(recentItems)); } catch (e) {}
-  $("#query").value = m.name;
+  /* Don't pre-fill the search input with the selected item — it created
+     visible "double info" on mobile where the ticker title also showed the
+     name, AND it made the search bar look like a passive title-display
+     instead of an actionable search. Now the search input is purely for
+     INPUT and stays empty (with its placeholder visible). The ticker title
+     below is the canonical "what's loaded" display. */
+  $("#query").value = '';
   applyTitleBadge();
   /* SPA analytics + shareable URLs + per-item SEO: when the user switches
      items, no real navigation happens, so GA4 never sees a new page_view,
