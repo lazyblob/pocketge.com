@@ -327,6 +327,12 @@ button, input { touch-action: manipulation; }
 .ticker-name-link:hover h2 { text-decoration: underline; text-decoration-color: var(--text-muted); text-underline-offset: 3px; }
 .ticker-wiki-link:focus-visible { outline: 2px solid var(--accent, #6aa9ff); outline-offset: 2px; border-radius: 4px; }
 .ticker-info h2 { margin: 0; font-size: 28px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
+/* Explicit "Wiki ↗" indicator on the ticker title link — desktop is wide
+   enough that the wiki affordance is obvious, but on mobile the title block
+   looked exactly like a search bar and users were tapping it by accident
+   reaching for the timeframe buttons. The chip is hidden by default
+   (desktop) and revealed by the mobile media queries below. */
+.wiki-hint { display: none; }
 .ticker-price-row { margin-top: 2px; display: flex; align-items: center; gap: 10px; }
 .ticker-price-row .price { font-size: 18px; font-weight: 700; color: var(--text-main); }
 .ticker-price-row .change { font-size: 14px; font-weight: 600; }
@@ -649,6 +655,23 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-trend.neutral { color: var(--text-muted); }
 .wl-vol { display: block; font-size: 9px; color: var(--text-muted); cursor: help; margin-top: 1px; letter-spacing: 0.2px; white-space: nowrap; }
 .wl-fav-meta { display: block; font-size: 9px; color: var(--text-muted); cursor: help; margin-top: 1px; letter-spacing: 0.2px; white-space: nowrap; }
+/* Unified meta line for every list row — {%Δ · ea · vol}. Each piece sized
+   the same so the column stack is visually consistent across categories. */
+.wl-meta { display: block; font-size: 9.5px; line-height: 1.2; white-space: nowrap; margin-top: 1px; }
+.wl-meta .meta-piece { cursor: help; }
+.wl-meta .meta-sep { color: var(--text-muted); opacity: 0.55; padding: 0 4px; }
+.wl-meta .meta-chg.up { color: var(--positive); }
+.wl-meta .meta-chg.down { color: var(--negative); }
+.wl-meta .meta-chg.neutral { color: var(--text-muted); }
+.wl-meta .meta-ea.up { color: var(--positive); }
+.wl-meta .meta-ea.neutral { color: var(--text-muted); }
+.wl-meta .meta-vol { color: var(--text-muted); }
+/* Column-toggle pills above the watchlist — tap to show/hide a column. */
+.col-toggles { display: flex; align-items: center; gap: 4px; padding: 6px 10px; border-top: 1px solid var(--border-main); border-bottom: 1px solid var(--border-main); background: var(--bg-panel); flex-wrap: wrap; }
+.col-toggles-label { font-size: 9px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+.col-pill { background: transparent; border: 1px solid var(--border-light); color: var(--text-muted); border-radius: 3px; font-size: 10px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; padding: 3px 9px; cursor: pointer; transition: all 0.15s ease; }
+.col-pill:hover { color: var(--text-main); border-color: var(--border-active); }
+.col-pill.active { color: #fff; background: var(--border-active); border-color: var(--border-active); }
 
 @media screen and (max-width: 1023px) and (orientation: portrait) {
   /* Mobile portrait: every gap above the chart is collapsed so the chart
@@ -707,13 +730,20 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
   .more-actions .icon-btn:hover, .more-actions .icon-btn:active { background: var(--bg-input); }
   .more-actions .icon-label { display: inline; font-size: 13px; }
   .content-area { flex-direction: column; gap: 3px; }
-  /* Show the item title + icon (tappable to the OSRS Wiki, like desktop)
-     since mobile previously had no wiki access. Compact: small icon +
-     name, price row hidden (the price boxes below already show it). */
-  .ticker-title-group { display: flex !important; align-items: center; gap: 8px; padding: 1px 2px; }
-  .ticker-title-group img { width: 26px; height: 26px; }
-  .ticker-info h2 { font-size: 17px; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60vw; }
-  .ticker-price-row { display: none; }
+  /* Item title + wiki link on mobile. The previous version looked like a
+     second search bar (icon + name in a horizontal pill), and users were
+     tapping it by accident going for the timeframe row below. Reworked:
+     icon is small and inline-aligned with the name; the name reads as a
+     PAGE TITLE (larger, no background pill); an explicit "Wiki ↗" chip
+     after the name makes the affordance unmistakable. The whole strip is
+     left-aligned with extra bottom margin so accidental thumb-taps from
+     the timeframe row below don't reach it. */
+  .ticker-title-group { display: flex !important; align-items: baseline; gap: 7px; padding: 2px 2px 6px; }
+  .ticker-title-group img { width: 20px; height: 20px; align-self: center; }
+  .ticker-info { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
+  .ticker-info h2 { font-size: 19px; font-weight: 800; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 50vw; }
+  .ticker-info .ticker-price-row { display: none; }
+  .ticker-info .wiki-hint { display: inline-block; font-size: 9px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; padding: 2px 6px; border: 1px solid var(--border-light); border-radius: 3px; }
   .ticker-header { padding: 0; border: none; background: transparent; gap: 4px; height: auto; flex-direction: column; align-items: stretch; }
   .toolbar { width: 100%; justify-content: space-between; padding: 2px; }
   .toolbar button { flex: 1; padding: 4px 2px; font-size: 12px; min-width: 0; }
@@ -763,8 +793,15 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
   .sbar { flex: 1 1 0; min-width: 80px; width: auto; }
   .sbar input { padding-top: 2px; padding-bottom: 2px; height: 28px; font-size: 16px; }
   .brand-logo { display: none !important; }
-  .ticker-title-group { display: none !important; }
-  .ticker-header { flex: 0 0 auto; min-width: 0; padding: 2px; border: 1px solid var(--border-main); background: var(--bg-panel); border-radius: 6px; display: flex; }
+  /* Show the item title + wiki link on landscape too — phones in landscape
+     and small laptops in this band previously had no way to open the wiki.
+     Compact: icon + name + "Wiki ↗" chip, all clickable. */
+  .ticker-title-group { display: flex !important; align-items: center; gap: 6px; flex: 0 0 auto; padding: 0 6px; }
+  .ticker-title-group img { width: 22px; height: 22px; }
+  .ticker-info h2 { font-size: 14px; letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30vw; }
+  .ticker-info .ticker-price-row { display: none; }
+  .ticker-info .wiki-hint { display: inline-block; font-size: 8.5px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.4px; text-transform: uppercase; padding: 1px 5px; border: 1px solid var(--border-light); border-radius: 3px; margin-left: 6px; }
+  .ticker-header { flex: 0 0 auto; min-width: 0; padding: 2px; border: 1px solid var(--border-main); background: var(--bg-panel); border-radius: 6px; display: flex; gap: 8px; }
   .toolbar { width: 100%; padding: 0; gap: 3px; }
   .toolbar button { flex: 1; min-width: 0; padding: 6px 0; font-size: 13px; min-height: 32px; }
   .pct-chg { display: none !important; }
@@ -905,6 +942,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
             <div class="ticker-info">
               <a id="tickerNameLink" class="ticker-wiki-link ticker-name-link" target="_blank" rel="noopener noreferrer" href="https://oldschool.runescape.wiki/">
                 <h2 id="tickerName">Loading...</h2>
+                <span class="wiki-hint" aria-hidden="true">Wiki ↗</span>
               </a>
               <div class="ticker-price-row">
                 <span id="tickerLivePrice" class="price">---</span>
@@ -964,6 +1002,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 
     <div class="watchlist-container">
       <div class="calc-container" id="sideModule"></div>
+      <div class="col-toggles" id="colToggles"></div>
       <div class="watchlist-content" id="watchlistContent"></div>
     </div>
 
@@ -1120,6 +1159,17 @@ let favEditMode = false;
    without mutating the saved order. Persisted. */
 let favSort = (() => { try { return localStorage.getItem('ge_favSort') || 'manual'; } catch (e) { return 'manual'; } })();
 const FAV_SORT_LABELS = { manual: 'Manual', price: 'Price', change: '24h %', name: 'A–Z' };
+/* Column visibility — TradingView-style. Every list row builds the same meta
+   triplet (change · ea · vol) so the sidebar is finally consistent. Users
+   toggle which columns they want via pills at the top of the watchlist; the
+   choice persists to localStorage. All three default to ON. */
+let columnPrefs = (() => {
+  try {
+    const stored = JSON.parse(localStorage.getItem('ge_colPrefs') || '{}');
+    return { change: stored.change !== false, margin: stored.margin !== false, volume: stored.volume !== false };
+  } catch (e) { return { change: true, margin: true, volume: true }; }
+})();
+function saveColPrefs() { try { localStorage.setItem('ge_colPrefs', JSON.stringify(columnPrefs)); } catch (e) {} }
 
 const canvas = document.getElementById("chart");
 const ctx = canvas.getContext("2d");
@@ -1773,6 +1823,27 @@ function updateMetaForItem(m) {
   setCanonicalLink(url.split('#')[0]);
 }
 
+/* Render the column-toggle pills above the watchlist. Click a pill to
+   show/hide that column across every category at once. State persists. */
+function renderColToggles() {
+  const host = document.getElementById('colToggles');
+  if (!host) return;
+  const pill = (key, label, title) =>
+    `<button type="button" class="col-pill ${columnPrefs[key] ? 'active' : ''}" data-col="${key}" title="${title}">${label}</button>`;
+  host.innerHTML = `<span class="col-toggles-label">Show</span>${
+    pill('change', '%Δ', 'Toggle 24-hour % change column')
+  }${pill('margin', '+ea', 'Toggle live margin column')}${pill('volume', 'vol', 'Toggle daily volume column')}`;
+  host.querySelectorAll('.col-pill').forEach(btn => {
+    btn.onclick = () => {
+      const key = btn.getAttribute('data-col');
+      columnPrefs[key] = !columnPrefs[key];
+      saveColPrefs();
+      renderColToggles();
+      renderWatchlist();
+    };
+  });
+}
+
 function renderWatchlist() {
   const container = $("#watchlistContent");
   container.innerHTML = "";
@@ -1853,48 +1924,59 @@ function renderWatchlist() {
      probably don't hold to sell. Losers stays — those are genuine dip-buys. */
   const losers  = movers.filter(m => m.pct < 0).sort((a, b) => a.pct - b.pct).slice(0, 15);
 
-  /* Compact 1D-move chip from the live-vs-24h-avg %, used inline on favorites
-     rows. Always shown when we have data (even near-zero) so every row keeps
-     the same right-edge spacing; small moves render in the muted neutral
-     color rather than green/red so a flat item reads as "steady". */
-  const moveChip = (id) => {
-    const pct = mover1dPct[String(id)];
-    if (pct == null) return '';
-    const cls = pct >= 1 ? 'up' : pct <= -1 ? 'down' : 'neutral';
-    const rounded = pct.toFixed(1);
-    const display = (rounded === '0.0' || rounded === '-0.0') ? '0.0%' : `${pct > 0 ? '+' : ''}${rounded}%`;
-    return `<span class="wl-trend ${cls}" title="Live price vs its 24-hour average — a momentum read, not change-since-yesterday.">${display}</span>`;
-  };
-
-  /* Generic compact rows for groups that don't show a margin/vol meta line. */
-  const plainEntries = (items) => items.map(item => ({ item, price: priceOf(item), sub: '' }));
-  /* Favorites entries now mirror the margin lists for consistency: each row
-     shows the % move chip + a meta line with ea margin (when there's a real
-     positive spread after tax) and daily volume. Margin omitted silently
-     when the spread is unprofitable so the row doesn't shout fake noise. */
-  const favEntries = (items) => items.map(item => {
+  /* Unified row meta — every category uses this so the sidebar shows the
+     same {% change · ea margin · daily volume} triplet on every row, with
+     "—" placeholders when a value is unavailable. Which columns render is
+     gated by columnPrefs, controlled by the toggle pills above the list. */
+  function buildMeta(item, overrides) {
+    overrides = overrides || {};
     const id = String(item.id);
-    const node = latest?.data?.[id];
-    let mgPart = '';
-    if (node && node.high > 0 && node.low > 0 && node.high > node.low) {
-      const margin = node.high - node.low - calculateTax(node.high);
-      if (margin > 0 && margin < node.high * 0.7) mgPart = `+${abbreviateNumber(margin)} · `;
+    const parts = [];
+    if (columnPrefs.change) {
+      const pct = (overrides.pct != null) ? overrides.pct : mover1dPct[id];
+      if (pct == null) {
+        parts.push(`<span class="meta-piece meta-chg neutral" title="Live price vs 24h average">—</span>`);
+      } else {
+        const cls = pct >= 1 ? 'up' : pct <= -1 ? 'down' : 'neutral';
+        const rounded = pct.toFixed(1);
+        const display = (rounded === '0.0' || rounded === '-0.0') ? '0.0%' : `${pct > 0 ? '+' : ''}${rounded}%`;
+        parts.push(`<span class="meta-piece meta-chg ${cls}" title="Live price vs its 24-hour average">${display}</span>`);
+      }
     }
-    const vol = dailyVolume(item.id);
-    const volPart = vol > 0 ? abbreviateNumber(vol) : '';
-    const metaText = mgPart + volPart;
-    const meta = metaText ? `<span class="wl-fav-meta" title="Current live margin per item (after 2% GE tax) · daily traded volume">${metaText}</span>` : '';
-    return { item, price: priceOf(item), sub: `${moveChip(item.id)}${meta}` };
-  });
+    if (columnPrefs.margin) {
+      let margin = (overrides.margin != null) ? overrides.margin : null;
+      if (margin == null) {
+        const node = latest && latest.data ? latest.data[id] : null;
+        if (node && node.high > 0 && node.low > 0 && node.high > node.low) {
+          const m = node.high - node.low - calculateTax(node.high);
+          if (m > 0 && m < node.high * 0.7) margin = m;
+        }
+      }
+      if (margin != null && margin > 0) {
+        parts.push(`<span class="meta-piece meta-ea up" title="${overrides.marginLabel || 'Margin per item, after 2% GE tax'}">+${abbreviateNumber(margin)}</span>`);
+      } else {
+        parts.push(`<span class="meta-piece meta-ea neutral" title="No profitable spread right now (after 2% tax)">—</span>`);
+      }
+    }
+    if (columnPrefs.volume) {
+      const vol = (overrides.vol != null) ? overrides.vol : dailyVolume(item.id);
+      if (vol > 0) parts.push(`<span class="meta-piece meta-vol" title="Daily traded volume">${abbreviateNumber(vol)}</span>`);
+      else parts.push(`<span class="meta-piece meta-vol" title="Daily traded volume">—</span>`);
+    }
+    return parts.length ? `<span class="wl-meta">${parts.join('<span class="meta-sep">·</span>')}</span>` : '';
+  }
+
+  /* Every entry helper now defers to buildMeta — guarantees consistent
+     columns across all categories. Per-category overrides feed in the
+     value the category specifically tracks (mover %, average margin, etc.)
+     so we don't recompute it from latest data when we already have it. */
+  const plainEntries = (items) => items.map(item => ({ item, price: priceOf(item), sub: buildMeta(item) }));
+  const favEntries = (items) => items.map(item => ({ item, price: priceOf(item), sub: buildMeta(item) }));
   const marginEntries = (rows, tag) => rows.slice(0, 30).map(r => ({
     item: r.item, price: priceOf(r.item),
-    /* Dropped the "ea" / "vol" suffix words — at narrow sidebar widths
-       they were causing "+286 ea" to wrap onto two lines and "+5.11M ea"
-       to overflow. The column context makes them obvious; tooltips on
-       hover still spell out what each number is. */
-    sub: `<span class="wl-trend up" title="${tag === 'ea avg' ? '14-day average margin per item, after 2% GE tax' : 'Margin per item, after 2% GE tax'}">+${abbreviateNumber(r.margin)}</span><span class="wl-vol" title="Daily traded volume — how fast this flip fills">${abbreviateNumber(dailyVolume(r.item.id))}</span>`
+    sub: buildMeta(r.item, { margin: r.margin, marginLabel: tag === 'ea avg' ? '14-day average margin per item, after 2% GE tax' : 'Live margin per item, after 2% GE tax' })
   }));
-  const moverEntries = (rows) => rows.map(r => ({ item: r.item, price: priceOf(r.item), sub: `<span class="wl-trend ${r.pct >= 0 ? 'up' : 'down'}" title="Live price vs its 24-hour average.">${r.pct >= 0 ? '+' : ''}${r.pct.toFixed(1)}%</span>` }));
+  const moverEntries = (rows) => rows.map(r => ({ item: r.item, price: priceOf(r.item), sub: buildMeta(r.item, { pct: r.pct }) }));
 
   /* Apply the favorites sort (display-only — never mutates the saved order,
      so switching back to Manual restores the user's drag arrangement). */
@@ -1906,11 +1988,13 @@ function renderWatchlist() {
     else if (favSort === 'change') favsSorted.sort((a, b) => (mover1dPct[String(b.id)] ?? -Infinity) - (mover1dPct[String(a.id)] ?? -Infinity));
   }
 
-  /* Steady Flips entries — uses cache populated by runSteadyFlipsScan(). The
-     "ea avg" tag distinguishes it from the live snapshot margins above. */
+  /* Reliable 14D Margins entries — uses cache populated by
+     runSteadyFlipsScan(). Pass the multi-day mean margin + average daily
+     volume into buildMeta so the row shows {%Δ · +meanMargin · vol}
+     consistent with every other category. */
   const steadyEntries = steadyFlipsCache.slice(0, 30).map(r => ({
     item: r.item, price: priceOf(r.item),
-    sub: `<span class="wl-trend up" title="${r.days}-day average margin per item after 2% GE tax">+${abbreviateNumber(r.meanMargin)}</span><span class="wl-vol" title="Average daily traded volume">${abbreviateNumber(r.vol)}</span>`
+    sub: buildMeta(r.item, { margin: r.meanMargin, marginLabel: `${r.days}-day average margin per item, after 2% GE tax`, vol: r.vol })
   }));
 
   /* Final scanner ordering — favorites pinned on top, then live margins
@@ -3663,7 +3747,13 @@ async function setItem(m, opts = {}) {
   try { localStorage.setItem('ge_lastItem', String(m.id)); } catch (e) {}
   recentItems = [String(m.id), ...recentItems.filter(id => id !== String(m.id))].slice(0, 10);
   try { localStorage.setItem('ge_recentItems', JSON.stringify(recentItems)); } catch (e) {}
-  $("#query").value = m.name;
+  /* Don't pre-fill the search input with the selected item — it created
+     visible "double info" on mobile where the ticker title also showed the
+     name, AND it made the search bar look like a passive title-display
+     instead of an actionable search. Now the search input is purely for
+     INPUT and stays empty (with its placeholder visible). The ticker title
+     below is the canonical "what's loaded" display. */
+  $("#query").value = '';
   applyTitleBadge();
   /* SPA analytics + shareable URLs + per-item SEO: when the user switches
      items, no real navigation happens, so GA4 never sees a new page_view,
@@ -3787,6 +3877,7 @@ setItem._userPicked = false;
     try { past24h = await load24h(); } catch (e) {}
     try { volumes = await loadVolumes(); } catch (e) {}
 
+    renderColToggles();
     renderWatchlist();
     /* Auto-kick the 5-day extremes scan in the background so the 5D Highs /
        5D Lows / Steady Flips groups have results by the time the user looks.
