@@ -3927,8 +3927,12 @@ async function setItem(m, opts = {}) {
     b.innerHTML = `${p.toUpperCase()}<br/><span class="pct-chg ${cls}">${val > 0 ? '+' : ''}${val.toFixed(2)}%</span>`;
   });
 
-  const dailyVal = changes['1d'];
-  $("#tickerChange").innerHTML = `<span class="${dailyVal > 0 ? 'positive' : dailyVal < 0 ? 'negative' : 'neutral'}">${dailyVal > 0 ? '+' : ''}${dailyVal.toFixed(2)}%</span>`;
+  /* The headline % change used to live here (always the 1D change), but it
+     duplicated the 1D toolbar button exactly — and on other timeframes it
+     contradicted the chart by still showing 1D. The toolbar already shows
+     the % for every timeframe with the active one highlighted, so that's the
+     single source of truth. Header keeps just the item name + live price. */
+  $("#tickerChange").innerHTML = '';
 
   currentSeries = filterSeries(seriesForView(view, currentItemSrc, currentItemLowVol), getPeriod(view));
   selectedAbsIdx = null;
