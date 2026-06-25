@@ -666,12 +666,30 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-meta .meta-ea.up { color: var(--positive); }
 .wl-meta .meta-ea.neutral { color: var(--text-muted); }
 .wl-meta .meta-vol { color: var(--text-muted); }
-/* Column-toggle pills above the watchlist — tap to show/hide a column. */
-.col-toggles { display: flex; align-items: center; gap: 4px; padding: 6px 10px; border-top: 1px solid var(--border-main); border-bottom: 1px solid var(--border-main); background: var(--bg-panel); flex-wrap: wrap; }
-.col-toggles-label { font-size: 9px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
-.col-pill { background: transparent; border: 1px solid var(--border-light); color: var(--text-muted); border-radius: 3px; font-size: 10px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; padding: 3px 9px; cursor: pointer; transition: all 0.15s ease; }
-.col-pill:hover { color: var(--text-main); border-color: var(--border-active); }
-.col-pill.active { color: #fff; background: var(--border-active); border-color: var(--border-active); }
+/* Column-customize control above the watchlist — compact bar with a
+   single ⋯ button on the right that opens a dropdown of column toggles
+   (TradingView pattern). */
+.col-toggles { display: flex; justify-content: flex-end; align-items: center; padding: 4px 8px; border-top: 1px solid var(--border-main); background: var(--bg-panel); }
+.col-menu-wrap { position: relative; display: inline-block; }
+.col-menu-btn {
+  background: transparent; border: 1px solid transparent; color: var(--text-muted);
+  border-radius: 4px; font-size: 16px; line-height: 1;
+  width: 28px; height: 24px; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center;
+  transition: all 0.15s ease;
+}
+.col-menu-btn:hover { color: var(--text-main); background: var(--bg-input); border-color: var(--border-light); }
+.col-menu {
+  display: none; position: absolute; right: 0; top: calc(100% + 4px); z-index: 60;
+  min-width: 200px; padding: 8px;
+  background: var(--bg-panel); border: 1px solid var(--border-light);
+  border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.55);
+}
+.col-menu.open { display: block; }
+.col-menu-section { font-size: 9px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; color: var(--text-muted); padding: 4px 6px 6px; }
+.col-menu-row { display: flex; align-items: center; gap: 8px; padding: 6px 6px; font-size: 12px; color: var(--text-main); cursor: pointer; border-radius: 4px; }
+.col-menu-row:hover { background: var(--bg-input); }
+.col-menu-row input { margin: 0; accent-color: var(--border-active); cursor: pointer; }
 
 @media screen and (max-width: 1023px) and (orientation: portrait) {
   /* Mobile portrait: every gap above the chart is collapsed so the chart
@@ -1823,24 +1841,44 @@ function updateMetaForItem(m) {
   setCanonicalLink(url.split('#')[0]);
 }
 
-/* Render the column-toggle pills above the watchlist. Click a pill to
-   show/hide that column across every category at once. State persists. */
+/* Render the column-customize dropdown. A single ⋯ button in a compact
+   bar opens a small popover with one checkbox per toggleable column.
+   Replaces the previous inline-pill bar — same state model, sleeker look,
+   matches the TradingView watchlist customise-columns affordance. */
 function renderColToggles() {
   const host = document.getElementById('colToggles');
   if (!host) return;
-  const pill = (key, label, title) =>
-    `<button type="button" class="col-pill ${columnPrefs[key] ? 'active' : ''}" data-col="${key}" title="${title}">${label}</button>`;
-  host.innerHTML = `<span class="col-toggles-label">Show</span>${
-    pill('change', '%Δ', 'Toggle 24-hour % change column')
-  }${pill('margin', '+ea', 'Toggle live margin column')}${pill('volume', 'vol', 'Toggle daily volume column')}`;
-  host.querySelectorAll('.col-pill').forEach(btn => {
-    btn.onclick = () => {
-      const key = btn.getAttribute('data-col');
-      columnPrefs[key] = !columnPrefs[key];
+  const row = (key, label) =>
+    `<label class="col-menu-row"><input type="checkbox" data-col="${key}" ${columnPrefs[key] ? 'checked' : ''}><span>${label}</span></label>`;
+  host.innerHTML = `
+    <div class="col-menu-wrap">
+      <button type="button" id="btnCols" class="col-menu-btn" aria-label="Customize columns" title="Customize columns" aria-expanded="false">⋯</button>
+      <div class="col-menu" id="colMenu" role="menu">
+        <div class="col-menu-section">Customize columns</div>
+        ${row('change', '% change (24H)')}
+        ${row('margin', 'Margin (after tax)')}
+        ${row('volume', 'Daily volume')}
+      </div>
+    </div>`;
+  const btn = host.querySelector('#btnCols');
+  const menu = host.querySelector('#colMenu');
+  const closeMenu = () => { menu.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); };
+  btn.onclick = (ev) => {
+    ev.stopPropagation();
+    const open = menu.classList.toggle('open');
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+  };
+  menu.addEventListener('click', (ev) => ev.stopPropagation());
+  menu.querySelectorAll('input[data-col]').forEach(cb => {
+    cb.onchange = () => {
+      const key = cb.getAttribute('data-col');
+      columnPrefs[key] = cb.checked;
       saveColPrefs();
-      renderColToggles();
       renderWatchlist();
     };
+  });
+  document.addEventListener('click', (ev) => {
+    if (menu.classList.contains('open') && !menu.contains(ev.target) && ev.target !== btn) closeMenu();
   });
 }
 
