@@ -714,10 +714,14 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 @media (prefers-reduced-motion: reduce) {
   .wl-item.at-high5d, .wl-item.at-low5d { animation: none; }
 }
-.wl-item-left { display: flex; align-items: center; gap: 8px; overflow: hidden; }
+.wl-item-left { display: flex; align-items: center; gap: 8px; overflow: hidden; flex: 1 1 auto; min-width: 0; }
 .wl-item-left img { width: 20px; height: 20px; image-rendering: pixelated; flex-shrink: 0; }
-.wl-item-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;}
-.wl-item-right { display: flex; align-items: center; gap: 6px; text-align: right; }
+.wl-item-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; min-width: 0; flex: 0 1 auto; }
+.wl-item-left .hl-badge { margin-left: 2px; }
+/* Fixed-width, right-aligned data columns so values stack into clean
+   columns across every row (TradingView style). Tabular figures keep digits
+   the same width. The column-header row uses matching widths. */
+.wl-item-right { display: flex; align-items: center; gap: 0; text-align: right; flex: 0 0 auto; font-variant-numeric: tabular-nums; }
 /* Favorites management controls (reorder ▲▼ + remove ×). Hidden entirely in
    the resting state so the list stays clean — revealed only when the user
    taps "Edit" on the Favorites header (which adds .fav-editing to the list
@@ -748,24 +752,32 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-item.swipe-revealed .wl-item-right { transform: translateX(-56px); }
 .wl-item .wl-swipe-bg { position: absolute; top: 0; right: 0; bottom: 0; width: 56px; display: flex; align-items: center; justify-content: center; background: var(--negative); color: #fff; font-weight: 800; font-size: 11px; letter-spacing: 0.5px; pointer-events: none; opacity: 0; transition: opacity 0.18s ease; }
 .wl-item.swipe-revealed .wl-swipe-bg { opacity: 1; }
+/* Column widths — ONE source of truth shared by data rows and the header so
+   numbers stack into aligned columns. Spacing is baked into the width
+   (right-aligned text leaves a natural gap), so no padding mismatches. */
+.wl-item-price, .ch-last { width: 52px; text-align: right; flex-shrink: 0; }
+.meta-chg, .ch-chg { width: 50px; text-align: right; flex-shrink: 0; }
+.meta-ea,  .ch-ea  { width: 42px; text-align: right; flex-shrink: 0; }
+.meta-vol, .ch-vol { width: 54px; text-align: right; flex-shrink: 0; }
 .wl-item-price { font-weight: 700; font-size: 13px; color: var(--text-main); }
 .wl-trend { font-size: 10px; cursor: help; white-space: nowrap; }
 .wl-trend.up { color: var(--positive); }
 .wl-trend.down { color: var(--negative); }
 .wl-trend.neutral { color: var(--text-muted); }
-.wl-vol { display: block; font-size: 9px; color: var(--text-muted); cursor: help; margin-top: 1px; letter-spacing: 0.2px; white-space: nowrap; }
-.wl-fav-meta { display: block; font-size: 9px; color: var(--text-muted); cursor: help; margin-top: 1px; letter-spacing: 0.2px; white-space: nowrap; }
-/* Unified meta line for every list row — {%Δ · ea · vol}. Each piece sized
-   the same so the column stack is visually consistent across categories. */
-.wl-meta { display: block; font-size: 9.5px; line-height: 1.2; white-space: nowrap; margin-top: 1px; }
+/* Unified meta row — fixed-width right-aligned cells laid out as a flex row
+   so each metric stacks into its own column across rows. */
+.wl-meta { display: flex; align-items: center; gap: 0; font-size: 9.5px; line-height: 1.2; white-space: nowrap; }
 .wl-meta .meta-piece { cursor: help; }
-.wl-meta .meta-sep { color: var(--text-muted); opacity: 0.55; padding: 0 4px; }
 .wl-meta .meta-chg.up { color: var(--positive); }
 .wl-meta .meta-chg.down { color: var(--negative); }
 .wl-meta .meta-chg.neutral { color: var(--text-muted); }
 .wl-meta .meta-ea.up { color: var(--positive); }
 .wl-meta .meta-ea.neutral { color: var(--text-muted); }
 .wl-meta .meta-vol { color: var(--text-muted); }
+/* Column header row above the lists — matches the row column widths. */
+.col-header { display: flex; align-items: center; padding: 4px 14px 5px; font-size: 8.5px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-muted); background: var(--bg-panel); border-bottom: 1px solid var(--border-main); }
+.col-header .ch-name { flex: 1 1 auto; min-width: 0; }
+.col-header .ch-cols { display: flex; align-items: center; gap: 0; font-variant-numeric: tabular-nums; }
 /* Column-customize control above the watchlist — sort labels on the left
    (for Favorites), ⋯ button on the right opens column-visibility menu. */
 .col-toggles { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; gap: 6px; border-top: 1px solid var(--border-main); background: var(--bg-panel); }
@@ -1211,6 +1223,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
     <div class="watchlist-container">
       <div class="calc-container" id="sideModule"></div>
       <div class="col-toggles" id="colToggles"></div>
+      <div class="col-header" id="colHeader"></div>
       <div class="watchlist-content" id="watchlistContent"></div>
     </div>
 
@@ -2051,7 +2064,21 @@ function updateMetaForItem(m) {
    one-tap sort the Favorites list (other lists keep their inherent sort
    because the list's name describes its sort — "High Vol Margins" is
    sorted by margin by definition, etc.). */
+/* Column header row (TradingView-style) — "Item" on the left, then the
+   enabled data columns right-aligned to match the row cells exactly so the
+   numbers stack into clean columns. Rebuilt whenever column prefs change. */
+function renderColHeader() {
+  const host = document.getElementById('colHeader');
+  if (!host) return;
+  let cols = '<span class="ch-last">Last</span>';
+  if (columnPrefs.change) cols += '<span class="ch-chg">Chg%</span>';
+  if (columnPrefs.margin) cols += '<span class="ch-ea">Ea</span>';
+  if (columnPrefs.volume) cols += '<span class="ch-vol">Vol</span>';
+  host.innerHTML = `<span class="ch-name">Item</span><span class="ch-cols">${cols}</span>`;
+}
+
 function renderColToggles() {
+  renderColHeader();
   const host = document.getElementById('colToggles');
   if (!host) return;
   const sortBtn = (key, label) => {
@@ -2083,11 +2110,18 @@ function renderColToggles() {
         ${row('volume', 'Daily volume')}
       </div>
     </div>`;
-  /* Wire the sort buttons — click sets favSort, persists, re-renders. */
+  /* Wire the sort buttons — click sets favSort, persists, re-renders.
+     Switching off Manual exits Edit mode (reorder arrows only make sense in
+     the user's drag order). */
   host.querySelectorAll('.col-sort-btn').forEach(b => {
     b.onclick = () => {
       favSort = b.getAttribute('data-sort');
       try { localStorage.setItem('ge_favSort', favSort); } catch (e) {}
+      if (favSort !== 'manual' && favEditMode) {
+        favEditMode = false;
+        const wc = document.getElementById('watchlistContent');
+        if (wc) wc.classList.remove('fav-editing');
+      }
       renderColToggles();
       renderWatchlist();
     };
@@ -2234,7 +2268,7 @@ function renderWatchlist() {
       if (vol > 0) parts.push(`<span class="meta-piece meta-vol" title="Daily traded volume">${abbreviateNumber(vol)}</span>`);
       else parts.push(`<span class="meta-piece meta-vol" title="Daily traded volume">—</span>`);
     }
-    return parts.length ? `<span class="wl-meta">${parts.join('<span class="meta-sep">·</span>')}</span>` : '';
+    return parts.length ? `<span class="wl-meta">${parts.join('')}</span>` : '';
   }
 
   /* Every entry helper now defers to buildMeta — guarantees consistent
@@ -2301,13 +2335,13 @@ function renderWatchlist() {
     const titleDiv = document.createElement("div");
     titleDiv.className = `category-title ${group.className}`;
     const isFavTitle = group.name === "⭐ Favorites";
-    const sortBtnHTML = isFavTitle && group.entries.length
-      ? `<button type="button" class="wl-sort-btn" title="Sort favorites">⇅ ${FAV_SORT_LABELS[favSort]}</button>`
-      : '';
+    /* Sort lives ONLY in the "Sort favs" strip in the column bar now — the
+       old ⇅ cycle button in this header was a duplicate control. Header
+       keeps just Edit + the collapse chevron. */
     const editBtnHTML = isFavTitle && group.entries.length
       ? `<button type="button" class="wl-edit-btn ${favEditMode ? 'active' : ''}">${favEditMode ? 'Done' : 'Edit'}</button>`
       : '';
-    titleDiv.innerHTML = `<span>${group.name}</span><span class="cat-title-right">${sortBtnHTML}${editBtnHTML}<span class="cat-chevron">${isGroupOpen ? "▼" : "▶"}</span></span>`;
+    titleDiv.innerHTML = `<span>${group.name}</span><span class="cat-title-right">${editBtnHTML}<span class="cat-chevron">${isGroupOpen ? "▼" : "▶"}</span></span>`;
     const listDiv = document.createElement("div");
     listDiv.className = `category-list ${isGroupOpen ? "" : "collapsed"}`;
     titleDiv.onclick = () => {
@@ -2329,23 +2363,6 @@ function renderWatchlist() {
         editBtn.classList.toggle('active', favEditMode);
       };
     }
-    const sortBtn = titleDiv.querySelector('.wl-sort-btn');
-    if (sortBtn) {
-      sortBtn.onclick = (ev) => {
-        ev.stopPropagation(); // don't collapse the group
-        /* Cycle Manual → Price → 24h % → A–Z → Manual. Leaving manual exits
-           edit mode (reorder arrows are meaningless when not in drag order). */
-        const order = ['manual', 'price', 'change', 'name'];
-        favSort = order[(order.indexOf(favSort) + 1) % order.length];
-        try { localStorage.setItem('ge_favSort', favSort); } catch (e) {}
-        if (favSort !== 'manual' && favEditMode) {
-          favEditMode = false;
-          container.classList.remove('fav-editing');
-        }
-        renderWatchlist();
-      };
-    }
-
     let inner = "";
     if (hasScan && scanState !== 'done' && group.entries.length === 0) {
       const loadLabel = group.scan === 'steady' ? 'Scanning the last 14 days of margins…' : 'Scanning 5-day extremes…';
@@ -2398,9 +2415,9 @@ function renderWatchlist() {
             <div class="wl-item-left">
               <img src="${itemIconUrl(item.id)}" alt="${item.name} icon" loading="lazy">
               <span class="wl-item-name">${item.name}</span>
+              ${hlBadge}
             </div>
             <div class="wl-item-right">
-              ${hlBadge}
               <span class="wl-item-price">${abbreviateNumber(e.price)}</span>
               ${e.sub}
               ${reorderBtns}
