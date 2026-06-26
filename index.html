@@ -721,7 +721,9 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 /* Fixed-width, right-aligned data columns so values stack into clean
    columns across every row (TradingView style). Tabular figures keep digits
    the same width. The column-header row uses matching widths. */
-.wl-item-right { display: flex; align-items: center; gap: 0; text-align: right; flex: 0 0 auto; font-variant-numeric: tabular-nums; }
+/* 26px right gutter mirrors the header's ch-cols margin so data columns line
+   up exactly under their labels (the header reserves that space for the ⋯). */
+.wl-item-right { display: flex; align-items: center; gap: 0; text-align: right; flex: 0 0 auto; font-variant-numeric: tabular-nums; margin-right: 26px; }
 /* Favorites management controls (reorder ▲▼ + remove ×). Hidden entirely in
    the resting state so the list stays clean — revealed only when the user
    taps "Edit" on the Favorites header (which adds .fav-editing to the list
@@ -739,13 +741,19 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-fav-reorder button:hover:not(:disabled) { color: var(--text-main); border-color: var(--border-active); }
 .wl-fav-reorder button:disabled { opacity: 0.25; cursor: not-allowed; }
 .wl-fav-remove:hover { color: var(--negative); border-color: var(--negative); background: rgba(239,83,80,0.12); }
-/* Edit mode: show the controls, hide the read-only price / move-chip / badge
-   so the controls have breathing room and the row never crowds. */
-.fav-editing .wl-fav-reorder, .fav-editing .wl-fav-remove { display: flex; }
-.fav-editing .wl-item[data-fav-row="1"] .wl-item-price,
-.fav-editing .wl-item[data-fav-row="1"] .wl-trend,
-.fav-editing .wl-item[data-fav-row="1"] .hl-badge { display: none; }
-.fav-editing .wl-item[data-fav-row="1"] { cursor: default; }
+/* TradingView-style reveal: hovering a favorite row swaps its data columns
+   for the reorder ▲▼ + remove × controls. No Edit mode — the trashcan
+   appears on hover (desktop). On touch devices (no hover) the × is always
+   shown so it's reachable, and swipe-to-remove still works. */
+@media (hover: hover) {
+  .wl-item[data-fav-row="1"]:hover .wl-fav-reorder,
+  .wl-item[data-fav-row="1"]:hover .wl-fav-remove { display: flex; }
+  .wl-item[data-fav-row="1"]:hover .wl-item-right .wl-meta,
+  .wl-item[data-fav-row="1"]:hover .wl-item-right .wl-item-price { display: none; }
+}
+@media (hover: none) {
+  .wl-item[data-fav-row="1"] .wl-fav-remove { display: flex; opacity: 0.55; }
+}
 .wl-item.swiping { transition: none; }
 .wl-item .wl-item-left, .wl-item .wl-item-right { transition: transform 0.18s ease; }
 .wl-item.swipe-revealed .wl-item-left,
@@ -774,36 +782,34 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-meta .meta-ea.up { color: var(--positive); }
 .wl-meta .meta-ea.neutral { color: var(--text-muted); }
 .wl-meta .meta-vol { color: var(--text-muted); }
-/* Column header row above the lists — matches the row column widths. */
-.col-header { display: flex; align-items: center; padding: 4px 14px 5px; font-size: 8.5px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-muted); background: var(--bg-panel); border-bottom: 1px solid var(--border-main); }
+/* Single header bar — clickable sortable column labels + the ⋯ menu, all in
+   one row. Column widths match the data-row cells so labels sit over their
+   columns. A 26px right reserve lines the columns up with the data rows
+   (whose right content also clears that gutter) while the ⋯ lives in it. */
+.col-header { position: relative; display: flex; align-items: center; padding: 5px 14px 6px; font-size: 8.5px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-muted); background: var(--bg-panel); border-top: 1px solid var(--border-main); border-bottom: 1px solid var(--border-main); }
 .col-header .ch-name { flex: 1 1 auto; min-width: 0; }
-.col-header .ch-cols { display: flex; align-items: center; gap: 0; font-variant-numeric: tabular-nums; }
-/* Column-customize control above the watchlist — sort labels on the left
-   (for Favorites), ⋯ button on the right opens column-visibility menu. */
-.col-toggles { display: flex; justify-content: space-between; align-items: center; padding: 4px 8px; gap: 6px; border-top: 1px solid var(--border-main); background: var(--bg-panel); }
-.col-sort-strip { display: inline-flex; align-items: center; gap: 2px; min-width: 0; flex-wrap: wrap; }
-.col-sort-label { font-size: 9px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
-.col-sort-btn {
-  background: transparent; border: 1px solid transparent; color: var(--text-muted);
-  border-radius: 3px; font-size: 10px; font-weight: 700; letter-spacing: 0.3px;
-  padding: 3px 7px; cursor: pointer; transition: all 0.15s ease;
-}
-.col-sort-btn:hover { color: var(--text-main); border-color: var(--border-light); }
-.col-sort-btn.active { color: #fff; background: var(--border-active); border-color: var(--border-active); }
-.col-menu-wrap { position: relative; display: inline-block; flex-shrink: 0; }
+.col-header .ch-cols { display: flex; align-items: center; gap: 0; font-variant-numeric: tabular-nums; margin-right: 26px; }
+.col-header .ch-sortable { cursor: pointer; border-radius: 3px; transition: color 0.12s ease; }
+.col-header .ch-sortable:hover { color: var(--text-main); }
+.col-header .ch-sortable.sorted { color: var(--border-active); }
+.col-header .ch-arrow { font-size: 8px; margin-left: 1px; }
+/* ⋯ column-visibility menu — absolutely positioned at the far right so it
+   sits in the reserved gutter and doesn't shift the column labels. */
 .col-menu-btn {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
   background: transparent; border: 1px solid transparent; color: var(--text-muted);
   border-radius: 4px; font-size: 16px; line-height: 1;
-  width: 28px; height: 24px; cursor: pointer;
+  width: 24px; height: 22px; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
   transition: all 0.15s ease;
 }
 .col-menu-btn:hover { color: var(--text-main); background: var(--bg-input); border-color: var(--border-light); }
 .col-menu {
-  display: none; position: absolute; right: 0; top: calc(100% + 4px); z-index: 60;
+  display: none; position: absolute; right: 6px; top: calc(100% + 2px); z-index: 60;
   min-width: 200px; padding: 8px;
   background: var(--bg-panel); border: 1px solid var(--border-light);
   border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.55);
+  text-transform: none; letter-spacing: 0; font-weight: 400;
 }
 .col-menu.open { display: block; }
 .col-menu-section { font-size: 9px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase; color: var(--text-muted); padding: 4px 6px 6px; }
@@ -1222,7 +1228,6 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 
     <div class="watchlist-container">
       <div class="calc-container" id="sideModule"></div>
-      <div class="col-toggles" id="colToggles"></div>
       <div class="col-header" id="colHeader"></div>
       <div class="watchlist-content" id="watchlistContent"></div>
     </div>
@@ -2067,65 +2072,48 @@ function updateMetaForItem(m) {
 /* Column header row (TradingView-style) — "Item" on the left, then the
    enabled data columns right-aligned to match the row cells exactly so the
    numbers stack into clean columns. Rebuilt whenever column prefs change. */
+/* Single header bar — TradingView style. The column labels ARE the sort
+   controls (click a column to sort Favorites by it; click the active one
+   again to return to Manual order). The ⋯ on the right opens the
+   column-visibility menu. Replaces the old two-row "sort strip + column
+   header" stack. */
+function renderColToggles() { renderColHeader(); } // back-compat alias
 function renderColHeader() {
   const host = document.getElementById('colHeader');
   if (!host) return;
-  let cols = '<span class="ch-last">Last</span>';
-  if (columnPrefs.change) cols += '<span class="ch-chg">Chg%</span>';
-  if (columnPrefs.margin) cols += '<span class="ch-ea">Ea</span>';
-  if (columnPrefs.volume) cols += '<span class="ch-vol">Vol</span>';
-  host.innerHTML = `<span class="ch-name">Item</span><span class="ch-cols">${cols}</span>`;
-}
-
-function renderColToggles() {
-  renderColHeader();
-  const host = document.getElementById('colToggles');
-  if (!host) return;
-  const sortBtn = (key, label) => {
-    const active = favSort === key;
-    return `<button type="button" class="col-sort-btn ${active ? 'active' : ''}" data-sort="${key}" title="Sort Favorites by ${label}">${label}</button>`;
-  };
-  const row = (key, label) =>
-    `<label class="col-menu-row"><input type="checkbox" data-col="${key}" ${columnPrefs[key] ? 'checked' : ''}><span>${label}</span></label>`;
-  /* Sort labels are visible only when the user has Favorites — they don't
-     sort anything else, so showing them when there are no favorites would
-     be misleading. */
-  const showSort = Array.isArray(favorites) && favorites.length > 0;
-  const sortLabels = showSort ? `
-    <span class="col-sort-strip">
-      <span class="col-sort-label">Sort favs</span>
-      ${sortBtn('manual', 'Manual')}
-      ${columnPrefs.change ? sortBtn('change', 'Chg%') : ''}
-      ${columnPrefs.margin ? sortBtn('margin', 'Ea') : ''}
-      ${columnPrefs.volume ? sortBtn('volume', 'Vol') : ''}
-    </span>` : '';
+  const arrow = (key) => favSort === key ? '<span class="ch-arrow">↓</span>' : '';
+  /* Each column header doubles as a sort button. data-sort maps the column
+     to its favSort key. */
+  const col = (cls, sortKey, label) =>
+    `<span class="${cls} ch-sortable ${favSort === sortKey ? 'sorted' : ''}" data-sort="${sortKey}" role="button" tabindex="0" title="Sort favorites by ${label}">${label}${arrow(sortKey)}</span>`;
+  let cols = col('ch-last', 'price', 'Last');
+  if (columnPrefs.change) cols += col('ch-chg', 'change', 'Chg%');
+  if (columnPrefs.margin) cols += col('ch-ea', 'margin', 'Ea');
+  if (columnPrefs.volume) cols += col('ch-vol', 'volume', 'Vol');
   host.innerHTML = `
-    ${sortLabels}
-    <div class="col-menu-wrap">
-      <button type="button" id="btnCols" class="col-menu-btn" aria-label="Customize columns" title="Customize columns" aria-expanded="false">⋯</button>
-      <div class="col-menu" id="colMenu" role="menu">
-        <div class="col-menu-section">Customize columns</div>
-        ${row('change', '% change (24H)')}
-        ${row('margin', 'Margin (after tax)')}
-        ${row('volume', 'Daily volume')}
-      </div>
+    <span class="ch-name ch-sortable ${favSort === 'name' ? 'sorted' : ''}" data-sort="name" role="button" tabindex="0" title="Sort favorites by name">Item${arrow('name')}</span>
+    <span class="ch-cols">${cols}</span>
+    <button type="button" id="btnCols" class="col-menu-btn" aria-label="Customize columns" title="Customize columns" aria-expanded="false">⋯</button>
+    <div class="col-menu" id="colMenu" role="menu">
+      <div class="col-menu-section">Customize columns</div>
+      <label class="col-menu-row"><input type="checkbox" data-col="change" ${columnPrefs.change ? 'checked' : ''}><span>% change (24H)</span></label>
+      <label class="col-menu-row"><input type="checkbox" data-col="margin" ${columnPrefs.margin ? 'checked' : ''}><span>Margin (after tax)</span></label>
+      <label class="col-menu-row"><input type="checkbox" data-col="volume" ${columnPrefs.volume ? 'checked' : ''}><span>Daily volume</span></label>
     </div>`;
-  /* Wire the sort buttons — click sets favSort, persists, re-renders.
-     Switching off Manual exits Edit mode (reorder arrows only make sense in
-     the user's drag order). */
-  host.querySelectorAll('.col-sort-btn').forEach(b => {
-    b.onclick = () => {
-      favSort = b.getAttribute('data-sort');
+  /* Column-label click → sort favorites. Clicking the already-active column
+     toggles back to Manual (the user's drag order). */
+  host.querySelectorAll('.ch-sortable').forEach(el => {
+    const apply = () => {
+      const key = el.getAttribute('data-sort');
+      favSort = (favSort === key) ? 'manual' : key;
       try { localStorage.setItem('ge_favSort', favSort); } catch (e) {}
-      if (favSort !== 'manual' && favEditMode) {
-        favEditMode = false;
-        const wc = document.getElementById('watchlistContent');
-        if (wc) wc.classList.remove('fav-editing');
-      }
-      renderColToggles();
+      renderColHeader();
       renderWatchlist();
     };
+    el.onclick = apply;
+    el.onkeydown = (ev) => { if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); apply(); } };
   });
+  /* ⋯ column-visibility menu. */
   const btn = host.querySelector('#btnCols');
   const menu = host.querySelector('#colMenu');
   const closeMenu = () => { menu.classList.remove('open'); btn.setAttribute('aria-expanded', 'false'); };
@@ -2137,10 +2125,9 @@ function renderColToggles() {
   menu.addEventListener('click', (ev) => ev.stopPropagation());
   menu.querySelectorAll('input[data-col]').forEach(cb => {
     cb.onchange = () => {
-      const key = cb.getAttribute('data-col');
-      columnPrefs[key] = cb.checked;
+      columnPrefs[cb.getAttribute('data-col')] = cb.checked;
       saveColPrefs();
-      renderColToggles();
+      renderColHeader();
       renderWatchlist();
     };
   });
@@ -2335,13 +2322,10 @@ function renderWatchlist() {
     const titleDiv = document.createElement("div");
     titleDiv.className = `category-title ${group.className}`;
     const isFavTitle = group.name === "⭐ Favorites";
-    /* Sort lives ONLY in the "Sort favs" strip in the column bar now — the
-       old ⇅ cycle button in this header was a duplicate control. Header
-       keeps just Edit + the collapse chevron. */
-    const editBtnHTML = isFavTitle && group.entries.length
-      ? `<button type="button" class="wl-edit-btn ${favEditMode ? 'active' : ''}">${favEditMode ? 'Done' : 'Edit'}</button>`
-      : '';
-    titleDiv.innerHTML = `<span>${group.name}</span><span class="cat-title-right">${editBtnHTML}<span class="cat-chevron">${isGroupOpen ? "▼" : "▶"}</span></span>`;
+    /* No Edit button anymore — the per-row × reveals on hover (desktop) /
+       is always shown (touch), TradingView-style. Header is just the
+       title + collapse chevron. */
+    titleDiv.innerHTML = `<span>${group.name}</span><span class="cat-title-right"><span class="cat-chevron">${isGroupOpen ? "▼" : "▶"}</span></span>`;
     const listDiv = document.createElement("div");
     listDiv.className = `category-list ${isGroupOpen ? "" : "collapsed"}`;
     titleDiv.onclick = () => {
@@ -2353,16 +2337,6 @@ function renderWatchlist() {
         else if (group.scan === 'steady') runSteadyFlipsScan();
       }
     };
-    const editBtn = titleDiv.querySelector('.wl-edit-btn');
-    if (editBtn) {
-      editBtn.onclick = (ev) => {
-        ev.stopPropagation(); // don't collapse the group
-        favEditMode = !favEditMode;
-        container.classList.toggle('fav-editing', favEditMode);
-        editBtn.textContent = favEditMode ? 'Done' : 'Edit';
-        editBtn.classList.toggle('active', favEditMode);
-      };
-    }
     let inner = "";
     if (hasScan && scanState !== 'done' && group.entries.length === 0) {
       const loadLabel = group.scan === 'steady' ? 'Scanning the last 14 days of margins…' : 'Scanning 5-day extremes…';
