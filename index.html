@@ -723,7 +723,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
    the same width. The column-header row uses matching widths. */
 /* 26px right gutter mirrors the header's ch-cols margin so data columns line
    up exactly under their labels (the header reserves that space for the ⋯). */
-.wl-item-right { display: flex; align-items: center; gap: 9px; text-align: right; flex: 0 0 auto; font-variant-numeric: tabular-nums; margin-right: 26px; }
+.wl-item-right { display: flex; align-items: center; gap: 6px; text-align: right; flex: 0 0 auto; font-variant-numeric: tabular-nums; margin-right: 26px; }
 /* Favorites management controls (reorder ▲▼ + remove ×). Hidden entirely in
    the resting state so the list stays clean — revealed only when the user
    taps "Edit" on the Favorites header (which adds .fav-editing to the list
@@ -774,7 +774,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-trend.neutral { color: var(--text-muted); }
 /* Unified meta row — fixed-width right-aligned cells laid out as a flex row
    so each metric stacks into its own column across rows. */
-.wl-meta { display: flex; align-items: center; gap: 9px; font-size: 9.5px; line-height: 1.2; white-space: nowrap; }
+.wl-meta { display: flex; align-items: center; gap: 6px; font-size: 9.5px; line-height: 1.2; white-space: nowrap; }
 .wl-meta .meta-piece { cursor: help; }
 .wl-meta .meta-chg.up { color: var(--positive); }
 .wl-meta .meta-chg.down { color: var(--negative); }
@@ -788,7 +788,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
    (whose right content also clears that gutter) while the ⋯ lives in it. */
 .col-header { position: relative; display: flex; align-items: center; padding: 5px 14px 6px; font-size: 8.5px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-muted); background: var(--bg-panel); border-top: 1px solid var(--border-main); border-bottom: 1px solid var(--border-main); }
 .col-header .ch-name { flex: 1 1 auto; min-width: 0; }
-.col-header .ch-cols { display: flex; align-items: center; gap: 9px; font-variant-numeric: tabular-nums; margin-right: 26px; }
+.col-header .ch-cols { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; margin-right: 26px; }
 .col-header .ch-sortable { cursor: pointer; border-radius: 3px; transition: color 0.12s ease; }
 .col-header .ch-sortable:hover { color: var(--text-main); }
 .col-header .ch-sortable.sorted { color: var(--border-active); }
