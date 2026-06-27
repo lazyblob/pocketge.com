@@ -714,7 +714,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 @media (prefers-reduced-motion: reduce) {
   .wl-item.at-high5d, .wl-item.at-low5d { animation: none; }
 }
-.wl-item-left { display: flex; align-items: center; gap: 8px; overflow: hidden; flex: 1 1 auto; min-width: 0; }
+.wl-item-left { display: flex; align-items: center; gap: 6px; overflow: hidden; flex: 1 1 auto; min-width: 0; }
 .wl-item-left img { width: 20px; height: 20px; image-rendering: pixelated; flex-shrink: 0; }
 .wl-item-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; min-width: 0; flex: 0 1 auto; }
 .wl-item-left .hl-badge { margin-left: 2px; }
@@ -723,7 +723,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
    the same width. The column-header row uses matching widths. */
 /* 26px right gutter mirrors the header's ch-cols margin so data columns line
    up exactly under their labels (the header reserves that space for the ⋯). */
-.wl-item-right { display: flex; align-items: center; gap: 6px; text-align: right; flex: 0 0 auto; font-variant-numeric: tabular-nums; margin-right: 26px; }
+.wl-item-right { display: flex; align-items: center; gap: 5px; text-align: right; flex: 0 0 auto; font-variant-numeric: tabular-nums; margin-right: 22px; }
 /* Favorites management controls (reorder ▲▼ + remove ×). Hidden entirely in
    the resting state so the list stays clean — revealed only when the user
    taps "Edit" on the Favorites header (which adds .fav-editing to the list
@@ -739,10 +739,10 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
    header's ⋯), absolutely positioned so it never covers the data columns.
    Hidden until the row is hovered (desktop); faintly shown on touch. */
 .wl-fav-remove {
-  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
   background: transparent; border: 1px solid var(--border-light); color: var(--text-muted);
-  border-radius: 3px; width: 20px; height: 20px; cursor: pointer; line-height: 1;
-  font-size: 14px; padding: 0; display: flex; align-items: center; justify-content: center;
+  border-radius: 3px; width: 18px; height: 18px; cursor: pointer; line-height: 1;
+  font-size: 13px; padding: 0; display: flex; align-items: center; justify-content: center;
   opacity: 0; pointer-events: none; transition: opacity 0.12s ease, color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
   z-index: 5;
 }
@@ -762,10 +762,10 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 /* Column widths — ONE source of truth shared by data rows and the header so
    numbers stack into aligned columns. Spacing is baked into the width
    (right-aligned text leaves a natural gap), so no padding mismatches. */
-.wl-item-price, .ch-last { width: 44px; text-align: right; flex-shrink: 0; }
-.meta-chg, .ch-chg { width: 44px; text-align: right; flex-shrink: 0; }
-.meta-ea,  .ch-ea  { width: 34px; text-align: right; flex-shrink: 0; }
-.meta-vol, .ch-vol { width: 50px; text-align: right; flex-shrink: 0; }
+.wl-item-price, .ch-last { width: 40px; text-align: right; flex-shrink: 0; }
+.meta-chg, .ch-chg { width: 42px; text-align: right; flex-shrink: 0; }
+.meta-ea,  .ch-ea  { width: 30px; text-align: right; flex-shrink: 0; }
+.meta-vol, .ch-vol { width: 46px; text-align: right; flex-shrink: 0; }
 .wl-item-price { font-weight: 700; font-size: 13px; color: var(--text-main); }
 .wl-trend { font-size: 10px; cursor: help; white-space: nowrap; }
 .wl-trend.up { color: var(--positive); }
@@ -773,7 +773,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-trend.neutral { color: var(--text-muted); }
 /* Unified meta row — fixed-width right-aligned cells laid out as a flex row
    so each metric stacks into its own column across rows. */
-.wl-meta { display: flex; align-items: center; gap: 6px; font-size: 9.5px; line-height: 1.2; white-space: nowrap; }
+.wl-meta { display: flex; align-items: center; gap: 5px; font-size: 9.5px; line-height: 1.2; white-space: nowrap; }
 .wl-meta .meta-piece { cursor: help; }
 .wl-meta .meta-chg.up { color: var(--positive); }
 .wl-meta .meta-chg.down { color: var(--negative); }
@@ -787,7 +787,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
    (whose right content also clears that gutter) while the ⋯ lives in it. */
 .col-header { position: relative; display: flex; align-items: center; padding: 5px 14px 6px; font-size: 8.5px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-muted); background: var(--bg-panel); border-top: 1px solid var(--border-main); border-bottom: 1px solid var(--border-main); }
 .col-header .ch-name { flex: 1 1 auto; min-width: 0; }
-.col-header .ch-cols { display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; margin-right: 26px; }
+.col-header .ch-cols { display: flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; margin-right: 22px; }
 .col-header .ch-sortable { cursor: pointer; border-radius: 3px; transition: color 0.12s ease; }
 .col-header .ch-sortable:hover { color: var(--text-main); }
 .col-header .ch-sortable.sorted { color: var(--border-active); }
@@ -795,10 +795,10 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 /* ⋯ column-visibility menu — absolutely positioned at the far right so it
    sits in the reserved gutter and doesn't shift the column labels. */
 .col-menu-btn {
-  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
   background: transparent; border: 1px solid transparent; color: var(--text-muted);
-  border-radius: 4px; font-size: 16px; line-height: 1;
-  width: 24px; height: 22px; cursor: pointer;
+  border-radius: 4px; font-size: 15px; line-height: 1;
+  width: 20px; height: 20px; cursor: pointer;
   display: inline-flex; align-items: center; justify-content: center;
   transition: all 0.15s ease;
 }
