@@ -735,24 +735,23 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-sort-btn { background: transparent; border: 1px solid var(--border-light); color: var(--text-muted); border-radius: 3px; font-size: 9px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; padding: 2px 7px; margin-right: 8px; cursor: pointer; transition: all 0.15s ease; white-space: nowrap; }
 .wl-sort-btn:hover { color: var(--text-main); border-color: var(--border-active); }
 .cat-title-right { display: inline-flex; align-items: center; }
-.wl-fav-remove { background: transparent; border: 1px solid var(--border-light); color: var(--text-muted); border-radius: 3px; width: 24px; height: 24px; cursor: pointer; line-height: 1; font-size: 16px; padding: 0; display: none; align-items: center; justify-content: center; flex-shrink: 0; transition: all 0.15s ease; }
-.wl-fav-reorder { display: none; flex-direction: column; gap: 2px; flex-shrink: 0; }
-.wl-fav-reorder button { background: transparent; border: 1px solid var(--border-light); color: var(--text-muted); border-radius: 3px; width: 24px; height: 12px; cursor: pointer; padding: 0; font-size: 8px; line-height: 1; display: flex; align-items: center; justify-content: center; transition: all 0.15s ease; }
-.wl-fav-reorder button:hover:not(:disabled) { color: var(--text-main); border-color: var(--border-active); }
-.wl-fav-reorder button:disabled { opacity: 0.25; cursor: not-allowed; }
+/* Remove × lives in the row's right gutter (the 26px reserved zone under the
+   header's ⋯), absolutely positioned so it never covers the data columns.
+   Hidden until the row is hovered (desktop); faintly shown on touch. */
+.wl-fav-remove {
+  position: absolute; right: 6px; top: 50%; transform: translateY(-50%);
+  background: transparent; border: 1px solid var(--border-light); color: var(--text-muted);
+  border-radius: 3px; width: 20px; height: 20px; cursor: pointer; line-height: 1;
+  font-size: 14px; padding: 0; display: flex; align-items: center; justify-content: center;
+  opacity: 0; pointer-events: none; transition: opacity 0.12s ease, color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
+  z-index: 5;
+}
 .wl-fav-remove:hover { color: var(--negative); border-color: var(--negative); background: rgba(239,83,80,0.12); }
-/* TradingView-style reveal: hovering a favorite row swaps its data columns
-   for the reorder ▲▼ + remove × controls. No Edit mode — the trashcan
-   appears on hover (desktop). On touch devices (no hover) the × is always
-   shown so it's reachable, and swipe-to-remove still works. */
 @media (hover: hover) {
-  .wl-item[data-fav-row="1"]:hover .wl-fav-reorder,
-  .wl-item[data-fav-row="1"]:hover .wl-fav-remove { display: flex; }
-  .wl-item[data-fav-row="1"]:hover .wl-item-right .wl-meta,
-  .wl-item[data-fav-row="1"]:hover .wl-item-right .wl-item-price { display: none; }
+  .wl-item[data-fav-row="1"]:hover .wl-fav-remove { opacity: 1; pointer-events: auto; }
 }
 @media (hover: none) {
-  .wl-item[data-fav-row="1"] .wl-fav-remove { display: flex; opacity: 0.55; }
+  .wl-item[data-fav-row="1"] .wl-fav-remove { opacity: 0.5; pointer-events: auto; }
 }
 .wl-item.swiping { transition: none; }
 .wl-item .wl-item-left, .wl-item .wl-item-right { transition: transform 0.18s ease; }
@@ -2368,19 +2367,11 @@ function renderWatchlist() {
           : hlClass === 'at-low5d'  ? `<span class="hl-badge low5d"  title="At or near the 5-DAY LOW — notable trough across the last 5 days.">▼ 5D</span>`
           : hlClass === 'at-high'   ? `<span class="hl-badge high" title="Currently at or above its 24-hour high. Sell now to catch the peak.">▲</span>`
           : hlClass === 'at-low'    ? `<span class="hl-badge low" title="Currently at or below its 24-hour low. Buy now to catch the dip.">▼</span>` : '';
-        /* Favorites rows get reorder buttons (▲ / ▼), a × quick-remove button
-           (hover-revealed on desktop, always-visible on touch), plus a swipe-
-           left gesture. The swipe target is a red "REMOVE" backdrop revealed
-           under the row. */
-        const favIdx = isFavGroup ? favorites.indexOf(String(item.id)) : -1;
-        /* Reorder arrows only when in Manual sort — in any other sort the
-           displayed order doesn't match the saved order, so moving rows would
-           be confusing. The × remove still shows in edit mode regardless. */
-        const reorderBtns = (isFavGroup && favSort === 'manual') ? `
-          <div class="wl-fav-reorder">
-            <button type="button" class="wl-fav-up" data-fav-id="${item.id}" ${favIdx === 0 ? 'disabled' : ''} title="Move up" aria-label="Move ${item.name} up">▲</button>
-            <button type="button" class="wl-fav-down" data-fav-id="${item.id}" ${favIdx === favorites.length - 1 ? 'disabled' : ''} title="Move down" aria-label="Move ${item.name} down">▼</button>
-          </div>` : '';
+        /* Favorites rows get a × quick-remove button — absolutely positioned
+           in the right gutter, hover-revealed on desktop / faint on touch —
+           plus a swipe-left gesture (red "REMOVE" backdrop). Reorder arrows
+           were dropped; ordering is done via the clickable column-sort
+           header. */
         const removeBtn = isFavGroup ? `<button type="button" class="wl-fav-remove" data-fav-id="${item.id}" title="Remove from favorites" aria-label="Remove ${item.name} from favorites">×</button>` : '';
         const swipeBg = isFavGroup ? `<span class="wl-swipe-bg">REMOVE</span>` : '';
         inner += `
@@ -2394,9 +2385,8 @@ function renderWatchlist() {
             <div class="wl-item-right">
               <span class="wl-item-price">${abbreviateNumber(e.price)}</span>
               ${e.sub}
-              ${reorderBtns}
-              ${removeBtn}
             </div>
+            ${removeBtn}
           </div>`;
       });
     }
