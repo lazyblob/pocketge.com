@@ -723,7 +723,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
    the same width. The column-header row uses matching widths. */
 /* 26px right gutter mirrors the header's ch-cols margin so data columns line
    up exactly under their labels (the header reserves that space for the ⋯). */
-.wl-item-right { display: flex; align-items: center; gap: 5px; text-align: right; flex: 0 0 auto; font-variant-numeric: tabular-nums; margin-right: 22px; }
+.wl-item-right { display: flex; align-items: center; gap: 5px; text-align: right; flex: 0 0 auto; font-variant-numeric: tabular-nums; }
 /* Favorites management controls (reorder ▲▼ + remove ×). Hidden entirely in
    the resting state so the list stays clean — revealed only when the user
    taps "Edit" on the Favorites header (which adds .fav-editing to the list
@@ -735,9 +735,11 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-sort-btn { background: transparent; border: 1px solid var(--border-light); color: var(--text-muted); border-radius: 3px; font-size: 9px; font-weight: 800; letter-spacing: 0.4px; text-transform: uppercase; padding: 2px 7px; margin-right: 8px; cursor: pointer; transition: all 0.15s ease; white-space: nowrap; }
 .wl-sort-btn:hover { color: var(--text-main); border-color: var(--border-active); }
 .cat-title-right { display: inline-flex; align-items: center; }
-/* Remove × lives in the row's right gutter (the 26px reserved zone under the
-   header's ⋯), absolutely positioned so it never covers the data columns.
-   Hidden until the row is hovered (desktop); faintly shown on touch. */
+/* Remove × — pinned to the right edge, hidden by default. There's no longer
+   a reserved gutter (columns run to the edge for max name room), so on hover
+   the row's data slides left ~22px to open space and the × fades in at the
+   right. It therefore still never covers a visible value. On touch we rely
+   on swipe-to-remove instead (no static × covering data). */
 .wl-fav-remove {
   position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
   background: transparent; border: 1px solid var(--border-light); color: var(--text-muted);
@@ -748,10 +750,11 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 }
 .wl-fav-remove:hover { color: var(--negative); border-color: var(--negative); background: rgba(239,83,80,0.12); }
 @media (hover: hover) {
+  .wl-item[data-fav-row="1"]:hover .wl-item-right { transform: translateX(-22px); }
   .wl-item[data-fav-row="1"]:hover .wl-fav-remove { opacity: 1; pointer-events: auto; }
 }
 @media (hover: none) {
-  .wl-item[data-fav-row="1"] .wl-fav-remove { opacity: 0.5; pointer-events: auto; }
+  .wl-fav-remove { display: none; }
 }
 .wl-item.swiping { transition: none; }
 .wl-item .wl-item-left, .wl-item .wl-item-right { transition: transform 0.18s ease; }
@@ -781,21 +784,19 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .wl-meta .meta-ea.up { color: var(--positive); }
 .wl-meta .meta-ea.neutral { color: var(--text-muted); }
 .wl-meta .meta-vol { color: var(--text-muted); }
-/* Single header bar — clickable sortable column labels + the ⋯ menu, all in
-   one row. Column widths match the data-row cells so labels sit over their
-   columns. A 26px right reserve lines the columns up with the data rows
-   (whose right content also clears that gutter) while the ⋯ lives in it. */
-.col-header { position: relative; display: flex; align-items: center; padding: 5px 14px 6px; font-size: 8.5px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-muted); background: var(--bg-panel); border-top: 1px solid var(--border-main); border-bottom: 1px solid var(--border-main); }
+/* Single header bar — ⋯ menu on the LEFT, then the clickable sortable column
+   labels. No right gutter: the data columns run to the right edge so the item
+   name gets maximum room. Column widths match the data-row cells. */
+.col-header { position: relative; display: flex; align-items: center; padding: 5px 14px 6px 6px; font-size: 8.5px; font-weight: 800; letter-spacing: 0.5px; text-transform: uppercase; color: var(--text-muted); background: var(--bg-panel); border-top: 1px solid var(--border-main); border-bottom: 1px solid var(--border-main); }
 .col-header .ch-name { flex: 1 1 auto; min-width: 0; }
-.col-header .ch-cols { display: flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; margin-right: 22px; }
+.col-header .ch-cols { display: flex; align-items: center; gap: 5px; font-variant-numeric: tabular-nums; }
 .col-header .ch-sortable { cursor: pointer; border-radius: 3px; transition: color 0.12s ease; }
 .col-header .ch-sortable:hover { color: var(--text-main); }
 .col-header .ch-sortable.sorted { color: var(--border-active); }
 .col-header .ch-arrow { font-size: 8px; margin-left: 1px; }
-/* ⋯ column-visibility menu — absolutely positioned at the far right so it
-   sits in the reserved gutter and doesn't shift the column labels. */
+/* ⋯ column-visibility menu — small button on the left of the header. */
 .col-menu-btn {
-  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  flex-shrink: 0; margin-right: 4px;
   background: transparent; border: 1px solid transparent; color: var(--text-muted);
   border-radius: 4px; font-size: 15px; line-height: 1;
   width: 20px; height: 20px; cursor: pointer;
@@ -804,7 +805,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 }
 .col-menu-btn:hover { color: var(--text-main); background: var(--bg-input); border-color: var(--border-light); }
 .col-menu {
-  display: none; position: absolute; right: 6px; top: calc(100% + 2px); z-index: 60;
+  display: none; position: absolute; left: 6px; top: calc(100% + 2px); z-index: 60;
   min-width: 200px; padding: 8px;
   background: var(--bg-panel); border: 1px solid var(--border-light);
   border-radius: 6px; box-shadow: 0 10px 30px rgba(0,0,0,0.55);
@@ -2089,16 +2090,19 @@ function renderColHeader() {
   if (columnPrefs.change) cols += col('ch-chg', 'change', 'Chg%');
   if (columnPrefs.margin) cols += col('ch-ea', 'margin', 'Ea');
   if (columnPrefs.volume) cols += col('ch-vol', 'volume', 'Vol');
+  /* ⋯ lives on the LEFT of the header (a tiny gear-style button) so the data
+     columns can run all the way to the right edge — no reserved right gutter
+     eating into every row, which frees ~22px for the item name. */
   host.innerHTML = `
-    <span class="ch-name ch-sortable ${favSort === 'name' ? 'sorted' : ''}" data-sort="name" role="button" tabindex="0" title="Sort favorites by name">Item${arrow('name')}</span>
-    <span class="ch-cols">${cols}</span>
     <button type="button" id="btnCols" class="col-menu-btn" aria-label="Customize columns" title="Customize columns" aria-expanded="false">⋯</button>
     <div class="col-menu" id="colMenu" role="menu">
       <div class="col-menu-section">Customize columns</div>
       <label class="col-menu-row"><input type="checkbox" data-col="change" ${columnPrefs.change ? 'checked' : ''}><span>% change (24H)</span></label>
       <label class="col-menu-row"><input type="checkbox" data-col="margin" ${columnPrefs.margin ? 'checked' : ''}><span>Margin (after tax)</span></label>
       <label class="col-menu-row"><input type="checkbox" data-col="volume" ${columnPrefs.volume ? 'checked' : ''}><span>Daily volume</span></label>
-    </div>`;
+    </div>
+    <span class="ch-name ch-sortable ${favSort === 'name' ? 'sorted' : ''}" data-sort="name" role="button" tabindex="0" title="Sort favorites by name">Item${arrow('name')}</span>
+    <span class="ch-cols">${cols}</span>`;
   /* Column-label click → sort favorites. Clicking the already-active column
      toggles back to Manual (the user's drag order). */
   host.querySelectorAll('.ch-sortable').forEach(el => {
