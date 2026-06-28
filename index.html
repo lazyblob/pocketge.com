@@ -435,6 +435,7 @@ button, input { touch-action: manipulation; }
 .wiki-hint { display: none; }
 .ticker-price-row { margin-top: 2px; display: flex; align-items: center; gap: 10px; }
 .ticker-price-row .price { font-size: 18px; font-weight: 700; color: var(--text-main); }
+.ticker-price-row .price .tlp-gp { font-size: 11px; font-weight: 600; color: var(--text-muted); }
 .ticker-price-row .change { font-size: 14px; font-weight: 600; }
 .change.positive { color: var(--positive); }
 .change.negative { color: var(--negative); }
@@ -540,6 +541,7 @@ button, input { touch-action: manipulation; }
 .chart-tip { position: absolute; display: none; background: rgba(19, 23, 34, 0.95); color: var(--text-main); padding: 8px 10px; border-radius: 4px; font-size: 10px; pointer-events: none; white-space: nowrap; border: 1px solid var(--border-light); box-shadow: 0 4px 12px var(--shadow); z-index: 50; }
 @media (min-width: 1024px) { .chart-tip { font-size: 12px; padding: 10px 12px; } }
 .chart-tip strong { display: block; margin-bottom: 3px; color: #fff; border-bottom: 1px solid var(--border-main); padding-bottom: 3px;}
+.chart-tip .tip-marker { font-weight: 800; letter-spacing: 0.2px; }
 .watchlist-container { width: var(--wl-width, 330px); flex-shrink: 0; background: var(--bg-panel); border: 1px solid var(--border-main); border-radius: 6px; display: flex; flex-direction: column; overflow: hidden; }
 /* Draggable divider between chart and sidebar (desktop only). Hidden by
    default; shown when the layout is the side-by-side row at >=1024px. */
@@ -3522,6 +3524,15 @@ function drawChart(series) {
     if (LO[i] != null && LO[i] < recLoVal) { recLoVal = LO[i]; recLoIdx = i; }
   }
   chartData.markers = [viewMaxIdx, viewMinIdx, recHiIdx, recLoIdx].filter(i => i >= 0);
+  /* Label each special marker so the tooltip can name it ("Period High",
+     "Recent Low", etc.) when the user taps/hovers an orb. Period extremes
+     (solid white-centre dots) take precedence over recent extremes (hollow
+     rings) if they happen to land on the same point. */
+  chartData.markerLabels = {};
+  if (recHiIdx >= 0) chartData.markerLabels[recHiIdx] = { text: 'Recent High', color: 'var(--sell-color)', shape: 'hollow' };
+  if (recLoIdx >= 0) chartData.markerLabels[recLoIdx] = { text: 'Recent Low', color: 'var(--buy-color)', shape: 'hollow' };
+  if (viewMaxIdx >= 0) chartData.markerLabels[viewMaxIdx] = { text: 'Period High', color: 'var(--sell-color)', shape: 'solid' };
+  if (viewMinIdx >= 0) chartData.markerLabels[viewMinIdx] = { text: 'Period Low', color: 'var(--buy-color)', shape: 'solid' };
 
   ctx.lineWidth = 1;
   /* Round y-axis ticks (2,600 / 2,700 …) instead of raw data-derived values
@@ -3764,14 +3775,13 @@ function drawChart(series) {
     ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.stroke(); ctx.restore();
   }
   if (!flipMode) {
-    /* In singlePrice (historical 5Y/1Y where buy==sell every day) the rest of
-       the chart paints neutral; the recent-high/low rings should follow suit
-       instead of popping in bright gold/teal that no longer represent
-       anything meaningful. */
-    const recHiCol = singlePrice ? priceColor : sellColor;
-    const recLoCol = singlePrice ? priceColor : buyColor;
-    ring(recHiIdx, HI, recHiCol);
-    ring(recLoIdx, LO, recLoCol);
+    /* All four markers follow ONE consistent scheme on every view, including
+       5Y/1Y: green = a HIGH, gold = a LOW; solid white-centre dot = a PERIOD
+       extreme, hollow ring = a RECENT extreme. (Previously the recent rings
+       went neutral white on single-price views while the period dots stayed
+       teal/gold — which read as three random colors.) */
+    ring(recHiIdx, HI, sellColor);
+    ring(recLoIdx, LO, buyColor);
 
     /* Unified volume bars — one muted color, no two-tone stack. The earlier
        gold/teal split echoed colors that already carry meaning above, which
@@ -3850,8 +3860,15 @@ function showTipFor(local, clientX, clientY) {
     ? `<span style="color:#C2CBDC">Price: ${fmtGp(hi)}</span><br/>`
     : `<span style="color:var(--buy-color)">Buy: ${fmtGp(lo)}</span><br/>
        <span style="color:var(--sell-color)">Sell: ${fmtGp(hi)}</span><br/>`;
+  /* If this point is one of the special orbs, name it at the top of the
+     tooltip ("● Period High" / "○ Recent Low") with a glyph matching the
+     marker (solid dot for period extremes, hollow ring for recent ones). */
+  const ml = chartData.markerLabels && chartData.markerLabels[local];
+  const markerRow = ml
+    ? `<span class="tip-marker" style="color:${ml.color}">${ml.shape === 'hollow' ? '◯' : '●'} ${ml.text}</span><br/>`
+    : '';
   tip.innerHTML = `<strong>${new Date(L[local] * 1000).toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}</strong>
-    ${priceRows}
+    ${markerRow}${priceRows}
     <span style="color:var(--text-muted)">Volume: ${fmtNum(VO[local])}</span>`;
   tip.style.display = "block";
   let tipX = mx + 15, tipY = my + 15;
@@ -4127,7 +4144,9 @@ async function setItem(m, opts = {}) {
   const node = latest.data[String(m.id)];
   liveBuyRaw = node?.low ?? node?.avgLowPrice ?? 0;
   liveSellRaw = node?.high ?? node?.avgHighPrice ?? 0;
-  $("#tickerLivePrice").textContent = abbreviateNumber(liveSellRaw);
+  /* Full last price ("2,739 gp"), not the rounded "2.7K" — the abbreviation
+     was too lossy to be useful as the headline number. */
+  $("#tickerLivePrice").innerHTML = `${fmtGp(liveSellRaw)} <span class="tlp-gp">gp</span>`;
 
   const targets = runTradeEngine(liveBuyRaw, liveSellRaw, pickEngineSeries(currentItemSrc) || currentSeries);
   recommendedBuy = targets.buy; recommendedSell = targets.sell;
@@ -4334,7 +4353,7 @@ setItem._userPicked = false;
           const node = latest.data[String(selected.id)];
           liveBuyRaw = node?.low ?? node?.avgLowPrice ?? 0;
           liveSellRaw = node?.high ?? node?.avgHighPrice ?? 0;
-          $("#tickerLivePrice").textContent = abbreviateNumber(liveSellRaw);
+          $("#tickerLivePrice").innerHTML = `${fmtGp(liveSellRaw)} <span class="tlp-gp">gp</span>`;
           const targets = runTradeEngine(liveBuyRaw, liveSellRaw, pickEngineSeries(currentItemSrc) || currentSeries);
           recommendedBuy = targets.buy; recommendedSell = targets.sell;
           $("#buyPrice").innerHTML = `<div class="price-label">Target Buy <span class="live-val">Live: ${fmtGp(liveBuyRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedBuy)}</span></div><div class="price-grade" id="buyGrade"></div>`;
