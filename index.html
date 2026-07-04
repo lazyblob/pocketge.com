@@ -1500,7 +1500,38 @@ const loadTS = (step, id) => jget(PRICES_API + `/timeseries?timestep=${step}&id=
 const loadHistorical = (id) => jget(WEIRD_GLOOP_API + `/all?id=${id}`);
 
 function itemIconUrl(id) { return `https://static.runelite.net/cache/item/icon/${id}.png`; }
-function calculateTax(price) { return Math.min(5000000, Math.floor(price * 0.02)); }
+
+/* Grand Exchange 2% sales tax, done EXACTLY. 2% == 1/50, so floor(price/50)
+   is integer-exact at every 50-gp step and hits the 5,000,000-gp cap precisely
+   at 250,000,000 gp — floor(price*0.02) drifts on non-representable 0.02.
+   Items under 50 gp pay no tax, and a short list of items (the bond and the
+   classic tradeable tools) are fully exempt. `exempt` DEFAULTS to false so a
+   missing flag can only ever OVER-charge tax (safe: it over-flags a flip as
+   thin, it never hides a real after-tax loss). */
+const TAX_EXEMPT_IDS = new Set([
+  13190, // Old school bond
+  1755,  // Chisel
+  5325,  // Gardening trowel
+  11364, // Glassblowing pipe
+  2347,  // Hammer
+  1733,  // Needle
+  233,   // Pestle and mortar
+  5341,  // Rake
+  8794,  // Saw
+  5329,  // Secateurs
+  5343,  // Seed dibber
+  1735,  // Shears
+  952,   // Spade
+  5331   // Watering can
+]);
+function isTaxExempt(id) { return id != null && TAX_EXEMPT_IDS.has(Number(id)); }
+function taxOf(s, exempt) {
+  if (exempt || s < 50) return 0;
+  return Math.min(5000000, Math.floor(s / 50));
+}
+/* gp KEPT per item if both legs fill at their targets. */
+function netKept(b, s, exempt) { return s - taxOf(s, exempt) - b; }
+function calculateTax(price, id) { return taxOf(price, isTaxExempt(id)); }
 function emptySeries() { return { labels: [], low: [], high: [], lowVol: [], highVol: [] }; }
 
 /* Daily traded volume for an item — prefers the bulk /volumes endpoint,
@@ -1532,7 +1563,7 @@ function updateCalculator() {
     if (bd) bd.innerHTML = `<div class="row"><span>Enter qty, buy &amp; sell to calculate.</span></div>`;
     return;
   }
-  const taxPerItem = Math.min(5000000, Math.floor(sell * 0.02));
+  const taxPerItem = calculateTax(sell, selected && selected.id);
   const profitPerItem = sell - buy - taxPerItem;
   const totalProfit = profitPerItem * qty;
   const totalTax = taxPerItem * qty;
@@ -1851,7 +1882,7 @@ async function runSteadyFlipsScan() {
         const v = (ts.lowVol[i] || 0) + (ts.highVol[i] || 0);
         totalVol += v;
         if (hi == null || lo == null || hi <= lo) continue;
-        const margin = hi - lo - calculateTax(hi);
+        const margin = hi - lo - calculateTax(hi, m.id);
         if (margin > 0 && margin < hi * 0.5) dayMargins.push(margin);
       }
       const days = ts.labels.length - start;
@@ -2182,7 +2213,7 @@ function renderWatchlist() {
     if (node && node.high > 0 && node.low > 0 && node.high > node.low
         && p24 && (p24.highPriceVolume || 0) > 0 && (p24.lowPriceVolume || 0) > 0) {
       const sell = node.high, buy = node.low;
-      const margin = sell - buy - calculateTax(sell);
+      const margin = sell - buy - calculateTax(sell, item.id);
       if (margin > 0 && margin < sell * 0.7) {
         const row = { item, margin };
         if (isLowVolume(item.id)) marginLow1d.push(row); else marginHigh1d.push(row);
@@ -2245,7 +2276,7 @@ function renderWatchlist() {
       if (margin == null) {
         const node = latest && latest.data ? latest.data[id] : null;
         if (node && node.high > 0 && node.low > 0 && node.high > node.low) {
-          const m = node.high - node.low - calculateTax(node.high);
+          const m = node.high - node.low - calculateTax(node.high, id);
           if (m > 0 && m < node.high * 0.7) margin = m;
         }
       }
@@ -2283,7 +2314,7 @@ function renderWatchlist() {
     const liveMargin = (it) => {
       const n = latest && latest.data ? latest.data[String(it.id)] : null;
       if (!n || !(n.high > 0) || !(n.low > 0) || n.high <= n.low) return -Infinity;
-      const m = n.high - n.low - calculateTax(n.high);
+      const m = n.high - n.low - calculateTax(n.high, it.id);
       return (m > 0 && m < n.high * 0.7) ? m : -Infinity;
     };
     if (favSort === 'price') favsSorted.sort((a, b) => priceOf(b) - priceOf(a));
@@ -2759,239 +2790,307 @@ function pickEngineSeries(src) {
   return null;
 }
 
-/* ─── Expected-value offer optimizer ────────────────────────────────────
-   The core idea that sets this apart from "show the latest margin" or
-   "pick the Nth percentile": a flip target is only good if it BOTH clears a
-   profit after the 2% GE tax AND fills often enough to be worth posting.
-   So instead of guessing a price, we maximize the expected captured margin
+/* ════════════════════════════════════════════════════════════════════════
+   FLIP-PRICING ENGINE  —  one code path, EV-optimised, tax-safe.
 
-       score(price) = P(offer fills) × (margin if it fills)
+   A flip target is only good if it BOTH clears a profit after the 2% GE tax
+   AND fills often enough to be worth posting, so we maximise the expected
+   captured margin  score(price) = P(offer fills) × (margin after tax), and
+   pick the pair jointly (each leg's exit/entry is the OTHER leg's real target,
+   not a static median). P(fill) is built from the actual recent tape.
 
-   P(fill) comes from an empirical, recency- and volume-weighted distribution
-   of what the item ACTUALLY traded at recently — not a model, just the tape.
-   A too-low bid has fat margin but ~0 fill probability; a too-high bid fills
-   instantly but earns nothing. The product peaks at the realistic sweet
-   spot, which is exactly the price a disciplined flipper would set. */
-function optimizeOffer(prints, side, refOpp) {
-  if (!prints.length || !(refOpp > 0)) return null;
-  const totalW = prints.reduce((a, x) => a + x.w, 0);
-  if (totalW <= 0) return null;
-  const prices = prints.map(x => x.p).sort((a, b) => a - b);
-  /* Search only the realistic offer band: for a buy, the 2nd–70th percentile
-     of recent insta-sell prints (no point bidding above typical); for a sell,
-     the 30th–98th percentile of insta-buy prints. */
-  const loP = percentile(prices, side === 'buy' ? 2 : 30);
-  const hiP = percentile(prices, side === 'buy' ? 70 : 98);
-  const cand = [...new Set(prices.filter(p => p >= loP && p <= hiP).map(Math.round))];
-  if (!cand.length) return null;
-  const taxOf = (s) => Math.min(5000000, Math.floor(s * 0.02));
-  /* Iterate in the fill-improving direction (buy: low→high, sell: high→low)
-     so that on a score tie we keep the MORE fillable price — safer targets. */
-  const order = side === 'buy' ? cand.sort((a, b) => a - b) : cand.sort((a, b) => b - a);
-  let best = null, bestScore = -Infinity;
-  for (const c of order) {
-    let wFill = 0;
-    for (const x of prints) {
-      if (side === 'buy' ? x.p <= c : x.p >= c) wFill += x.w;
-    }
-    const pFill = wFill / totalW;
-    const margin = side === 'buy' ? (refOpp - c - taxOf(refOpp)) : (c - refOpp - taxOf(c));
-    const score = pFill * margin;
-    if (score >= bestScore) { bestScore = score; best = c; }
-  }
-  return best;
+   Two halves of the promise, both enforced:
+     (1) NEVER recommend a pair that loses money after tax — a hard
+         net-of-tax floor gates every emitted target; if nothing inside the
+         fillable band clears it, we say so instead of faking a spread.
+     (2) NEVER recommend a target that won't realistically fill — reachability
+         is judged on the RECENT sub-window, so a stale spike or a pre-crash
+         level can't certify an exit that the current market never revisits.
+   Between them we still bid the reachable dip / ask the reachable pop to
+   capture the patience premium — the point is to MAXIMISE profit, not just
+   dodge losses.
+
+   Hardening note: the trend guard keys on DRIFT (level change over the
+   window), not on return-volatility — a smooth 4%/hr slide has near-zero
+   return-vol yet is exactly the regime where an exit leg gets over-certified
+   off stale higher buckets. Against the drift direction the holding-window
+   fill bonus is killed (a level in a trend is visited once, never revisited).
+   ════════════════════════════════════════════════════════════════════════ */
+const ENGINE_CFG = {
+  TARGET_TRADES: 2000, MIN_TRADES: 200, MIN_BUCKETS: 8,
+  MIN_AGE: 20 * 60, MAX_AGE: 24 * 3600,
+  alpha: 0.25, minScale: 1, maxSpreadFrac: 0.34, absCapFrac: 0.05,
+  volFloor: 20, volCapW: 200,
+  NEFF_MIN: 2, NEFF_MAX: 8,
+  ALPHA_LIVE: 0.6, FRESH_SEC: 120, STALE_MIN: 5 * 60, STALE_MAX: 60 * 60,
+  kMax: 6, maxFrac: 0.25, pMin: 0.15,
+  kSafety: 0.002,
+  DRIFT_GATE: 0.01,     // >=1% level move over the window ⇒ trend regime
+  RECENT_FRAC: 0.34     // "recent sub-window" = newest third by trade count
+};
+function engMedian(a) {
+  if (!a.length) return 0;
+  const s = [...a].sort((x, y) => x - y), m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
 }
+/* weighted median of records by numeric key `k`, weighted by key `wk` */
+function engWMedian(recs, k, wk) {
+  const s = recs.filter(r => r[k] > 0).sort((a, b) => a[k] - b[k]);
+  if (!s.length) return 0;
+  const tot = s.reduce((a, r) => a + r[wk], 0);
+  let acc = 0;
+  for (const r of s) { acc += r[wk]; if (acc >= tot / 2) return r[k]; }
+  return s[s.length - 1][k];
+}
+function engMinEdge(b) { return Math.max(2, Math.ceil(ENGINE_CFG.kSafety * b)); }
 
-/* Build recency- and volume-weighted print samples over the last ~6h and run
-   the EV optimizer for both sides. Margin for each side is measured against
-   the TYPICAL opposite price (weighted median) — a realistic exit/entry, not
-   the day's absolute extreme — which keeps targets fillable instead of
-   over-ambitious. Returns null on thin data so the caller falls back to the
-   percentile heuristic. */
-function evTargets(series, rawLow, rawHigh) {
-  if (!series || !series.labels || series.labels.length < 12) return null;
-  const labels = series.labels;
-  const now = labels[labels.length - 1];
-  if (!(now > 0)) return null;
-  const windowSec = 6 * 3600, halfLife = 90 * 60;
-  const lows = [], highs = [];
-  for (let i = 0; i < labels.length; i++) {
-    const age = now - labels[i];
-    if (age < 0 || age > windowSec) continue;
+/* Core: given the live /latest node and the finest series, return
+   { buy, sell, viable, reason, edge, lowConf }.
+   When !viable the (buy,sell) are still the tightest CURRENTLY-FILLABLE pair
+   (never a stale-unreachable price) so the box shows honest live-ish numbers
+   and the Grade's margin-health gate flags the thin/negative margin — we never
+   blank the user out, and we never dress a loser or an unfillable ask green. */
+function computeTargets(node, series, exempt) {
+  const C = ENGINE_CFG;
+  const NO = (reason, buy, sell, lowConf) =>
+    ({ buy: buy || 0, sell: sell || 0, viable: false, reason, edge: 0, lowConf: !!lowConf });
+
+  const rawLow  = node && node.low  > 0 ? node.low  : 0;  // insta-sell price = you BUY at
+  const rawHigh = node && node.high > 0 ? node.high : 0;  // insta-buy  price = you SELL into
+  if (!series || !series.labels || series.labels.length < C.MIN_BUCKETS)
+    return NO('insufficient data', rawLow, rawHigh, true);
+
+  const L = series.labels, now = L[L.length - 1];
+  if (!(now > 0)) return NO('insufficient data', rawLow, rawHigh, true);
+
+  // dt = typical bucket spacing (adapts to a 5m / 1h / 6h source)
+  const gaps = [];
+  for (let i = 1; i < L.length; i++) { const g = L[i] - L[i - 1]; if (g > 0) gaps.push(g); }
+  const dt = engMedian(gaps) || 300;
+
+  // ---- adaptive, liquidity-sized window (walk newest → oldest) --------------
+  const idx = [];
+  let cum = 0, oldest = now;
+  for (let i = L.length - 1; i >= 0; i--) {
+    const age = now - L[i];
+    if (age < 0) continue;
+    if (age > C.MAX_AGE) break;
+    idx.push(i);
+    cum += (series.lowVol[i] || 0) + (series.highVol[i] || 0);
+    oldest = L[i];
+    const span = now - oldest;
+    if (cum >= C.TARGET_TRADES && span >= C.MIN_AGE && idx.length >= C.MIN_BUCKETS) break;
+  }
+  if (idx.length < C.MIN_BUCKETS) return NO('insufficient buckets', rawLow, rawHigh, true);
+  idx.reverse(); // oldest → newest
+  const span = Math.max(dt, now - L[idx[0]]);
+  const lowConf = cum < C.MIN_TRADES;
+  const halfLife = Math.max(dt, span / 4);
+
+  // ---- robust, winsorised per-bucket records --------------------------------
+  const loArr = idx.map(i => series.low[i]).filter(x => x > 0);
+  const hiArr = idx.map(i => series.high[i]).filter(x => x > 0);
+  if (loArr.length < 4 || hiArr.length < 4) return NO('thin data', rawLow, rawHigh, true);
+  const P1lo = percentile(loArr, 1), P99lo = percentile(loArr, 99);
+  const P1hi = percentile(hiArr, 1), P99hi = percentile(hiArr, 99);
+  const volMed = engMedian(idx.map(i => (series.lowVol[i] || 0) + (series.highVol[i] || 0))) || 1;
+
+  const B = [];
+  for (const i of idx) {
+    let lo = series.low[i], hi = series.high[i];
+    if (!(lo > 0) || !(hi > 0)) continue;
+    lo = Math.min(Math.max(lo, P1lo), P99lo);
+    hi = Math.min(Math.max(hi, P1hi), P99hi);
+    if (hi < lo) { const t = lo; lo = hi; hi = t; }
+    const mid = (lo + hi) / 2, spread = Math.max(0, hi - lo);
+    const age = now - L[i];
     const decay = Math.pow(0.5, age / halfLife);
-    const lo = series.low[i], hi = series.high[i];
-    const lv = (series.lowVol && series.lowVol[i]) || 0;
-    const hv = (series.highVol && series.highVol[i]) || 0;
-    if (lo != null && lo > 0) lows.push({ p: lo, w: decay * (lv > 0 ? lv : 1) });
-    if (hi != null && hi > 0) highs.push({ p: hi, w: decay * (hv > 0 ? hv : 1) });
+    const volL = Math.min(series.lowVol[i] || 1, 5 * volMed);
+    const volH = Math.min(series.highVol[i] || 1, 5 * volMed);
+    B.push({
+      i, age, lo, hi, mid, spread,
+      wL: decay * Math.sqrt(Math.min(volL, C.volCapW)),
+      wH: decay * Math.sqrt(Math.min(volH, C.volCapW)),
+      volL, volH,
+      recent: age <= Math.max(halfLife, 3 * dt)  // regime-consistent tail
+    });
   }
-  if (lows.length < 8 || highs.length < 8) return null;
-  const wMedian = (arr) => {
-    const s = [...arr].sort((a, b) => a.p - b.p);
-    const tot = s.reduce((a, x) => a + x.w, 0);
-    let acc = 0;
-    for (const x of s) { acc += x.w; if (acc >= tot / 2) return x.p; }
-    return s[s.length - 1].p;
-  };
-  const buyRef = wMedian(lows), sellRef = wMedian(highs);
-  const buy = optimizeOffer(lows, 'buy', sellRef);
-  const sell = optimizeOffer(highs, 'sell', buyRef);
-  if (buy == null || sell == null) return null;
-  return { buy, sell };
+  if (B.length < C.MIN_BUCKETS) return NO('thin data', rawLow, rawHigh, true);
+
+  const refMid = engWMedian(B, 'mid', 'wL');
+  const relSpread = engWMedian(B.map(b => ({ v: b.spread / b.mid, w: b.wL + b.wH })), 'v', 'w');
+
+  // realized step-vol (MAD of log-returns), gap-skipped
+  const rets = [];
+  for (let k = 1; k < B.length; k++) {
+    if (L[B[k].i] - L[B[k - 1].i] <= 2 * dt && B[k].mid > 0 && B[k - 1].mid > 0)
+      rets.push(Math.log(B[k].mid / B[k - 1].mid));
+  }
+  const medR = engMedian(rets);
+  let sigma = rets.length ? 1.4826 * engMedian(rets.map(r => Math.abs(r - medR))) : 0;
+  sigma = Math.max(sigma, 0.5 * (relSpread || 0), 1 / Math.max(1, refMid));
+
+  // ---- DRIFT (level change), independent of sigma — the hardening core ------
+  const recentB = B.filter(b => b.recent);
+  const third = Math.max(1, Math.round(B.length * C.RECENT_FRAC));
+  const midNew = engWMedian(B.slice(B.length - third), 'mid', 'wL');
+  const midOld = engWMedian(B.slice(0, third), 'mid', 'wL');
+  const driftFrac = refMid > 0 ? (midNew - midOld) / refMid : 0; // >0 rising, <0 falling
+
+  // Neff (bounded holding-window revisits). Against the drift direction the
+  // price does NOT revisit a level, so kill the holding-window bonus there.
+  let NeffBuy = Math.min(C.NEFF_MAX, Math.max(C.NEFF_MIN, Math.round((span / dt) / 3)));
+  let NeffSell = NeffBuy;
+  if (driftFrac <= -C.DRIFT_GATE) NeffSell = 1; // falling: a sell above won't be revisited
+  if (driftFrac >= C.DRIFT_GATE) NeffBuy = 1;   // rising: a buy below won't be revisited
+
+  // ---- deblur + soft touch prob + holding-window P(fill) ---------------------
+  // Deblur to an inferred intra-bucket extreme using ONLY the per-bucket spread
+  // (conservative — over-deblur is the one failure the directive forbids, so we
+  // bias the scale DOWN). Capped to 1/3 spread and 5% of price, shrunk for thin
+  // buckets so a 1-print bucket can't assert a deep reachable low.
+  function deblur(b, side) {
+    const g = b.spread;
+    let sc = Math.max(C.alpha * g, C.minScale);
+    const cap = Math.min(g > 0 ? C.maxSpreadFrac * g : Infinity, C.absCapFrac * b.mid);
+    sc = Math.min(sc, cap);
+    const volSide = side === 'buy' ? b.volL : b.volH;
+    sc *= Math.min(1, volSide / C.volFloor);
+    return Math.max(0, sc);
+  }
+  // soft per-bucket touch fraction; recentOnly restricts to the regime tail
+  function qTouch(c, side, recentOnly) {
+    let acc = 0, W = 0;
+    for (const b of B) {
+      if (recentOnly && !b.recent) continue;
+      const sc = deblur(b, side);
+      const w = side === 'buy' ? b.wL : b.wH;
+      let f;
+      if (side === 'buy') { const p = b.lo, ext = p - sc; f = c >= p ? 1 : (c <= ext ? 0 : (c - ext) / (p - ext)); }
+      else { const p = b.hi, ext = p + sc; f = c <= p ? 1 : (c >= ext ? 0 : (ext - c) / (ext - p)); }
+      acc += w * f; W += w;
+    }
+    return W > 0 ? acc / W : 0;
+  }
+  const Pfill = (c, side) => 1 - Math.pow(1 - qTouch(c, side, false), side === 'buy' ? NeffBuy : NeffSell);
+  // recency-gated fillability: candidate must be reachable by the RECENT tail
+  const reachable = (c, side) => qTouch(c, side, true) >= C.pMin;
+
+  // ---- live-anchor blend (staleness trust + slew cap) -----------------------
+  const tradesPerMin = cum / Math.max(1, span / 60);
+  function trust(ageSec) {
+    if (!(ageSec >= 0)) return 0.5; // unknown timestamp → blend half
+    const gap = 60 / Math.max(1e-6, tradesPerMin);
+    const A = Math.min(C.STALE_MAX, Math.max(C.STALE_MIN, 10 * gap));
+    let t = Math.max(0, Math.min(1, 1 - ageSec / A));
+    if (ageSec < C.FRESH_SEC) t = Math.max(t, 0.5);
+    return t;
+  }
+  const distBuy = engWMedian(B, 'lo', 'wL');
+  const distSell = engWMedian(B, 'hi', 'wH');
+  const delta = Math.max(Math.round(0.003 * refMid), Math.round(sigma * refMid * 0.75));
+  function blend(dist, live, ageSec, p1, p99) {
+    if (!(live > 0)) return { price: Math.round(dist), t: 0 };
+    let t = trust(ageSec);
+    if (live < p1 || live > p99) t = 0; // hard outlier guard (fat-finger live tick)
+    const clamped = Math.max(dist - delta, Math.min(dist + delta, live));
+    const a = C.ALPHA_LIVE * t;
+    return { price: Math.round((1 - a) * dist + a * clamped), t };
+  }
+  const ageLow  = node && node.lowTime  > 0 ? now - node.lowTime  : -1;
+  const ageHigh = node && node.highTime > 0 ? now - node.highTime : -1;
+  const aBuy  = blend(distBuy,  rawLow,  ageLow,  P1lo, P99lo);
+  const aSell = blend(distSell, rawHigh, ageHigh, P1hi, P99hi);
+
+  // ---- volatility-scaled edge candidates around the live anchor -------------
+  const sAbs = sigma * ((aBuy.price + aSell.price) / 2);
+  const eMax = Math.max(1, Math.min(C.kMax * sAbs, C.maxFrac * aBuy.price));
+  const step = Math.max(1, Math.round(eMax / 40));
+  const buyCands = [], sellCands = [];
+  for (let e = 0; e <= eMax; e += step) {
+    const bb = Math.round(aBuy.price - e); if (bb >= 1) buyCands.push(bb);
+    sellCands.push(Math.round(aSell.price + e));
+  }
+  // fillable band drawn from the RECENT sub-window only (can't chase a stale spike)
+  const recLo = recentB.map(b => b.lo), recHi = recentB.map(b => b.hi);
+  const buyFloor = Math.min(rawLow > 0 ? rawLow : Infinity, percentile(recLo.length ? recLo : loArr, 2));
+  const sellCap  = Math.max(rawHigh > 0 ? rawHigh : 0, percentile(recHi.length ? recHi : hiArr, 98));
+
+  // an "easy" fill the drift is FEEDING is a trap (buy into a crash / sell into a
+  // spike you can't repeat) — discount that leg so the optimizer can't reward it.
+  const strongDrift = Math.abs(driftFrac) >= 3 * C.DRIFT_GATE;
+  function score(side, c, otherTarget) {
+    if (!reachable(c, side)) return -1;                 // recency gate
+    const p0 = Pfill(c, side);
+    if (p0 < C.pMin) return -1;
+    const margin = side === 'buy' ? netKept(c, otherTarget, exempt) : netKept(otherTarget, c, exempt);
+    if (margin <= 0) return -1;
+    let p = p0;
+    if (strongDrift) {
+      if (side === 'buy'  && driftFrac < 0) p *= 0.5;
+      if (side === 'sell' && driftFrac > 0) p *= 0.5;
+    }
+    const eB = aBuy.price - (side === 'buy' ? c : otherTarget);
+    const eS = (side === 'sell' ? c : otherTarget) - aSell.price;
+    const patience = 1 + Math.max(0, eB) / Math.max(1, sAbs) + Math.max(0, eS) / Math.max(1, sAbs);
+    return p * margin / patience;
+  }
+  function argmax(cands, side, other) {
+    let best = null, bs = -Infinity;
+    for (const c of cands) { const sc = score(side, c, other); if (sc > bs) { bs = sc; best = c; } }
+    return best;
+  }
+
+  // ---- coupled 2-sweep fixed point ------------------------------------------
+  let s = Math.min(Math.max(distSell, aSell.price), sellCap);
+  let b = argmax(buyCands, 'buy', s); if (b != null) s = argmax(sellCands, 'sell', b) ?? s;
+  if (b != null) { b = argmax(buyCands, 'buy', s) ?? b; s = argmax(sellCands, 'sell', b) ?? s; }
+
+  // ---- money floor / safety rails -------------------------------------------
+  const edgeReq = lowConf
+    ? Math.max(engMinEdge(b || rawLow), Math.ceil(2 * C.kSafety * (b || rawLow)))
+    : engMinEdge(b || rawLow);
+
+  if (b != null && s != null && netKept(b, s, exempt) >= edgeReq) {
+    // gated queue-jump — a mutation may never cross the guarantee
+    if (netKept(b, s - 1, exempt) >= edgeReq && reachable(s - 1, 'sell')) s -= 1;
+    return { buy: b, sell: s, viable: true, reason: '', edge: netKept(b, s, exempt), lowConf };
+  }
+
+  // widen minimally, staying inside the RECENT fillable band + recency gate
+  if (b == null) b = Math.max(1, Math.round(aBuy.price));
+  if (s == null) s = Math.round(aSell.price);
+  let guard = 0;
+  while (netKept(b, s, exempt) < edgeReq) {
+    const canLower = (b - 1) >= buyFloor && (b - 1) >= 1 && reachable(b - 1, 'buy');
+    const canRaise = (s + 1) <= sellCap && reachable(s + 1, 'sell');
+    if (canLower && (!canRaise || qTouch(b - 1, 'buy', true) >= qTouch(s + 1, 'sell', true))) b -= 1;
+    else if (canRaise) s += 1;
+    else break; // can't reach a tax-clearing pair without leaving the fillable band
+    if (++guard > 20000) break;
+  }
+  if (netKept(b, s, exempt) >= edgeReq)
+    return { buy: b, sell: s, viable: true, reason: '', edge: netKept(b, s, exempt), lowConf };
+
+  // No clean flip. Return the tightest CURRENTLY-FILLABLE honest pair (never a
+  // stale-unreachable price); the Grade surfaces the thin/negative margin.
+  const honestBuy = Math.round(aBuy.price);
+  let honestSell = Math.max(Math.round(aSell.price), rawHigh || 0);
+  if (aSell.t < 0.5) honestSell = Math.round(aSell.price); // don't pin to a stale live spike
+  return NO('spread does not clear the 2% tax right now', honestBuy, honestSell, lowConf);
 }
 
-function runTradeEngine(rawLow, rawHigh, series) {
-  if (!rawLow || !rawHigh) return { buy: rawLow || 0, sell: rawHigh || 0 };
-  let recentLow = rawLow, recentHigh = rawHigh;
-  /* Primary: expected-value optimizer (needs ~6h of volume-bearing prints).
-     Falls back to the percentile + cluster + patient heuristic below when
-     data is too thin (low-volume items, single-price historical series). */
-  const ev = evTargets(series, rawLow, rawHigh);
-  if (ev) {
-    recentLow = ev.buy;
-    recentHigh = ev.sell;
-  } else if (series && series.high.length > 5) {
-    /* Slice to a real wall-clock window (last ~90 min for the percentile
-       anchor, last ~30 min for the very-recent ambition / trend signals)
-       when the series has timestamps. Falls back to 7% / 3% by count for
-       single-price historical series that lack proper minute-resolution. */
-    const labels = series.labels || [];
-    const now = labels.length ? labels[labels.length - 1] : 0;
-    let k, k2;
-    if (now > 0) {
-      const cutR = now - 90 * 60;
-      const cutV = now - 30 * 60;
-      let iR = labels.length, iV = labels.length;
-      while (iR > 0 && labels[iR - 1] >= cutR) iR--;
-      while (iV > 0 && labels[iV - 1] >= cutV) iV--;
-      k  = Math.max(8, labels.length - iR);
-      k2 = Math.max(4, labels.length - iV);
-    } else {
-      k  = Math.max(8, Math.floor(series.high.length * 0.07));
-      k2 = Math.max(4, Math.floor(series.high.length * 0.03));
-    }
-    const rLow = series.low.slice(-k).filter(x => x != null && x > 0);
-    const rHigh = series.high.slice(-k).filter(x => x != null && x > 0);
-    const vLow = series.low.slice(-k2).filter(x => x != null && x > 0);
-    const vHigh = series.high.slice(-k2).filter(x => x != null && x > 0);
-    const mean = (arr) => arr.reduce((a, b) => a + b, 0) / arr.length;
-
-    /* Wider 24h slice for "patient" context. The 90-minute window catches
-       what's filling RIGHT NOW, but a volatile item (bonds, expensive
-       supplies) regularly dips below the 90-min cluster — a patient bid
-       can target those dips. We only use this floor when the 24h band is
-       wide (>4% range), so tight-spread items stay anchored to current
-       activity. */
-    let day24Lo = null, day24Hi = null, day24Range = 0;
-    if (labels.length > 0 && labels[labels.length - 1] > 0) {
-      const now = labels[labels.length - 1];
-      const cut24h = now - 24 * 60 * 60;
-      let i24 = labels.length;
-      while (i24 > 0 && labels[i24 - 1] >= cut24h) i24--;
-      const d24Low = series.low.slice(i24).filter(x => x != null && x > 0);
-      const d24Hi  = series.high.slice(i24).filter(x => x != null && x > 0);
-      if (d24Low.length >= 8 && d24Hi.length >= 8) {
-        /* Robust 24h extremes: use 5th/95th percentile, NOT absolute
-           min/max. A single outlier print (one spike to 18K when the rest
-           of the day traded 13-16K) would otherwise become the target the
-           engine chases — recommending sells nobody will buy at. Percentile
-           captures the level price actually traded near, not freak prints. */
-        day24Lo = Math.round(percentile(d24Low, 5));
-        day24Hi = Math.round(percentile(d24Hi, 95));
-        day24Range = day24Lo > 0 ? (day24Hi - day24Lo) / day24Lo : 0;
-      }
-    }
-
-    if (rLow.length >= 3) {
-      /* Buy side: 15th-percentile slice + cluster (lower wins, more
-         ambitious bid), then nudge toward the very-recent realised low
-         capped at 0.9% under the anchor so a single spike can't run away. */
-      const p15 = Math.round(percentile(rLow, 15));
-      const cluster = findRepeatedExtreme(rLow, false, 3);
-      let anchor = (cluster !== null && cluster < p15) ? cluster : p15;
-      if (vLow.length >= 2) {
-        const vMin = Math.min(...vLow);
-        const cap = Math.round(anchor * 0.991);
-        if (vMin < anchor) anchor = Math.max(vMin, cap);
-      }
-      /* Trend bias: if very-recent insta-sells have drifted UP past the
-         anchor, the old low is stale — pull anchor up toward current. */
-      if (vLow.length >= 3) {
-        const vMean = mean(vLow);
-        if (vMean > anchor) anchor = Math.round(anchor * 0.3 + vMean * 0.7);
-      }
-      /* Patient-bid floor: for items whose 24h band is genuinely wide
-         (>4% range), the 90-minute anchor leaves multi-hour dips on the
-         table. Drop the anchor toward a price 0.5% above the 24h low (5th
-         percentile, robust to outlier prints) so a patient bid can catch
-         those dips. Scaled by how volatile the item is — but capped at 0.6
-         strength even for very-wide items so we never fully chase the
-         24h extreme. Above 20% range we assume a regime shift and skip
-         the patient blend entirely (engine sticks to the recent cluster). */
-      if (day24Lo && day24Lo > 0 && day24Range > 0.04 && day24Range <= 0.20) {
-        const patientFloor = Math.round(day24Lo * 1.005);
-        if (patientFloor < anchor) {
-          const t = Math.min(0.6, (day24Range - 0.04) / 0.16); // 0 at 4%, 0.6 at 20%
-          anchor = Math.round(anchor * (1 - t) + patientFloor * t);
-          if (anchor < day24Lo) anchor = day24Lo;
-        }
-      }
-      recentLow = anchor;
-    }
-
-    if (rHigh.length >= 3) {
-      /* Sell side: 85th-percentile slice + cluster (higher wins, more
-         ambitious ask), then nudge toward the very-recent realised high
-         capped at 0.9% over the anchor. */
-      const p85 = Math.round(percentile(rHigh, 85));
-      const cluster = findRepeatedExtreme(rHigh, true, 3);
-      let anchor = (cluster !== null && cluster > p85) ? cluster : p85;
-      if (vHigh.length >= 2) {
-        const vMax = Math.max(...vHigh);
-        const cap = Math.round(anchor * 1.009);
-        if (vMax > anchor) anchor = Math.min(vMax, cap);
-      }
-      /* Trend bias: if very-recent insta-buys have drifted DOWN past the
-         anchor, the peak is in the past — pull anchor down. */
-      if (vHigh.length >= 3) {
-        const vMean = mean(vHigh);
-        if (vMean < anchor) anchor = Math.round(anchor * 0.3 + vMean * 0.7);
-      }
-      /* Patient-ask ceiling: mirror of the buy-side patient floor. Uses
-         the 95th-percentile 24h high (robust to outlier prints) and blends
-         only at 0.6 strength max so we don't chase a price that nobody is
-         actually paying. Above 20% range we skip — that's a regime shift,
-         not a steady cycle, and the recent cluster is the only safe anchor. */
-      if (day24Hi && day24Hi > 0 && day24Range > 0.04 && day24Range <= 0.20) {
-        const patientCeiling = Math.round(day24Hi * 0.995);
-        if (patientCeiling > anchor) {
-          const t = Math.min(0.6, (day24Range - 0.04) / 0.16);
-          anchor = Math.round(anchor * (1 - t) + patientCeiling * t);
-          if (anchor > day24Hi) anchor = day24Hi;
-        }
-      }
-      recentHigh = anchor;
-    }
-  }
-  /* Targets:
-     - Buy: anchor as-is (no +1 padding). The +1 was for queue priority but
-       it inflated the displayed bid above the realistic fill price; trades
-       match at the older offer's price anyway, so showing anchor is honest.
-     - Sell: anchor -1 for front-of-queue, BUT floored at the LIVE insta-buy
-       (rawHigh) so we never recommend selling below where buyers are
-       demonstrably paying right now. The previous floor of (rawHigh - 1)
-       still undercut the live quote and surprised users. Posting AT rawHigh
-       matches against an existing buyer at their price → you receive
-       rawHigh, the highest fillable.
-     Hard rails: positive integers + spread invariant. */
-  let buy = recentLow;
-  let sell = Math.max(recentHigh - 1, rawHigh);
-  if (buy >= sell) { buy = rawLow; sell = rawHigh; }
-  if (buy < 1) buy = 1;
-  /* Keep the calculated tight spread even when it isn't tax-positive — the
-     Grade's margin-health gate will surface "No Margin" / "Thin — Hold" so
-     the user can see the truth instead of a phantom widened spread. */
-  return { buy, sell };
+/* Back-compat entry point. Existing callers pass (rawLow, rawHigh, series);
+   the newer ones also pass the live /latest node (for freshness timestamps)
+   and the item id (for tax exemption). Always returns
+   { buy, sell, viable, reason, edge, lowConf }. */
+function runTradeEngine(rawLow, rawHigh, series, node, id) {
+  const n = node ? Object.assign({}, node) : { low: rawLow, high: rawHigh };
+  if (n.low == null) n.low = rawLow;
+  if (n.high == null) n.high = rawHigh;
+  if (!n.low || !n.high)
+    return { buy: n.low || 0, sell: n.high || 0, viable: false, reason: 'no live quote', edge: 0, lowConf: true };
+  return computeTargets(n, series, isTaxExempt(id));
 }
 
 /* Composite 0–100 grade for the currently-selected item on the current
@@ -3072,7 +3171,7 @@ function computeGrade(item, side) {
      unprofitable (i.e. the timeframe genuinely doesn't have a flip in it). */
   let currentMarginPct = null, dayMarginPct = null;
   if (recommendedBuy > 0 && recommendedSell > 0) {
-    const tax = calculateTax(recommendedSell);
+    const tax = calculateTax(recommendedSell, item.id);
     currentMarginPct = (recommendedSell - recommendedBuy - tax) / recommendedBuy;
   }
   let dayHi = -Infinity, dayLo = Infinity;
@@ -3082,7 +3181,7 @@ function computeGrade(item, side) {
     if (L != null && L > 0 && L < dayLo) dayLo = L;
   }
   if (isFinite(dayHi) && isFinite(dayLo) && dayHi > dayLo) {
-    const dayTax = calculateTax(dayHi);
+    const dayTax = calculateTax(dayHi, item.id);
     dayMarginPct = (dayHi - dayLo - dayTax) / dayLo;
   }
   /* Margin score weighted by side-appropriate range position so the same
@@ -3165,7 +3264,7 @@ function savePortfolio() { try { localStorage.setItem('ge_portfolio', JSON.strin
 function pfMetrics(h) {
   const node = latest?.data?.[String(h.itemId)];
   const px = node?.high ?? node?.avgHighPrice ?? node?.low ?? h.cost ?? 0;
-  const tax = Math.min(5000000, Math.floor(px * 0.02));
+  const tax = calculateTax(px, h.itemId);
   const netEach = Math.max(0, px - tax);
   const value = netEach * h.qty;
   const hasCost = h.cost && h.cost > 0;
@@ -4011,7 +4110,7 @@ function refreshChart() {
   currentSeries = filterSeries(seriesForView(view, currentItemSrc, currentItemLowVol), getPeriod(view));
   selectedAbsIdx = null;
   offset = Math.max(0, currentSeries.labels.length - Math.floor(currentSeries.labels.length / zoom));
-  const targets = runTradeEngine(liveBuyRaw, liveSellRaw, pickEngineSeries(currentItemSrc) || currentSeries);
+  const targets = runTradeEngine(liveBuyRaw, liveSellRaw, pickEngineSeries(currentItemSrc) || currentSeries, latest?.data?.[String(selected.id)], selected.id);
   recommendedBuy = targets.buy; recommendedSell = targets.sell;
   $("#buyPrice").innerHTML = `<div class="price-label">Target Buy <span class="live-val">Live: ${fmtGp(liveBuyRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedBuy)}</span></div><div class="price-grade" id="buyGrade"></div>`;
   $("#sellPrice").innerHTML = `<div class="price-label">Target Sell <span class="live-val">Live: ${fmtGp(liveSellRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedSell)}</span></div><div class="price-grade" id="sellGrade"></div>`;
@@ -4148,7 +4247,7 @@ async function setItem(m, opts = {}) {
      was too lossy to be useful as the headline number. */
   $("#tickerLivePrice").innerHTML = `${fmtGp(liveSellRaw)} <span class="tlp-gp">gp</span>`;
 
-  const targets = runTradeEngine(liveBuyRaw, liveSellRaw, pickEngineSeries(currentItemSrc) || currentSeries);
+  const targets = runTradeEngine(liveBuyRaw, liveSellRaw, pickEngineSeries(currentItemSrc) || currentSeries, node, m.id);
   recommendedBuy = targets.buy; recommendedSell = targets.sell;
   $("#buyPrice").innerHTML = `<div class="price-label">Target Buy <span class="live-val">Live: ${fmtGp(liveBuyRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedBuy)}</span></div><div class="price-grade" id="buyGrade"></div>`;
   $("#sellPrice").innerHTML = `<div class="price-label">Target Sell <span class="live-val">Live: ${fmtGp(liveSellRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedSell)}</span></div><div class="price-grade" id="sellGrade"></div>`;
@@ -4354,7 +4453,7 @@ setItem._userPicked = false;
           liveBuyRaw = node?.low ?? node?.avgLowPrice ?? 0;
           liveSellRaw = node?.high ?? node?.avgHighPrice ?? 0;
           $("#tickerLivePrice").innerHTML = `${fmtGp(liveSellRaw)} <span class="tlp-gp">gp</span>`;
-          const targets = runTradeEngine(liveBuyRaw, liveSellRaw, pickEngineSeries(currentItemSrc) || currentSeries);
+          const targets = runTradeEngine(liveBuyRaw, liveSellRaw, pickEngineSeries(currentItemSrc) || currentSeries, node, selected.id);
           recommendedBuy = targets.buy; recommendedSell = targets.sell;
           $("#buyPrice").innerHTML = `<div class="price-label">Target Buy <span class="live-val">Live: ${fmtGp(liveBuyRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedBuy)}</span></div><div class="price-grade" id="buyGrade"></div>`;
           $("#sellPrice").innerHTML = `<div class="price-label">Target Sell <span class="live-val">Live: ${fmtGp(liveSellRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedSell)}</span></div><div class="price-grade" id="sellGrade"></div>`;
