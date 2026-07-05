@@ -1032,40 +1032,39 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
   box-shadow:0 2px 10px rgba(255,184,0,.25); }
 .find-flip-btn:active { transform:translateY(1px); }
 .find-flip-btn .ff-bolt { font-size:16px; }
-.flip-card { margin:8px; padding:12px; border-radius:12px; cursor:pointer; background:var(--bg-panel);
+.flip-card { margin:8px; padding:9px 10px; border-radius:12px; cursor:pointer; background:var(--bg-panel);
   border:1px solid rgba(230,195,92,.30); box-shadow:0 4px 16px rgba(0,0,0,.35); }
 .flip-card:focus-visible { outline:2px solid var(--buy-color); outline-offset:2px; }
-.fc-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
-.fc-kicker { font-size:11px; font-weight:800; letter-spacing:.4px; color:var(--buy-color); text-transform:uppercase; }
-.fc-next { min-height:40px; font-size:12px; font-weight:700; padding:8px 14px; border-radius:999px; cursor:pointer;
+.fc-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.fc-kicker { font-size:10.5px; font-weight:800; letter-spacing:.4px; color:var(--buy-color); text-transform:uppercase; }
+.fc-next { min-height:34px; font-size:11.5px; font-weight:700; padding:6px 12px; border-radius:999px; cursor:pointer;
   color:var(--text-main); background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); }
 .fc-next:active { transform:translateY(1px); }
 .fc-next:disabled { opacity:.5; cursor:default; }
-.fc-body { display:flex; align-items:center; gap:10px; }
-.fc-icon { width:34px; height:34px; flex:0 0 34px; image-rendering:pixelated; }
+.fc-body { display:flex; align-items:center; gap:8px; }
+.fc-icon { width:30px; height:30px; flex:0 0 30px; image-rendering:pixelated; }
 .fc-main { flex:1 1 auto; min-width:0; }
-.fc-name { font-weight:800; font-size:15px; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.fc-why { font-size:11px; color:var(--text-muted); margin-top:2px; }
-.fc-gauge { flex:0 0 auto; text-align:center; min-width:62px; }
-.fc-score { font-size:20px; font-weight:800; line-height:1; }
-.fc-verdict { font-size:10px; font-weight:700; margin-top:1px; }
-.fc-meter { height:4px; border-radius:2px; background:rgba(255,255,255,.10); margin-top:4px; overflow:hidden; }
+.fc-name { font-weight:800; font-size:14px; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fc-why { font-size:10.5px; color:var(--text-muted); margin-top:1px; }
+.fc-gauge { flex:0 0 auto; text-align:center; min-width:58px; }
+.fc-score { font-size:18px; font-weight:800; line-height:1; }
+.fc-verdict { font-size:9.5px; font-weight:700; margin-top:1px; }
+.fc-meter { height:3px; border-radius:2px; background:rgba(255,255,255,.10); margin-top:3px; overflow:hidden; }
 .fc-meter span { display:block; height:100%; border-radius:2px; }
-.fc-prices { display:flex; gap:8px; margin:10px 0 8px; }
-.fc-price { flex:1; padding:8px; border-radius:8px; text-align:center; }
+.fc-prices { display:flex; gap:6px; margin:7px 0 6px; }
+.fc-price { flex:1; padding:5px 6px; border-radius:8px; text-align:center; }
 .fc-price.buy  { background:rgba(230,195,92,.10); border:1px solid rgba(230,195,92,.30); }
 .fc-price.sell { background:rgba(38,166,154,.10); border:1px solid rgba(38,166,154,.30); }
 .fc-plabel { display:block; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; }
 .fc-price.buy .fc-plabel { color:var(--buy-color); }
 .fc-price.sell .fc-plabel { color:var(--sell-color); }
-.fc-pval { display:block; font-size:16px; font-weight:800; color:var(--text-main); margin-top:2px; }
-.fc-stats { display:flex; flex-wrap:wrap; gap:6px 14px; margin-bottom:8px; }
-.fc-stats > div { display:flex; flex-direction:column; }
-.fc-slabel { font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.3px; }
-.fc-sval { font-size:13px; font-weight:700; color:var(--text-main); font-variant-numeric:tabular-nums; }
+.fc-pval { display:block; font-size:15px; font-weight:800; color:var(--text-main); margin-top:1px; }
+.fc-stats { display:flex; flex-wrap:wrap; gap:4px 12px; }
+.fc-stats > div { display:flex; flex-direction:column; flex:1 1 auto; }
+.fc-slabel { font-size:9px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.3px; }
+.fc-sval { font-size:12.5px; font-weight:700; color:var(--text-main); font-variant-numeric:tabular-nums; }
 .fc-sval.pos { color:var(--rs-green-deep); }
 .fc-subnote { font-size:9px; color:var(--text-muted); }
-.fc-cta { font-size:11px; font-weight:700; color:var(--buy-color); text-align:center; padding-top:2px; }
 .flip-card.ff-msg { display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center; cursor:default; }
 .ff-msg-txt { font-size:12px; color:var(--text-muted); }
 
@@ -1094,6 +1093,10 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .rg-end { text-transform:uppercase; opacity:.75; } .rg-end-sell { color:var(--sell-color); } .rg-end-buy { color:var(--buy-color); }
 .rg-sub { flex:1; text-align:center; font-size:9.5px; font-weight:600; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 @media (min-width:1024px){ .rg-wrap{padding:10px 14px;} .rg-label{font-size:16px;} .rg-track{height:10px;} .rg-sub{font-size:10px;} }
+/* Sidebar variant: lives inside the Potential Profit module (.calc-container is
+   already a panel) — divider instead of its own box. */
+.rg-wrap.rg-side { margin:8px 0 0; padding:8px 2px 0; background:transparent; border:none; border-top:1px solid var(--border-main); border-radius:0; }
+@media (min-width:1024px){ .rg-wrap.rg-side{padding:8px 2px 0;} }
 
 /* ── Quick-facts (below chart) ───────────────────────────────────────────── */
 .quick-facts { display:flex; align-items:center; gap:8px; flex-wrap:nowrap; overflow-x:auto;
@@ -1306,7 +1309,6 @@ body.flip-mode #ratingGauge { display:none !important; }
         </div>
       </div>
 
-      <div id="ratingGauge" class="rg-wrap" hidden></div>
       <div class="flip-trust" id="flipTrust" style="display:none"></div>
 
       <div class="chart-container">
@@ -1775,7 +1777,8 @@ function restoreCalculator(itemLimit, recBuy, recSell) {
         <div class="calc-input"><label>Sell (ea)</label><input type="text" id="calcSell" value="${recSell || 0}" placeholder="0"></div>
       </div>
       <div class="calc-breakdown" id="calcBreakdown"></div>
-    </div>`;
+    </div>
+    <div id="ratingGauge" class="rg-wrap rg-side" hidden></div>`;
   /* The WHOLE header toggles (label, profit value, and caret are all one big
      tap target) — keyboard accessible too. */
   const toggleCalc = () => {
@@ -1800,6 +1803,10 @@ function restoreCalculator(itemLimit, recBuy, recSell) {
   $('#calcBuy').addEventListener('input', updateCalculator);
   $('#calcSell').addEventListener('input', updateCalculator);
   updateCalculator();
+  /* The Analyst Rating lives inside this module (TradingView-style right-rail
+     rating). Rebuilding the module wipes the mount, so repaint it here; the
+     insight refreshers repaint it again on every price render. */
+  renderRatingGauge(selected, $('#ratingGauge'));
 }
 
 $('#buyPrice').onclick = () => { activePriceBox = 'buy'; updateSelection(); updateGradeBadge(); queueDraw(); };
@@ -2971,15 +2978,20 @@ function pickEngineSeries(src) {
    ════════════════════════════════════════════════════════════════════════ */
 const ENGINE_CFG = {
   TARGET_TRADES: 2000, MIN_TRADES: 200, MIN_BUCKETS: 8,
-  MIN_AGE: 20 * 60, MAX_AGE: 24 * 3600,
+  /* MIN_AGE 1h (was 20min): the evidence window is what tells us which price
+     levels actually trade. A hyper-liquid item was collapsing to a ~20-min
+     window, so a level that prints several times an HOUR looked unreachable
+     and targets pinned to the live quote — far too timid vs the real tape. */
+  MIN_AGE: 60 * 60, MAX_AGE: 24 * 3600,
   alpha: 0.25, minScale: 1, maxSpreadFrac: 0.34, absCapFrac: 0.05,
   volFloor: 20, volCapW: 200,
   NEFF_MIN: 2, NEFF_MAX: 8,
   ALPHA_LIVE: 0.6, FRESH_SEC: 120, STALE_MIN: 5 * 60, STALE_MAX: 60 * 60,
   kMax: 6, maxFrac: 0.25, pMin: 0.15,
   kSafety: 0.002,
-  DRIFT_GATE: 0.01,     // >=1% level move over the window ⇒ trend regime
-  RECENT_FRAC: 0.34     // "recent sub-window" = newest third by trade count
+  DRIFT_GATE: 0.006,    // >=0.6% level move over the window ⇒ trend regime
+  RECENT_FRAC: 0.34,    // "recent sub-window" = newest third by trade count
+  PATIENCE_K: 0.25      // gentle preference for nearer/faster fills (was ~4x harsher)
 };
 function engMedian(a) {
   if (!a.length) return 0;
@@ -3022,19 +3034,24 @@ function computeTargets(node, series, exempt) {
   const dt = engMedian(gaps) || 300;
 
   // ---- adaptive, liquidity-sized window (walk newest → oldest) --------------
+  // The stop condition counts USABLE (two-sided) buckets, not raw buckets: on
+  // 5m data even liquid items print one-sided buckets, and a window that
+  // stopped at 8 raw buckets could hold <8 usable ones — a 1M+/day item was
+  // reporting "thin data". Keep walking until the stats actually have sample.
   const idx = [];
-  let cum = 0, oldest = now;
+  let cum = 0, oldest = now, usable = 0;
   for (let i = L.length - 1; i >= 0; i--) {
     const age = now - L[i];
     if (age < 0) continue;
     if (age > C.MAX_AGE) break;
     idx.push(i);
+    if (series.low[i] > 0 && series.high[i] > 0) usable++;
     cum += (series.lowVol[i] || 0) + (series.highVol[i] || 0);
     oldest = L[i];
     const span = now - oldest;
-    if (cum >= C.TARGET_TRADES && span >= C.MIN_AGE && idx.length >= C.MIN_BUCKETS) break;
+    if (cum >= C.TARGET_TRADES && span >= C.MIN_AGE && usable >= C.MIN_BUCKETS) break;
   }
-  if (idx.length < C.MIN_BUCKETS) return NO('insufficient buckets', rawLow, rawHigh, true);
+  if (usable < C.MIN_BUCKETS) return NO('insufficient buckets', rawLow, rawHigh, true);
   idx.reverse(); // oldest → newest
   const span = Math.max(dt, now - L[idx[0]]);
   const lowConf = cum < C.MIN_TRADES;
@@ -3058,19 +3075,37 @@ function computeTargets(node, series, exempt) {
     const mid = (lo + hi) / 2, spread = Math.max(0, hi - lo);
     const age = now - L[i];
     const decay = Math.pow(0.5, age / halfLife);
+    /* Reach weights use a much flatter decay (half-life = whole window): for
+       "does this level trade?" an hour-old print in a FLAT market is nearly as
+       good evidence as a fresh one. The steep level-decay stays for anchors. */
+    const decayReach = Math.pow(0.5, age / span);
     const volL = Math.min(series.lowVol[i] || 1, 5 * volMed);
     const volH = Math.min(series.highVol[i] || 1, 5 * volMed);
+    const wL = decay * Math.sqrt(Math.min(volL, C.volCapW));
+    const wH = decay * Math.sqrt(Math.min(volH, C.volCapW));
+    /* Endangered-regime evidence decays per BUCKET (half-life = one bucket):
+       in a moving market each print supersedes the last, so a 15-min-old
+       crash bucket must not certify an ask the newest prints already left. */
+    const decayFresh = Math.pow(0.5, age / dt);
     B.push({
-      i, age, lo, hi, mid, spread,
-      wL: decay * Math.sqrt(Math.min(volL, C.volCapW)),
-      wH: decay * Math.sqrt(Math.min(volH, C.volCapW)),
+      i, age, lo, hi, mid, spread, wL, wH,
+      wFreshL: decayFresh * Math.sqrt(Math.min(volL, C.volCapW)),
+      wFreshH: decayFresh * Math.sqrt(Math.min(volH, C.volCapW)),
+      wM: wL + wH, // drift/level medians must see BOTH sides — a crash printing
+                   // thin on the low side is invisible to a wL-only median
+      /* Reach votes answer "does this level recur?", not "how big was the one
+         print?" — cap the volume at 1x median so a single whale bucket can't
+         out-shout hours of subsequent tape. */
+      wReachL: decayReach * Math.sqrt(Math.min(volL, volMed, C.volCapW)),
+      wReachH: decayReach * Math.sqrt(Math.min(volH, volMed, C.volCapW)),
       volL, volH,
-      recent: age <= Math.max(halfLife, 3 * dt)  // regime-consistent tail
+      recent: age <= Math.max(halfLife, 3 * dt), // corroboration tail
+      fresh: age <= 3 * dt                       // strict regime tail (endangered evidence)
     });
   }
   if (B.length < C.MIN_BUCKETS) return NO('thin data', rawLow, rawHigh, true);
 
-  const refMid = engWMedian(B, 'mid', 'wL');
+  const refMid = engWMedian(B, 'mid', 'wM');
   const relSpread = engWMedian(B.map(b => ({ v: b.spread / b.mid, w: b.wL + b.wH })), 'v', 'w');
 
   // realized step-vol (MAD of log-returns), gap-skipped
@@ -3085,17 +3120,42 @@ function computeTargets(node, series, exempt) {
 
   // ---- DRIFT (level change), independent of sigma — the hardening core ------
   const recentB = B.filter(b => b.recent);
+  const freshB = B.filter(b => b.fresh);
   const third = Math.max(1, Math.round(B.length * C.RECENT_FRAC));
-  const midNew = engWMedian(B.slice(B.length - third), 'mid', 'wL');
-  const midOld = engWMedian(B.slice(0, third), 'mid', 'wL');
+  const midNew = engWMedian(B.slice(B.length - third), 'mid', 'wM');
+  const midOld = engWMedian(B.slice(0, third), 'mid', 'wM');
+  /* Two drift signals, because each is blind somewhere:
+     - thirds drift misses any move confined to the newest third (flash crash)
+       or a mid-window hump, and its centers sit only ~0.7 spans apart, so the
+       measured value understates the true per-window move — gate at 0.7x;
+     - tail drift (corroboration tail vs whole-window median) catches moves the
+       thirds can't see; it is a ~half-window signal, so it counts doubled. */
   const driftFrac = refMid > 0 ? (midNew - midOld) / refMid : 0; // >0 rising, <0 falling
+  const midTail = recentB.length ? engWMedian(recentB, 'mid', 'wM') : refMid;
+  const driftTail = refMid > 0 ? (midTail - refMid) / refMid : 0;
+  /* A fresh live quote breaching the window band on BOTH sides in the same
+     direction is not a fat finger — it is the regime moving. Treat it as
+     endangerment evidence (and keep trusting the quote, see blend below). */
+  const bothBreachDown = rawLow > 0 && rawHigh > 0 && rawLow < P1lo && rawHigh < P1hi;
+  const bothBreachUp   = rawLow > 0 && rawHigh > 0 && rawLow > P99lo && rawHigh > P99hi;
+
+  /* Per-side endangerment: a trend only invalidates evidence for the side it
+     is moving AWAY from (falling market ⇒ old highs won't recur; rising ⇒ old
+     lows won't). That side gets the strict fresh-tail gate + no holding-window
+     bonus. The other side — and BOTH sides in a flat market — may use the whole
+     window as reachability evidence, which is what lets us bid the recurring
+     dip and ask the recurring pop instead of pinning to the live quote. */
+  const sellEndangered = driftFrac <= -C.DRIFT_GATE * 0.7 || 2 * driftTail <= -C.DRIFT_GATE || bothBreachDown;
+  const buyEndangered  = driftFrac >=  C.DRIFT_GATE * 0.7 || 2 * driftTail >=  C.DRIFT_GATE || bothBreachUp;
+  // effective drift for the entry-trap penalty: the strongest signal we saw
+  const effDrift = Math.abs(driftFrac / 0.7) >= Math.abs(2 * driftTail) ? driftFrac / 0.7 : 2 * driftTail;
 
   // Neff (bounded holding-window revisits). Against the drift direction the
   // price does NOT revisit a level, so kill the holding-window bonus there.
   let NeffBuy = Math.min(C.NEFF_MAX, Math.max(C.NEFF_MIN, Math.round((span / dt) / 3)));
   let NeffSell = NeffBuy;
-  if (driftFrac <= -C.DRIFT_GATE) NeffSell = 1; // falling: a sell above won't be revisited
-  if (driftFrac >= C.DRIFT_GATE) NeffBuy = 1;   // rising: a buy below won't be revisited
+  if (sellEndangered) NeffSell = 1;
+  if (buyEndangered) NeffBuy = 1;
 
   // ---- deblur + soft touch prob + holding-window P(fill) ---------------------
   // Deblur to an inferred intra-bucket extreme using ONLY the per-bucket spread
@@ -3111,13 +3171,19 @@ function computeTargets(node, series, exempt) {
     sc *= Math.min(1, volSide / C.volFloor);
     return Math.max(0, sc);
   }
-  // soft per-bucket touch fraction; recentOnly restricts to the regime tail
-  function qTouch(c, side, recentOnly) {
+  /* Soft per-bucket touch fraction. Gating is PER SIDE by regime: the
+     endangered side (trend moving away from it) sees only the strict FRESH
+     tail (last ~3 buckets) with steep decay — a pre-crash level can't certify
+     it. A safe side sees the whole window with the flat reach decay, so a
+     level that trades a few times an hour in a flat market is reachable. */
+  function qTouch(c, side) {
+    const endangered = side === 'buy' ? buyEndangered : sellEndangered;
     let acc = 0, W = 0;
     for (const b of B) {
-      if (recentOnly && !b.recent) continue;
+      if (endangered && !b.fresh) continue;
       const sc = deblur(b, side);
-      const w = side === 'buy' ? b.wL : b.wH;
+      const w = endangered ? (side === 'buy' ? b.wFreshL : b.wFreshH)
+                           : (side === 'buy' ? b.wReachL : b.wReachH);
       let f;
       if (side === 'buy') { const p = b.lo, ext = p - sc; f = c >= p ? 1 : (c <= ext ? 0 : (c - ext) / (p - ext)); }
       else { const p = b.hi, ext = p + sc; f = c <= p ? 1 : (c >= ext ? 0 : (ext - c) / (ext - p)); }
@@ -3125,9 +3191,39 @@ function computeTargets(node, series, exempt) {
     }
     return W > 0 ? acc / W : 0;
   }
-  const Pfill = (c, side) => 1 - Math.pow(1 - qTouch(c, side, false), side === 'buy' ? NeffBuy : NeffSell);
-  // recency-gated fillability: candidate must be reachable by the RECENT tail
-  const reachable = (c, side) => qTouch(c, side, true) >= C.pMin;
+  /* Distinct touch EPISODES (runs of consecutive touching buckets). The
+     holding-window bonus 1-(1-q)^N assumes the level is REVISITED; a single
+     contiguous dead cluster is one visit, not N chances. A periodic level
+     (touched every few buckets) keeps its full N. */
+  function touchEpisodes(c, side) {
+    let eps = 0, inTouch = false;
+    for (const b of B) { // oldest → newest
+      const sc = deblur(b, side);
+      const t = side === 'buy' ? (c >= b.lo - sc) : (c <= b.hi + sc);
+      if (t && !inTouch) eps++;
+      inTouch = t;
+    }
+    return eps;
+  }
+  const Pfill = (c, side) => {
+    const base = side === 'buy' ? NeffBuy : NeffSell;
+    const n = Math.max(1, Math.min(base, touchEpisodes(c, side)));
+    return 1 - Math.pow(1 - qTouch(c, side), n);
+  };
+  /* Recent-tail corroboration, in ALL regimes: a level only counts as fillable
+     if the tail still touches it (within deblur). A genuinely recurring
+     dip/pop keeps printing in the tail by definition — ambition is preserved —
+     but an 8h-dead whale wall, a pulled buy wall, or a one-off cluster whose
+     flow vanished can no longer certify an ask the live market never visits. */
+  function tailTouches(c, side) {
+    for (const b of B) {
+      if (!b.recent) continue;
+      const sc = deblur(b, side);
+      if (side === 'buy' ? (c >= b.lo - sc) : (c <= b.hi + sc)) return true;
+    }
+    return false;
+  }
+  const reachable = (c, side) => qTouch(c, side) >= C.pMin && tailTouches(c, side);
 
   // ---- live-anchor blend (staleness trust + slew cap) -----------------------
   const tradesPerMin = cum / Math.max(1, span / 60);
@@ -3145,7 +3241,11 @@ function computeTargets(node, series, exempt) {
   function blend(dist, live, ageSec, p1, p99) {
     if (!(live > 0)) return { price: Math.round(dist), t: 0 };
     let t = trust(ageSec);
-    if (live < p1 || live > p99) t = 0; // hard outlier guard (fat-finger live tick)
+    /* Fat-finger guard — but NOT when both live legs breach the band in the
+       same direction: that is the regime moving, and the live quote is then
+       the only honest anchor (a crash pins fresh quotes below P1 precisely
+       when trusting them matters most). */
+    if ((live < p1 || live > p99) && !(bothBreachDown || bothBreachUp)) t = 0;
     const clamped = Math.max(dist - delta, Math.min(dist + delta, live));
     const a = C.ALPHA_LIVE * t;
     return { price: Math.round((1 - a) * dist + a * clamped), t };
@@ -3159,19 +3259,28 @@ function computeTargets(node, series, exempt) {
   const sAbs = sigma * ((aBuy.price + aSell.price) / 2);
   const eMax = Math.max(1, Math.min(C.kMax * sAbs, C.maxFrac * aBuy.price));
   const step = Math.max(1, Math.round(eMax / 40));
+  /* Never bid ABOVE the fresh live insta-sell: sellers are demonstrably
+     accepting rawLow right now, so a standing bid above it just becomes the
+     price the next impatient seller hits — pure overpay (this is how a crash
+     tape produced a bid 26 gp above the live market). Ambition means bidding
+     BELOW the market, never above it. Only enforced when the quote is trusted. */
+  const buyCapLive = (rawLow > 0 && aBuy.t >= 0.5) ? rawLow : Infinity;
   const buyCands = [], sellCands = [];
   for (let e = 0; e <= eMax; e += step) {
-    const bb = Math.round(aBuy.price - e); if (bb >= 1) buyCands.push(bb);
+    const bb = Math.round(aBuy.price - e); if (bb >= 1 && bb <= buyCapLive) buyCands.push(bb);
     sellCands.push(Math.round(aSell.price + e));
   }
-  // fillable band drawn from the RECENT sub-window only (can't chase a stale spike)
-  const recLo = recentB.map(b => b.lo), recHi = recentB.map(b => b.hi);
-  const buyFloor = Math.min(rawLow > 0 ? rawLow : Infinity, percentile(recLo.length ? recLo : loArr, 2));
-  const sellCap  = Math.max(rawHigh > 0 ? rawHigh : 0, percentile(recHi.length ? recHi : hiArr, 98));
+  // fillable band from the same per-side evidence set as reachability: strict
+  // fresh tail for an endangered side (can't widen into a stale spike),
+  // whole winsorized window for a safe side (recurring levels are fair game)
+  const loEvid = ((buyEndangered ? freshB : B).length ? (buyEndangered ? freshB : B) : B).map(b => b.lo);
+  const hiEvid = ((sellEndangered ? freshB : B).length ? (sellEndangered ? freshB : B) : B).map(b => b.hi);
+  const buyFloor = Math.min(rawLow > 0 ? rawLow : Infinity, percentile(loEvid.length ? loEvid : loArr, 2));
+  const sellCap  = Math.max(rawHigh > 0 ? rawHigh : 0, percentile(hiEvid.length ? hiEvid : hiArr, 98));
 
   // an "easy" fill the drift is FEEDING is a trap (buy into a crash / sell into a
   // spike you can't repeat) — discount that leg so the optimizer can't reward it.
-  const strongDrift = Math.abs(driftFrac) >= 3 * C.DRIFT_GATE;
+  const strongDrift = Math.abs(effDrift) >= 3 * C.DRIFT_GATE;
   function score(side, c, otherTarget) {
     if (!reachable(c, side)) return -1;                 // recency gate
     const p0 = Pfill(c, side);
@@ -3180,12 +3289,16 @@ function computeTargets(node, series, exempt) {
     if (margin <= 0) return -1;
     let p = p0;
     if (strongDrift) {
-      if (side === 'buy'  && driftFrac < 0) p *= 0.5;
-      if (side === 'sell' && driftFrac > 0) p *= 0.5;
+      if (side === 'buy'  && effDrift < 0) p *= 0.5;
+      if (side === 'sell' && effDrift > 0) p *= 0.5;
     }
     const eB = aBuy.price - (side === 'buy' ? c : otherTarget);
     const eS = (side === 'sell' ? c : otherTarget) - aSell.price;
-    const patience = 1 + Math.max(0, eB) / Math.max(1, sAbs) + Math.max(0, eS) / Math.max(1, sAbs);
+    /* Gentle patience preference. The old form (1 + eB/σ + eS/σ) divided a
+       2-sigma-wide pair's EV by ~5, crushing exactly the patient dip-bid /
+       pop-ask pairs that pay the 2% tax — the engine ended up quoting the
+       live spread. P(fill) already discounts distance; this is a tiebreaker. */
+    const patience = 1 + C.PATIENCE_K * (Math.max(0, eB) + Math.max(0, eS)) / Math.max(1, sAbs);
     return p * margin / patience;
   }
   function argmax(cands, side, other) {
@@ -3200,9 +3313,14 @@ function computeTargets(node, series, exempt) {
   }
 
   // ---- coupled 2-sweep fixed point ------------------------------------------
-  let s = Math.min(Math.max(distSell, aSell.price), sellCap);
+  let s = Math.round(Math.min(Math.max(distSell, aSell.price), sellCap));
   let b = argmax(buyCands, 'buy', s); if (b != null) s = argmax(sellCands, 'sell', b) ?? s;
   if (b != null) { b = argmax(buyCands, 'buy', s) ?? b; s = argmax(sellCands, 'sell', b) ?? s; }
+  /* A seed that never passed an argmax sweep was never validated by the fill
+     model — it must not slip through the money gate as a "viable" target
+     (that's how a stale anchor above the fresh tape leaked out as a sell). */
+  if (s != null && !reachable(s, 'sell')) s = null;
+  if (b != null && (!reachable(b, 'buy') || b > buyCapLive)) b = null;
 
   // ---- money floor / safety rails -------------------------------------------
   const edgeReq = lowConf
@@ -3216,13 +3334,19 @@ function computeTargets(node, series, exempt) {
   }
 
   // widen minimally, staying inside the RECENT fillable band + recency gate
-  if (b == null) b = Math.max(1, Math.round(aBuy.price));
+  if (b == null) b = Math.max(1, Math.min(Math.round(aBuy.price), buyCapLive));
   if (s == null) s = Math.round(aSell.price);
+  /* Pull the sell seed down into validated territory before the money gate:
+     an anchor stranded above the fresh tape must not pass as-is. Selling AT
+     the live insta-buy is definitionally fillable, so stop there. */
+  let seedGuard = 0;
+  while (s > (rawHigh || 1) && !reachable(s, 'sell') && ++seedGuard < 20000) s--;
+  if (rawHigh > 0 && s < rawHigh) s = rawHigh;
   let guard = 0;
   while (netKept(b, s, exempt) < edgeReq) {
     const canLower = (b - 1) >= buyFloor && (b - 1) >= 1 && reachable(b - 1, 'buy');
     const canRaise = (s + 1) <= sellCap && reachable(s + 1, 'sell');
-    if (canLower && (!canRaise || qTouch(b - 1, 'buy', true) >= qTouch(s + 1, 'sell', true))) b -= 1;
+    if (canLower && (!canRaise || qTouch(b - 1, 'buy') >= qTouch(s + 1, 'sell'))) b -= 1;
     else if (canRaise) s += 1;
     else break; // can't reach a tax-clearing pair without leaving the fillable band
     if (++guard > 20000) break;
@@ -3232,9 +3356,10 @@ function computeTargets(node, series, exempt) {
 
   // No clean flip. Return the tightest CURRENTLY-FILLABLE honest pair (never a
   // stale-unreachable price); the Grade surfaces the thin/negative margin.
-  const honestBuy = Math.round(aBuy.price);
+  const honestBuy = Math.min(Math.round(aBuy.price), buyCapLive);
   let honestSell = Math.max(Math.round(aSell.price), rawHigh || 0);
   if (aSell.t < 0.5) honestSell = Math.round(aSell.price); // don't pin to a stale live spike
+  else if (sellEndangered && rawHigh > 0) honestSell = rawHigh; // falling market: live is the honest ask
   return NO('spread does not clear the 2% tax right now', honestBuy, honestSell, lowConf);
 }
 
@@ -3654,7 +3779,6 @@ function renderFlipState(kind){
 }
 function renderFlipCard(rec){
   const h = flipHost(); if (!h) return;
-  const limitLabel = rec.hasLimit ? 'Per limit' : 'Per 1,000';
   h.innerHTML = `
     <div class="flip-card" role="button" tabindex="0" data-id="${rec.id}" aria-label="Open ${rec.item.name} — recommended flip">
       <div class="fc-head">
@@ -3680,10 +3804,8 @@ function renderFlipCard(rec){
       <div class="fc-stats">
         <div><span class="fc-slabel">Profit / item</span><span class="fc-sval pos">+${fmtGp(rec.edge)}</span></div>
         <div><span class="fc-slabel">Est. per 4h</span><span class="fc-sval pos">+${abbreviateNumber(rec.realizable)}</span></div>
-        <div><span class="fc-slabel">${limitLabel}</span><span class="fc-sval pos">+${abbreviateNumber(rec.perLimit)}</span><span class="fc-subnote">~${rec.hrsToLimit}h to fill</span></div>
         <div><span class="fc-slabel">Daily vol</span><span class="fc-sval">${abbreviateNumber(rec.vol)}</span></div>
       </div>
-      <div class="fc-cta">Tap for full chart &amp; live prices →</div>
     </div>`;
   wireFlipButtons();
 }
@@ -3753,6 +3875,15 @@ function revalidateFlipCard(){
 }
 function resetFlipFinder(){
   recScanGen++; recBuffer = []; recIdx = -1; recLastId = null; recLastWasEmpty = false; renderFlipIdle();
+  findFlip(); // always-open: immediately hunt a rec for the new universe
+}
+/* Always-open upkeep, called from the 5-min poll: keep a live card on screen.
+   If one is showing, re-validate it against fresh prices (0 API calls); if the
+   finder is sitting in an empty/moved/error state, quietly retry the scan. */
+function ensureFlipCard(){
+  const h = flipHost(); if (!h) return;
+  if (h.querySelector('.flip-card[data-id]')) revalidateFlipCard();
+  else if (!recBusy) findFlip();
 }
 
 /* ── Bank of Gielinor ─────────────────────────────────────────────────────
@@ -4779,6 +4910,7 @@ setItem._userPicked = false;
     renderColToggles();
     renderWatchlist();
     renderFlipIdle();
+    findFlip(); // always-open: the recommended flip loads itself, no tap needed
     /* Auto-kick the 5-day extremes scan in the background so the 5D Highs /
        5D Lows / Steady Flips groups have results by the time the user looks.
        Throttled via SCAN_CONCURRENCY against a bounded ~100-item candidate
@@ -4970,7 +5102,7 @@ setItem._userPicked = false;
           refreshItemInsights(selected, node, targets);
           queueDraw();
         }
-        revalidateFlipCard();
+        ensureFlipCard();
       } catch (e) {}
     }, 300000);
 
