@@ -1023,6 +1023,103 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .site-footer a { color: var(--border-active); text-decoration: none; }
 .site-footer a:hover { text-decoration: underline; }
 .site-footer .foot-disclaimer { opacity: 0.7; font-size: 10.5px; }
+
+/* ── Recommended-flip finder ─────────────────────────────────────────────── */
+.flip-finder { padding: 8px 8px 0; }
+.find-flip-btn { width:100%; display:flex; align-items:center; justify-content:center; gap:8px;
+  padding:12px; border:none; border-radius:10px; cursor:pointer; font-weight:800; font-size:14px;
+  color:#1a1200; background:linear-gradient(135deg,var(--buy-color) 0%,#FFD24D 100%);
+  box-shadow:0 2px 10px rgba(255,184,0,.25); }
+.find-flip-btn:active { transform:translateY(1px); }
+.find-flip-btn .ff-bolt { font-size:16px; }
+.flip-card { margin:8px; padding:12px; border-radius:12px; cursor:pointer; background:var(--bg-panel);
+  border:1px solid rgba(230,195,92,.30); box-shadow:0 4px 16px rgba(0,0,0,.35); }
+.flip-card:focus-visible { outline:2px solid var(--buy-color); outline-offset:2px; }
+.fc-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; }
+.fc-kicker { font-size:11px; font-weight:800; letter-spacing:.4px; color:var(--buy-color); text-transform:uppercase; }
+.fc-next { min-height:40px; font-size:12px; font-weight:700; padding:8px 14px; border-radius:999px; cursor:pointer;
+  color:var(--text-main); background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); }
+.fc-next:active { transform:translateY(1px); }
+.fc-next:disabled { opacity:.5; cursor:default; }
+.fc-body { display:flex; align-items:center; gap:10px; }
+.fc-icon { width:34px; height:34px; flex:0 0 34px; image-rendering:pixelated; }
+.fc-main { flex:1 1 auto; min-width:0; }
+.fc-name { font-weight:800; font-size:15px; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fc-why { font-size:11px; color:var(--text-muted); margin-top:2px; }
+.fc-gauge { flex:0 0 auto; text-align:center; min-width:62px; }
+.fc-score { font-size:20px; font-weight:800; line-height:1; }
+.fc-verdict { font-size:10px; font-weight:700; margin-top:1px; }
+.fc-meter { height:4px; border-radius:2px; background:rgba(255,255,255,.10); margin-top:4px; overflow:hidden; }
+.fc-meter span { display:block; height:100%; border-radius:2px; }
+.fc-prices { display:flex; gap:8px; margin:10px 0 8px; }
+.fc-price { flex:1; padding:8px; border-radius:8px; text-align:center; }
+.fc-price.buy  { background:rgba(230,195,92,.10); border:1px solid rgba(230,195,92,.30); }
+.fc-price.sell { background:rgba(38,166,154,.10); border:1px solid rgba(38,166,154,.30); }
+.fc-plabel { display:block; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.3px; }
+.fc-price.buy .fc-plabel { color:var(--buy-color); }
+.fc-price.sell .fc-plabel { color:var(--sell-color); }
+.fc-pval { display:block; font-size:16px; font-weight:800; color:var(--text-main); margin-top:2px; }
+.fc-stats { display:flex; flex-wrap:wrap; gap:6px 14px; margin-bottom:8px; }
+.fc-stats > div { display:flex; flex-direction:column; }
+.fc-slabel { font-size:10px; color:var(--text-muted); text-transform:uppercase; letter-spacing:.3px; }
+.fc-sval { font-size:13px; font-weight:700; color:var(--text-main); font-variant-numeric:tabular-nums; }
+.fc-sval.pos { color:var(--rs-green-deep); }
+.fc-subnote { font-size:9px; color:var(--text-muted); }
+.fc-cta { font-size:11px; font-weight:700; color:var(--buy-color); text-align:center; padding-top:2px; }
+.flip-card.ff-msg { display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center; cursor:default; }
+.ff-msg-txt { font-size:12px; color:var(--text-muted); }
+
+/* ── Analyst Rating gauge ────────────────────────────────────────────────── */
+.rg-wrap { margin:8px 0 2px; padding:9px 12px 8px; background:var(--bg-panel); border:1px solid var(--border-main); border-radius:8px; }
+.rg-wrap[hidden] { display:none; }
+.rg-top { display:flex; align-items:center; gap:6px; margin-bottom:3px; }
+.rg-eyebrow { font-size:9px; font-weight:800; letter-spacing:.7px; text-transform:uppercase; color:var(--text-muted); }
+.rg-top .pg-help { margin-left:0; }
+.rg-label { font-size:15px; font-weight:900; letter-spacing:-.2px; line-height:1.1; margin-bottom:6px; }
+.rg-label.is-strong { text-shadow:0 0 14px currentColor; }
+.rg-meter { position:relative; padding-bottom:9px; }
+.rg-track { display:flex; gap:2px; height:9px; border-radius:5px; overflow:hidden; }
+.rg-seg { flex:1; transition:filter .2s ease, opacity .2s ease; }
+.rg-ss { background:rgba(38,166,154,.34); } .rg-s { background:rgba(38,166,154,.17); }
+.rg-n  { background:rgba(120,123,134,.16); }
+.rg-b  { background:rgba(230,195,92,.17); } .rg-sb { background:rgba(230,195,92,.34); }
+.rg-seg.is-live { filter:brightness(1.9) saturate(1.3); box-shadow:inset 0 0 0 1px rgba(255,255,255,.28); }
+.rg-meter.is-muted .rg-seg { opacity:.4; filter:grayscale(.5); }
+.rg-needle { position:absolute; top:-2px; width:3px; height:13px; border-radius:2px; background:var(--rg-hue,var(--text-muted));
+  transform:translateX(-50%); box-shadow:0 0 8px var(--rg-hue,transparent); transition:left .35s cubic-bezier(.25,.8,.35,1); }
+.rg-needle::after { content:""; position:absolute; left:50%; bottom:-6px; transform:translateX(-50%);
+  border-left:4px solid transparent; border-right:4px solid transparent; border-top:5px solid var(--rg-hue,var(--text-muted)); }
+.rg-meter.is-muted .rg-needle { opacity:.55; box-shadow:none; }
+.rg-scale { display:flex; align-items:baseline; justify-content:space-between; gap:8px; margin-top:4px; font-size:9px; font-weight:700; letter-spacing:.3px; }
+.rg-end { text-transform:uppercase; opacity:.75; } .rg-end-sell { color:var(--sell-color); } .rg-end-buy { color:var(--buy-color); }
+.rg-sub { flex:1; text-align:center; font-size:9.5px; font-weight:600; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+@media (min-width:1024px){ .rg-wrap{padding:10px 14px;} .rg-label{font-size:16px;} .rg-track{height:10px;} .rg-sub{font-size:10px;} }
+
+/* ── Quick-facts (below chart) ───────────────────────────────────────────── */
+.quick-facts { display:flex; align-items:center; gap:8px; flex-wrap:nowrap; overflow-x:auto;
+  -webkit-overflow-scrolling:touch; scrollbar-width:none; padding:5px 2px; margin:3px 0 0; font-size:11px; color:var(--text-muted); }
+.quick-facts::-webkit-scrollbar { display:none; }
+.qf-cell { display:inline-flex; align-items:baseline; gap:4px; white-space:nowrap; flex:0 0 auto; }
+.qf-k { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; }
+.qf-v { font-size:12px; font-weight:700; color:var(--text-main); font-variant-numeric:tabular-nums; }
+.qf-age { font-size:10px; font-weight:600; }
+.qf-fresh { color:var(--rs-green-deep); } .qf-ok { color:var(--text-muted); } .qf-stale { color:var(--rs-gold-deep); }
+.qf-sep { color:var(--border-light); flex:0 0 auto; }
+
+/* ── Flip trust bar ──────────────────────────────────────────────────────── */
+.flip-trust { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:5px 10px; margin:4px 0 0; border-radius:5px; font-size:11px; line-height:1.35; border:1px solid var(--border-light); }
+.flip-trust.ok   { background:rgba(31,184,92,.08); border-color:rgba(31,184,92,.35); color:var(--text-main); }
+.flip-trust.none { background:rgba(120,123,134,.06); border-color:var(--border-light); color:var(--text-muted); }
+.ft-badge { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; color:var(--rs-green-deep); flex:0 0 auto; }
+.ft-badge.warn { color:var(--text-muted); }
+.ft-text { flex:1 1 160px; min-width:0; } .ft-text strong { color:var(--rs-green-deep); }
+.flip-trust.none .ft-text { color:var(--text-muted); }
+.ft-caveat { color:var(--fav-gold); font-weight:700; }
+
+body.flip-mode #quickFacts,
+body.flip-mode #flipFinder,
+body.flip-mode #flipTrust,
+body.flip-mode #ratingGauge { display:none !important; }
 </style>
 </head>
 <body>
@@ -1192,7 +1289,7 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 
       <div class="onboard-banner" id="onboardBanner" style="display:none">
         <span class="ob-icon">📊</span>
-        <span class="ob-text"><strong>Live OSRS Grand Exchange prices.</strong> The two boxes below are what you should <strong>buy</strong> and <strong>sell</strong> this item for right now — 2% GE tax already included. Pick any item on the right to switch.</span>
+        <span class="ob-text"><strong>Live OSRS Grand Exchange prices.</strong> The two boxes below are what you should <strong>buy</strong> and <strong>sell</strong> this item for right now — 2% GE tax already included. Every recommended flip clears that tax and has recently traded on both sides — we don't show money-losers. Pick any item on the right to switch.</span>
         <button class="ob-close" id="onboardClose" type="button" aria-label="Dismiss">×</button>
       </div>
 
@@ -1209,6 +1306,9 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
         </div>
       </div>
 
+      <div id="ratingGauge" class="rg-wrap" hidden></div>
+      <div class="flip-trust" id="flipTrust" style="display:none"></div>
+
       <div class="chart-container">
         <canvas id="chart" class="chart"></canvas>
         <div id="chartLoading" class="chart-loading"><div class="cl-spinner"></div>Loading live prices…</div>
@@ -1224,11 +1324,13 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
           <div class="legend-item"><span class="legend-dash" style="background:var(--text-muted); border-top: 1px dashed #fff;"></span> Trend</div>
         </div>
       </div>
+      <div class="quick-facts" id="quickFacts" aria-label="Last traded snapshot" style="display:none"></div>
     </div>
 
     <div class="wl-resize" id="wlResize" title="Drag to resize · double-click to reset" aria-hidden="true"></div>
 
     <div class="watchlist-container">
+      <div class="flip-finder" id="flipFinder"></div>
       <div class="calc-container" id="sideModule"></div>
       <div class="col-header" id="colHeader"></div>
       <div class="watchlist-content" id="watchlistContent"></div>
@@ -1327,6 +1429,31 @@ const LOW_VOL_THRESHOLD = 100000;
 const SCAN_VOL_POOL = 60;
 const SCAN_PRICE_POOL = 40;
 const SCAN_CONCURRENCY = 4;
+
+/* ── Recommended-flip ("Find me a flip") ─────────────────────────────────────
+   Surfaces one concrete, engine-certified flip and lets the user cycle to the
+   next. API-safe: the pool is ranked from bulk data already in memory (0 calls);
+   the full trade engine is run only on a tiny shortlist we actually intend to
+   show, and every shown pick must pass runTradeEngine(...).viable === true. */
+const REC_SHORTLIST   = 5;        // items we fetch /timeseries for & engine-confirm per scan
+const REC_MIN_VOL     = 30000;    // liquidity floor (units/day); engine re-gates
+const REC_MIN_VOL_RELAX = 8000;   // relaxed floor for the one widen-retry pass
+const REC_MAX_MARGIN_PCT = 0.25;  // >25% net /latest spread => stale/manip => skip
+const REC_MAX_AGE     = 2 * 3600; // both live legs must have printed within 2h
+const REC_NO_LIMIT_QTY = 1000;    // stand-in per-cycle qty for items with no buy limit
+const REC_FILL_SHARE  = 0.10;     // assume you capture ~10% of flow in a 4h window
+const REC_SEEN_TTL    = 3 * 3600e3;
+const REC_SEEN_RESET_N = 40;
+const REC_SEEN_KEY    = 'ge_recSeen';
+const REC_SCAN_COOLDOWN = 25000;  // ms: throttle repeated empty/Try-again scans
+
+let recBuffer = [];    // confirmed-viable recs, ranked (session, in-memory; each carries .series)
+let recIdx = -1;
+let recBusy = false;
+let recLastId = null;  // never the same item twice in a row
+let recScanGen = 0;    // bumped on universe toggle/reset to invalidate in-flight scans
+let recLastScanAt = 0;
+let recLastWasEmpty = false;
 /* Default landing pool — instead of always loading Uncut diamond, pick a
    random F2P, GE-tradeable, high-volume staple each visit. Makes the first-
    paint feel "live" and gives organic visitors variety. Every entry is
@@ -1452,6 +1579,12 @@ function parseOSRSNumber(str) {
 }
 
 const fmtGp = n => n == null ? "—" : Number(n).toLocaleString();
+/* Human "…ago" from a unix-seconds timestamp (OSRS /latest highTime/lowTime). */
+function fmtAge(t){ if(!t||t<=0) return '—'; const s=Math.max(0,Math.floor(Date.now()/1000)-t);
+  if(s<45)return'just now'; if(s<90)return'1m ago'; if(s<3600)return Math.round(s/60)+'m ago';
+  if(s<5400)return'1h ago'; if(s<86400)return Math.round(s/3600)+'h ago'; return Math.round(s/86400)+'d ago'; }
+function ageClass(t){ if(!t||t<=0)return'qf-stale'; const s=Math.floor(Date.now()/1000)-t;
+  if(s<360)return'qf-fresh'; if(s<3600)return'qf-ok'; return'qf-stale'; }
 const fmtNum = n => n == null ? "—" : Number(n).toLocaleString();
 const abbreviateNumber = (num) => {
   if (num == null) return "—";
@@ -1497,6 +1630,26 @@ const loadLatest = () => jget(PRICES_API + "/latest");
 const load24h = () => jget(PRICES_API + "/24h");
 const loadVolumes = () => jget(PRICES_API + "/volumes");
 const loadTS = (step, id) => jget(PRICES_API + `/timeseries?timestep=${step}&id=${id}`);
+/* 60s TTL memo so a scan->tap or a rapid re-scan doesn't refetch the same tape.
+   Stores the PROMISE (concurrent callers dedupe); evicts on rejection. */
+const _tsCache = new Map();
+const _tsCacheMax = 120;
+function loadTSCached(step, id, ttl = 60000) {
+  const key = step + '|' + id;
+  const now = Date.now();
+  const hit = _tsCache.get(key);
+  if (hit && now - hit.t < ttl) return hit.p;
+  /* Prune expired entries (and, if still over cap, the oldest) so the memo
+     can't grow unbounded across a long multi-item session. */
+  if (_tsCache.size >= _tsCacheMax) {
+    for (const [k, v] of _tsCache) if (now - v.t >= ttl) _tsCache.delete(k);
+    while (_tsCache.size >= _tsCacheMax) { const k = _tsCache.keys().next().value; if (k === undefined) break; _tsCache.delete(k); }
+  }
+  const p = loadTS(step, id);
+  p.catch(() => { if (_tsCache.get(key)?.p === p) _tsCache.delete(key); });
+  _tsCache.set(key, { t: now, p });
+  return p;
+}
 const loadHistorical = (id) => jget(WEIRD_GLOOP_API + `/all?id=${id}`);
 
 function itemIconUrl(id) { return `https://static.runelite.net/cache/item/icon/${id}.png`; }
@@ -2623,8 +2776,8 @@ function computeAllChanges(src, lowVol) {
 async function buildSeriesForItem(id) {
   const [histRaw, t5m, t1h, t6h, t24h] = await Promise.all([
     loadHistorical(id).catch(() => null),
-    loadTS('5m', id).catch(() => null),
-    loadTS('1h', id).catch(() => null),
+    loadTSCached('5m', id).catch(() => null),
+    loadTSCached('1h', id).catch(() => null),
     loadTS('6h', id).catch(() => null),
     loadTS('24h', id).catch(() => null)
   ]);
@@ -3036,7 +3189,12 @@ function computeTargets(node, series, exempt) {
     return p * margin / patience;
   }
   function argmax(cands, side, other) {
-    let best = null, bs = -Infinity;
+    /* bs starts at 0, not -Infinity: score() returns the -1 sentinel for any
+       candidate that is unreachable in the recent tape or tax-negative, and
+       strictly > 0 for a real one. Starting at 0 means when EVERY candidate is
+       a sentinel we return null (→ NO_TRADE / widen), instead of certifying an
+       arbitrary profitable-but-unreachable pair as viable. */
+    let best = null, bs = 0;
     for (const c of cands) { const sc = score(side, c, other); if (sc > bs) { bs = sc; best = c; } }
     return best;
   }
@@ -3250,6 +3408,351 @@ function updateGradeBadge() {
   }
   fill(buyDiv, 'buy');
   fill(sellDiv, 'sell');
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   ANALYST RATING GAUGE — reframes computeGrade(buy)+(sell) into ONE
+   Strong-Sell … Strong-Buy call. Only valid for the SELECTED item (computeGrade
+   reads the global currentSeries + recommendedBuy/Sell); for any other item
+   pass opts.gBuy/gSell or it renders nothing. The word is a strict function of
+   the DOMINANT grade so it can never sit opposite the higher price-box badge.
+   ════════════════════════════════════════════════════════════════════════ */
+function renderRatingGauge(item, mountEl, opts = {}) {
+  if (!mountEl) return;
+  const isSel = item && selected && String(item.id) === String(selected.id);
+  let gBuy = opts.gBuy, gSell = opts.gSell;
+  if (gBuy === undefined || gSell === undefined) {
+    if (!isSel) { mountEl.hidden = true; mountEl.innerHTML = ''; return; }
+    gBuy = computeGrade(item, 'buy'); gSell = computeGrade(item, 'sell');
+  }
+  const tf = (opts.timeframe || view || '').toUpperCase();
+  let label, hue = 'var(--text-muted)', sub = '', signed = 0, liveIdx = -1, muted = false, strong = false;
+
+  if (item && overMaxData[String(item.id)]) { muted = true; label = 'No live gauge'; sub = 'Rare item — off the live market'; }
+  else if (!gBuy || !gSell) { muted = true; label = 'Analyzing…'; sub = 'Waiting for price history'; }
+  else {
+    const vB = gBuy.verdict, vS = gSell.verdict;
+    if (vB === 'No Margin' && vS === 'No Margin') { muted = true; hue = 'var(--negative)'; label = 'No clean flip'; sub = `Spread doesn't beat the 2% tax on ${tf}`; }
+    else if (/^Thin/.test(vB) && /^Thin/.test(vS)) { muted = true; hue = '#FF9F43'; label = 'Too thin to flip'; sub = `Margin under 0.5% on ${tf}`; }
+    else {
+      const b = gBuy.grade, s = gSell.grade;
+      const dir = (b >= s) ? 1 : -1, dom = Math.max(b, s), mag = Math.max(0, Math.min(1, (dom - 40) / 60));
+      const patient = /^Wait/.test(vB) || /^Wait/.test(vS);
+      if (patient) {
+        signed = dir * Math.min(mag, 0.55); strong = false;
+        if (dir > 0) { label = 'Buy the Dip'; hue = 'var(--buy-color)'; liveIdx = 3; }
+        else { label = 'Sell the Rip'; hue = 'var(--sell-color)'; liveIdx = 1; }
+        sub = `${dir > 0 ? 'Entry' : 'Exit'} grade ${dom} · ${tf} · not yet`;
+      } else {
+        signed = dir * mag;
+        if      (signed >=  0.60) { label = 'Strong Buy';  hue = 'var(--buy-color)';  liveIdx = 4; strong = true; }
+        else if (signed >=  0.20) { label = 'Buy';         hue = 'var(--buy-color)';  liveIdx = 3; }
+        else if (signed >  -0.20) { label = 'Neutral';     hue = 'var(--text-muted)'; liveIdx = 2; }
+        else if (signed >  -0.60) { label = 'Sell';        hue = 'var(--sell-color)'; liveIdx = 1; }
+        else                      { label = 'Strong Sell'; hue = 'var(--sell-color)'; liveIdx = 0; strong = true; }
+        sub = `${dir > 0 ? 'Entry' : 'Exit'} grade ${dom} · ${tf}`;
+      }
+    }
+  }
+  const needleX = (signed + 1) / 2 * 100, aria = Math.round(signed * 100);
+  const segCls = i => 'rg-seg ' + ['rg-ss', 'rg-s', 'rg-n', 'rg-b', 'rg-sb'][i] + (i === liveIdx ? ' is-live' : '');
+  const tip = ('Analyst Rating condenses the same 0–100 buy and sell grade — scored against the ' + tf +
+    ' price range — into one call, Strong Sell to Strong Buy. It points to whichever side (entry or exit) ' +
+    'is better graded right now. Advisory only: the Target Buy / Target Sell prices are the actual trade. ' +
+    'Tap for the full glossary.').replace(/"/g, '&quot;');
+  mountEl.hidden = false;
+  mountEl.innerHTML =
+    '<div class="rg-top"><span class="rg-eyebrow">Analyst Rating</span>' +
+      '<span class="pg-help" title="' + tip + '" role="button" aria-label="What does the Analyst Rating mean?">?</span></div>' +
+    '<div class="rg-label' + (strong ? ' is-strong' : '') + '" style="color:' + hue + '">' + label + '</div>' +
+    '<div class="rg-meter' + (muted ? ' is-muted' : '') + '" role="meter" aria-valuemin="-100" aria-valuemax="100" ' +
+      'aria-valuenow="' + aria + '" aria-valuetext="' + label + '" aria-label="Analyst rating: ' + label + (sub ? ', ' + sub : '') + '">' +
+      '<div class="rg-track">' + [0, 1, 2, 3, 4].map(i => '<span class="' + segCls(i) + '"></span>').join('') + '</div>' +
+      '<span class="rg-needle" style="left:' + needleX + '%;--rg-hue:' + hue + '"></span>' +
+    '</div>' +
+    '<div class="rg-scale"><span class="rg-end rg-end-sell">Sell</span>' +
+      '<span class="rg-sub">' + sub + '</span><span class="rg-end rg-end-buy">Buy</span></div>';
+}
+
+/* Quick-facts strip below the chart: live insta-buy/insta-sell with "…ago"
+   freshness, spread, daily volume, buy limit. */
+function renderQuickFacts(m, node) {
+  const el = document.getElementById('quickFacts'); if (!el) return;
+  if (!m || !node) { el.style.display = 'none'; return; }
+  const high = node.high ?? node.avgHighPrice ?? 0, low = node.low ?? node.avgLowPrice ?? 0;
+  const spread = (high > 0 && low > 0) ? high - low : 0, vol = dailyVolume(m.id);
+  const cell = (k, v, extra = '') => `<span class="qf-cell"><span class="qf-k">${k}</span><span class="qf-v">${v}</span>${extra}</span>`;
+  const age = t => ` <span class="qf-age ${ageClass(t)}">${fmtAge(t)}</span>`;
+  const parts = [ cell('Insta-buy', high ? fmtGp(high) : '—', high ? age(node.highTime) : ''),
+                  cell('Insta-sell', low ? fmtGp(low) : '—', low ? age(node.lowTime) : '') ];
+  if (spread > 0) parts.push(cell('Spread', fmtGp(spread)));
+  parts.push(cell('Vol', vol ? abbreviateNumber(vol) + '/day' : '—'));
+  parts.push(cell('Limit', m.limit ? abbreviateNumber(m.limit) : '—'));
+  el.innerHTML = parts.join('<span class="qf-sep">·</span>'); el.style.display = '';
+}
+
+/* Trust bar under the gauge: reads the selected item's engine result. Honest —
+   the engine guarantees tax-clearing + recently-traded reachability, NOT a
+   guaranteed/fast fill, so the copy says "a patient offer should fill". */
+function renderFlipTrust(t) {
+  const el = document.getElementById('flipTrust'); if (!el) return;
+  if (!t) { el.style.display = 'none'; return; }
+  if (t.viable) {
+    const edgeTxt = t.edge > 0 ? ` <strong>+${fmtGp(t.edge)} gp/ea</strong> after tax, if both legs fill.` : '';
+    el.className = 'flip-trust ok';
+    el.innerHTML = `<span class="ft-badge">✓ Safe flip</span>` +
+      `<span class="ft-text">Clears the 2% GE tax; both sides recently traded, so a patient offer should fill.${edgeTxt}` +
+      (t.lowConf ? ` <span class="ft-caveat">Thin recent trades — treat as a guide and size down.</span>` : ``) + `</span>`;
+  } else {
+    const why = t.reason ? t.reason.charAt(0).toUpperCase() + t.reason.slice(1) : 'No margin that clears tax right now';
+    el.className = 'flip-trust none';
+    el.innerHTML = `<span class="ft-badge warn">No safe flip</span>` +
+      `<span class="ft-text">${why} — numbers shown for reference only, not a recommendation.</span>`;
+  }
+  el.style.display = '';
+}
+
+/* One call every price-render site adds to keep the insights row in sync.
+   Guard against a stale async render: setItem is async, so a late call for
+   item A can land after the user has switched to B (selected === B). Bail so
+   the gauge (which reads the global selected/currentSeries) can't disagree with
+   the trust bar / quick-facts (which read the passed m/node). */
+function refreshItemInsights(m, node, targets) {
+  if (m && selected && String(m.id) !== String(selected.id)) return;
+  renderFlipTrust(targets || null);
+  renderQuickFacts(m || null, node || null);
+  renderRatingGauge(selected, document.getElementById('ratingGauge'));
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   RECOMMENDED-FLIP FINDER
+   ════════════════════════════════════════════════════════════════════════ */
+function recLiqMult(vol){ return 0.6 + 0.4 * Math.max(0, Math.min(1, (Math.log10(Math.max(1, vol)) - 4) / 3)); }
+function recQtyEff(item, vol){
+  const limit = item.limit > 0 ? item.limit : REC_NO_LIMIT_QTY;
+  const est4h = Math.max(1, Math.floor(vol * (4 / 24) * REC_FILL_SHARE));
+  return Math.max(1, Math.min(limit, est4h));
+}
+/* Cheap pre-score over the bounded scan pool — 0 timeseries calls. Ranks by
+   realizable (fill-scaled) gp, not raw margin %, so illiquid mirages sink. */
+function recPreScore({ relax = false } = {}) {
+  const minVol = relax ? REC_MIN_VOL_RELAX : REC_MIN_VOL;
+  const seen = relax ? new Set() : recSeenSet();
+  const selId = selected ? String(selected.id) : null;
+  const now = Math.floor(Date.now() / 1000);
+  const out = [];
+  for (const item of getScanCandidates()) {
+    const id = String(item.id);
+    if (id === selId || id === recLastId) continue;
+    if (seen.has(id)) continue;
+    const node = latest?.data?.[id];
+    if (!node || !(node.high > 0) || !(node.low > 0) || node.high <= node.low) continue;
+    const ageT = now - Math.min(node.highTime || 0, node.lowTime || 0);
+    if (!(ageT >= 0) || ageT > REC_MAX_AGE) continue;
+    const vol = dailyVolume(item.id);
+    if (vol < minVol) continue;
+    const gross = node.high - node.low - calculateTax(node.high, item.id);
+    if (gross <= 0) continue;
+    if (gross / node.low > REC_MAX_MARGIN_PCT) continue;
+    const qty = recQtyEff(item, vol);
+    out.push({ item, node, vol, preScore: gross * qty * recLiqMult(vol) });
+  }
+  out.sort((a, b) => b.preScore - a.preScore);
+  return out;
+}
+function recFlipScore(edgePct, vol, lowConf){
+  const sEdge = Math.max(0, Math.min(1, edgePct / 0.03)) * 45;
+  const sLiq  = Math.max(0, Math.min(1, (Math.log10(Math.max(1, vol)) - 4) / 3)) * 35;
+  let s = 20 + sEdge + sLiq;   // +20 base: engine already certified viable + reachable
+  if (lowConf) s *= 0.8;
+  return Math.round(Math.max(0, Math.min(100, s)));
+}
+function recVerdict(s){
+  if (s >= 85) return { word: 'Prime Flip', color: '#4FFF8E' };
+  if (s >= 70) return { word: 'Strong Flip', color: '#1FB85C' };
+  if (s >= 55) return { word: 'Solid Flip', color: '#FFD24D' };
+  return { word: 'Thin Flip', color: '#FF9F43' };
+}
+function recWhy(edgePct, qtyEff, lowConf){
+  return [ `${(edgePct * 100).toFixed(edgePct < 0.1 ? 2 : 1)}% net edge`,
+           `${abbreviateNumber(qtyEff)}/4h fillable`,
+           lowConf ? 'thinner tape — patient bid' : 'both sides recently traded' ].join(' · ');
+}
+function buildRec(c, eng){
+  const item = c.item, node = c.node;
+  const edge = eng.edge, edgePct = edge / Math.max(1, eng.buy);
+  const hasLimit = item.limit > 0, limit = hasLimit ? item.limit : REC_NO_LIMIT_QTY;
+  const qtyEff = recQtyEff(item, c.vol);
+  const flipScore = recFlipScore(edgePct, c.vol, eng.lowConf);
+  const v = recVerdict(flipScore);
+  const hrsToLimit = Math.max(1, Math.round(limit / Math.max(1, c.vol / 24)));
+  return {
+    id: String(item.id), item, node, buy: eng.buy, sell: eng.sell, edge, edgePct, lowConf: eng.lowConf,
+    hasLimit, limit, qtyEff, hrsToLimit,
+    realizable: edge * qtyEff, perLimit: edge * limit,
+    vol: c.vol, flipScore, verdict: v.word, color: v.color,
+    rankValue: edge * qtyEff * recLiqMult(c.vol) * (eng.lowConf ? 0.8 : 1),
+    why: recWhy(edgePct, qtyEff, eng.lowConf), series: null
+  };
+}
+/* Confirm the shortlist with the real engine (<=REC_SHORTLIST timeseries fetches,
+   5m first, 1h fallback only when 5m has <8 buckets). HARD GATE on viable. */
+async function scanFlips({ relax = false } = {}) {
+  const gen = recScanGen;
+  const shortlist = recPreScore({ relax }).slice(0, REC_SHORTLIST);
+  const confirmed = [];
+  await throttleMap(shortlist, async (c) => {
+    try {
+      const s = { ts5m: seriesFromTS(await loadTSCached('5m', c.item.id)) };
+      if (!pickEngineSeries(s)) s.ts1h = seriesFromTS(await loadTSCached('1h', c.item.id));
+      const series = pickEngineSeries(s) || s.ts5m;
+      const eng = runTradeEngine(c.node.low, c.node.high, series, c.node, c.item.id);
+      if (eng.viable) { const rec = buildRec(c, eng); rec.series = series; confirmed.push(rec); }
+    } catch (e) {}
+  }, SCAN_CONCURRENCY);
+  if (gen !== recScanGen) return null;   // universe toggled mid-scan => discard
+  confirmed.sort((a, b) => b.rankValue - a.rankValue);
+  return confirmed;
+}
+/* Anti-repeat: seen-set keyed by universe, 3h TTL + 40-item starvation reset. */
+function recSeenLoad(){ try { return JSON.parse(localStorage.getItem(REC_SEEN_KEY) || '{}'); } catch (e) { return {}; } }
+function recSeenSave(o){ try { localStorage.setItem(REC_SEEN_KEY, JSON.stringify(o)); } catch (e) {} }
+function recSeenSet(){
+  const store = recSeenLoad();
+  if (store.uni !== (membersOn ? 'p2p' : 'f2p')) return new Set();
+  const now = Date.now(), out = new Set();
+  for (const [id, ts] of Object.entries(store.ids || {})) if (now - ts < REC_SEEN_TTL) out.add(id);
+  return out;
+}
+function markRecSeen(id){
+  id = String(id); const uni = membersOn ? 'p2p' : 'f2p';
+  let store = recSeenLoad(); if (store.uni !== uni) store = { uni, ids: {} };
+  const now = Date.now(); store.ids = store.ids || {};
+  for (const k of Object.keys(store.ids)) if (now - store.ids[k] >= REC_SEEN_TTL) delete store.ids[k];
+  store.ids[id] = now;
+  if (Object.keys(store.ids).length >= REC_SEEN_RESET_N) store.ids = { [id]: now };
+  recSeenSave(store); recLastId = id;
+}
+function flipHost(){ return document.getElementById('flipFinder'); }
+function initFlipFinder(){ const b = document.getElementById('btnFindFlip'); if (b) b.onclick = () => findFlip({ advance: false }); }
+function renderFlipIdle(){
+  const h = flipHost(); if (!h) return;
+  h.innerHTML = `<button type="button" id="btnFindFlip" class="find-flip-btn">` +
+    `<span class="ff-bolt" aria-hidden="true">⚡</span><span class="ff-label">Find me a flip</span></button>`;
+  initFlipFinder();
+}
+function renderFlipState(kind){
+  const h = flipHost(); if (!h) return;
+  const msg = {
+    loading: `<div class="cl-spinner"></div><span>Scanning for a clean, tax-safe flip…</span>`,
+    empty: `<span class="ff-msg-txt">Nothing new clears the 2% tax in the top-traded items right now — try again shortly.</span><button class="fc-next" id="btnNextFlip">↻ Try again</button>`,
+    moved: `<span class="ff-msg-txt">Prices moved since we found this — grab a fresh flip.</span><button class="fc-next" id="btnNextFlip">↻ Next</button>`,
+    offline: `<span class="ff-msg-txt">Couldn't reach live prices. Check your connection.</span><button class="fc-next" id="btnNextFlip">↻ Retry</button>`
+  }[kind];
+  h.innerHTML = `<div class="flip-card ff-msg">${msg}</div>`;
+  wireFlipButtons();
+}
+function renderFlipCard(rec){
+  const h = flipHost(); if (!h) return;
+  const limitLabel = rec.hasLimit ? 'Per limit' : 'Per 1,000';
+  h.innerHTML = `
+    <div class="flip-card" role="button" tabindex="0" data-id="${rec.id}" aria-label="Open ${rec.item.name} — recommended flip">
+      <div class="fc-head">
+        <span class="fc-kicker">⚡ Recommended flip</span>
+        <button type="button" class="fc-next" id="btnNextFlip" title="Show another flip">↻ Next</button>
+      </div>
+      <div class="fc-body">
+        <img class="fc-icon" src="${itemIconUrl(rec.id)}" alt="${rec.item.name} icon" loading="lazy">
+        <div class="fc-main">
+          <div class="fc-name">${rec.item.name}</div>
+          <div class="fc-why">${rec.why}</div>
+        </div>
+        <div class="fc-gauge">
+          <div class="fc-score" style="color:${rec.color}">${rec.flipScore}</div>
+          <div class="fc-verdict" style="color:${rec.color}">${rec.verdict}</div>
+          <div class="fc-meter"><span style="width:${rec.flipScore}%;background:${rec.color}"></span></div>
+        </div>
+      </div>
+      <div class="fc-prices">
+        <div class="fc-price buy"><span class="fc-plabel">Buy @</span><span class="fc-pval">${fmtGp(rec.buy)}</span></div>
+        <div class="fc-price sell"><span class="fc-plabel">Sell @</span><span class="fc-pval">${fmtGp(rec.sell)}</span></div>
+      </div>
+      <div class="fc-stats">
+        <div><span class="fc-slabel">Profit / item</span><span class="fc-sval pos">+${fmtGp(rec.edge)}</span></div>
+        <div><span class="fc-slabel">Est. per 4h</span><span class="fc-sval pos">+${abbreviateNumber(rec.realizable)}</span></div>
+        <div><span class="fc-slabel">${limitLabel}</span><span class="fc-sval pos">+${abbreviateNumber(rec.perLimit)}</span><span class="fc-subnote">~${rec.hrsToLimit}h to fill</span></div>
+        <div><span class="fc-slabel">Daily vol</span><span class="fc-sval">${abbreviateNumber(rec.vol)}</span></div>
+      </div>
+      <div class="fc-cta">Tap for full chart &amp; live prices →</div>
+    </div>`;
+  wireFlipButtons();
+}
+function wireFlipButtons(){
+  const h = flipHost(); if (!h) return;
+  const next = h.querySelector('#btnNextFlip');
+  if (next) { next.disabled = recBusy; next.onclick = e => { e.stopPropagation(); findFlip({ advance: true }); }; }
+  const card = h.querySelector('.flip-card[data-id]');
+  if (card) {
+    const id = card.getAttribute('data-id');
+    card.onclick = () => openFlip(id);
+    card.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openFlip(id); } };
+  }
+}
+function openFlip(id){
+  const m = mapping.find(x => String(x.id) === String(id)); if (!m) return;
+  setItem._userPicked = false; setItem(m);
+  try { document.querySelector('.price-strip')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+}
+/* Re-check a buffered rec against the CURRENT live quote (0 API — reuses the
+   stored series). Returns a freshly-priced rec if it still clears tax and is
+   fillable, else null. */
+function revalidateRec(rec){
+  const node = latest?.data?.[rec.id];
+  if (!node || !(node.low > 0) || !(node.high > 0)) return null;
+  const eng = runTradeEngine(node.low, node.high, rec.series, node, rec.item.id);
+  if (!eng.viable) return null;
+  const fresh = buildRec({ item: rec.item, node, vol: dailyVolume(rec.item.id) }, eng);
+  fresh.series = rec.series;
+  return fresh;
+}
+async function findFlip({ advance = false } = {}){
+  if (recBusy) return;
+  if (advance) {
+    /* Walk forward through the pre-scanned look-ahead, re-validating each
+       against fresh prices (0 API); show the first that still holds. Only when
+       the buffer is exhausted (or every remaining rec went stale) do we scan. */
+    while (recIdx + 1 < recBuffer.length) {
+      const cand = revalidateRec(recBuffer[++recIdx]);
+      if (cand) { recBuffer[recIdx] = cand; markRecSeen(cand.id); renderFlipCard(cand); return; }
+    }
+  }
+  if (recLastWasEmpty && Date.now() - recLastScanAt < REC_SCAN_COOLDOWN) { renderFlipState('empty'); return; }
+  recBusy = true; renderFlipState('loading');
+  try {
+    if (!latest?.data || !mapping.length) { renderFlipState('offline'); return; }
+    let buf = await scanFlips();
+    if (buf && !buf.length) buf = await scanFlips({ relax: true });
+    recLastScanAt = Date.now();
+    if (buf === null) { renderFlipIdle(); return; }
+    recLastWasEmpty = !buf.length;
+    if (!buf.length) { renderFlipState('empty'); return; }
+    recBuffer = buf; recIdx = 0; markRecSeen(buf[0].id); renderFlipCard(buf[0]);
+  } catch (e) { renderFlipState('offline'); }
+  finally { recBusy = false; const n = flipHost()?.querySelector('#btnNextFlip'); if (n) n.disabled = false; }
+}
+/* 0-API re-validation of the SHOWN card on the 5-min poll against fresh latest.
+   Keeps the look-ahead buffer intact — each tail rec is re-validated when the
+   user actually advances to it (see findFlip), so we don't throw away already
+   engine-confirmed picks and force a needless re-scan on the next tap. */
+function revalidateFlipCard(){
+  if (recIdx < 0 || recIdx >= recBuffer.length) return;
+  const h = flipHost(); if (!h || !h.querySelector('.flip-card[data-id]')) return;
+  const fresh = revalidateRec(recBuffer[recIdx]);
+  if (fresh) { recBuffer[recIdx] = fresh; renderFlipCard(fresh); }
+  else renderFlipState('moved');
+}
+function resetFlipFinder(){
+  recScanGen++; recBuffer = []; recIdx = -1; recLastId = null; recLastWasEmpty = false; renderFlipIdle();
 }
 
 /* ── Bank of Gielinor ─────────────────────────────────────────────────────
@@ -4088,6 +4591,7 @@ function renderOverMax(m) {
   selectedAbsIdx = null;
   offset = Math.max(0, currentSeries.labels.length - Math.floor(currentSeries.labels.length / zoom));
   updateGradeBadge();
+  refreshItemInsights(m, null, null);
   resizeCanvas();
   $("#status").textContent = "Live"; $("#status").classList.add("live");
 }
@@ -4116,6 +4620,7 @@ function refreshChart() {
   $("#sellPrice").innerHTML = `<div class="price-label">Target Sell <span class="live-val">Live: ${fmtGp(liveSellRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedSell)}</span></div><div class="price-grade" id="sellGrade"></div>`;
   restoreCalculator(selected.limit, recommendedBuy, recommendedSell);
   updateGradeBadge();
+  refreshItemInsights(selected, latest?.data?.[String(selected.id)], targets);
   resizeCanvas();
 }
 
@@ -4255,6 +4760,7 @@ async function setItem(m, opts = {}) {
   restoreCalculator(m.limit, recommendedBuy, recommendedSell);
   offset = Math.max(0, currentSeries.labels.length - Math.floor(currentSeries.labels.length / zoom));
   updateGradeBadge();
+  refreshItemInsights(m, node, targets);
   resizeCanvas();
   $("#status").textContent = "Live"; $("#status").classList.add("live");
 }
@@ -4272,6 +4778,7 @@ setItem._userPicked = false;
 
     renderColToggles();
     renderWatchlist();
+    renderFlipIdle();
     /* Auto-kick the 5-day extremes scan in the background so the 5D Highs /
        5D Lows / Steady Flips groups have results by the time the user looks.
        Throttled via SCAN_CONCURRENCY against a bounded ~100-item candidate
@@ -4320,6 +4827,7 @@ setItem._userPicked = false;
       $("#btnF2P").classList.add("active"); $("#btnMembers").classList.remove("active");
       dayHiLoCache = {}; steadyFlipsCache = []; scanStatus = { fived: 'idle', steady: 'idle' };
       renderWatchlist();
+      resetFlipFinder();
       if (selected?.members) {
         const landing = mapping.find(x => String(x.id) === LANDING_ID);
         if (landing) { setItem._userPicked = false; setItem(landing); }
@@ -4330,6 +4838,7 @@ setItem._userPicked = false;
       $("#btnMembers").classList.add("active"); $("#btnF2P").classList.remove("active");
       dayHiLoCache = {}; steadyFlipsCache = []; scanStatus = { fived: 'idle', steady: 'idle' };
       renderWatchlist();
+      resetFlipFinder();
     };
 
     /* Remote Flip Mode — large prices, hidden chrome. Persisted across sessions
@@ -4458,8 +4967,10 @@ setItem._userPicked = false;
           $("#buyPrice").innerHTML = `<div class="price-label">Target Buy <span class="live-val">Live: ${fmtGp(liveBuyRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedBuy)}</span></div><div class="price-grade" id="buyGrade"></div>`;
           $("#sellPrice").innerHTML = `<div class="price-label">Target Sell <span class="live-val">Live: ${fmtGp(liveSellRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedSell)}</span></div><div class="price-grade" id="sellGrade"></div>`;
           updateGradeBadge();
+          refreshItemInsights(selected, node, targets);
           queueDraw();
         }
+        revalidateFlipCard();
       } catch (e) {}
     }, 300000);
 
