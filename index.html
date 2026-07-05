@@ -3081,19 +3081,31 @@ function computeTargets(node, series, exempt) {
     const decayReach = Math.pow(0.5, age / span);
     const volL = Math.min(series.lowVol[i] || 1, 5 * volMed);
     const volH = Math.min(series.highVol[i] || 1, 5 * volMed);
+    const wL = decay * Math.sqrt(Math.min(volL, C.volCapW));
+    const wH = decay * Math.sqrt(Math.min(volH, C.volCapW));
+    /* Endangered-regime evidence decays per BUCKET (half-life = one bucket):
+       in a moving market each print supersedes the last, so a 15-min-old
+       crash bucket must not certify an ask the newest prints already left. */
+    const decayFresh = Math.pow(0.5, age / dt);
     B.push({
-      i, age, lo, hi, mid, spread,
-      wL: decay * Math.sqrt(Math.min(volL, C.volCapW)),
-      wH: decay * Math.sqrt(Math.min(volH, C.volCapW)),
-      wReachL: decayReach * Math.sqrt(Math.min(volL, C.volCapW)),
-      wReachH: decayReach * Math.sqrt(Math.min(volH, C.volCapW)),
+      i, age, lo, hi, mid, spread, wL, wH,
+      wFreshL: decayFresh * Math.sqrt(Math.min(volL, C.volCapW)),
+      wFreshH: decayFresh * Math.sqrt(Math.min(volH, C.volCapW)),
+      wM: wL + wH, // drift/level medians must see BOTH sides — a crash printing
+                   // thin on the low side is invisible to a wL-only median
+      /* Reach votes answer "does this level recur?", not "how big was the one
+         print?" — cap the volume at 1x median so a single whale bucket can't
+         out-shout hours of subsequent tape. */
+      wReachL: decayReach * Math.sqrt(Math.min(volL, volMed, C.volCapW)),
+      wReachH: decayReach * Math.sqrt(Math.min(volH, volMed, C.volCapW)),
       volL, volH,
-      recent: age <= Math.max(halfLife, 3 * dt)  // regime-consistent tail
+      recent: age <= Math.max(halfLife, 3 * dt), // corroboration tail
+      fresh: age <= 3 * dt                       // strict regime tail (endangered evidence)
     });
   }
   if (B.length < C.MIN_BUCKETS) return NO('thin data', rawLow, rawHigh, true);
 
-  const refMid = engWMedian(B, 'mid', 'wL');
+  const refMid = engWMedian(B, 'mid', 'wM');
   const relSpread = engWMedian(B.map(b => ({ v: b.spread / b.mid, w: b.wL + b.wH })), 'v', 'w');
 
   // realized step-vol (MAD of log-returns), gap-skipped
@@ -3108,19 +3120,35 @@ function computeTargets(node, series, exempt) {
 
   // ---- DRIFT (level change), independent of sigma — the hardening core ------
   const recentB = B.filter(b => b.recent);
+  const freshB = B.filter(b => b.fresh);
   const third = Math.max(1, Math.round(B.length * C.RECENT_FRAC));
-  const midNew = engWMedian(B.slice(B.length - third), 'mid', 'wL');
-  const midOld = engWMedian(B.slice(0, third), 'mid', 'wL');
+  const midNew = engWMedian(B.slice(B.length - third), 'mid', 'wM');
+  const midOld = engWMedian(B.slice(0, third), 'mid', 'wM');
+  /* Two drift signals, because each is blind somewhere:
+     - thirds drift misses any move confined to the newest third (flash crash)
+       or a mid-window hump, and its centers sit only ~0.7 spans apart, so the
+       measured value understates the true per-window move — gate at 0.7x;
+     - tail drift (corroboration tail vs whole-window median) catches moves the
+       thirds can't see; it is a ~half-window signal, so it counts doubled. */
   const driftFrac = refMid > 0 ? (midNew - midOld) / refMid : 0; // >0 rising, <0 falling
+  const midTail = recentB.length ? engWMedian(recentB, 'mid', 'wM') : refMid;
+  const driftTail = refMid > 0 ? (midTail - refMid) / refMid : 0;
+  /* A fresh live quote breaching the window band on BOTH sides in the same
+     direction is not a fat finger — it is the regime moving. Treat it as
+     endangerment evidence (and keep trusting the quote, see blend below). */
+  const bothBreachDown = rawLow > 0 && rawHigh > 0 && rawLow < P1lo && rawHigh < P1hi;
+  const bothBreachUp   = rawLow > 0 && rawHigh > 0 && rawLow > P99lo && rawHigh > P99hi;
 
   /* Per-side endangerment: a trend only invalidates evidence for the side it
      is moving AWAY from (falling market ⇒ old highs won't recur; rising ⇒ old
-     lows won't). That side gets the strict recent-tail gate + no holding-window
+     lows won't). That side gets the strict fresh-tail gate + no holding-window
      bonus. The other side — and BOTH sides in a flat market — may use the whole
      window as reachability evidence, which is what lets us bid the recurring
      dip and ask the recurring pop instead of pinning to the live quote. */
-  const sellEndangered = driftFrac <= -C.DRIFT_GATE; // falling: above-market asks decay
-  const buyEndangered  = driftFrac >=  C.DRIFT_GATE; // rising: below-market bids decay
+  const sellEndangered = driftFrac <= -C.DRIFT_GATE * 0.7 || 2 * driftTail <= -C.DRIFT_GATE || bothBreachDown;
+  const buyEndangered  = driftFrac >=  C.DRIFT_GATE * 0.7 || 2 * driftTail >=  C.DRIFT_GATE || bothBreachUp;
+  // effective drift for the entry-trap penalty: the strongest signal we saw
+  const effDrift = Math.abs(driftFrac / 0.7) >= Math.abs(2 * driftTail) ? driftFrac / 0.7 : 2 * driftTail;
 
   // Neff (bounded holding-window revisits). Against the drift direction the
   // price does NOT revisit a level, so kill the holding-window bonus there.
@@ -3144,17 +3172,17 @@ function computeTargets(node, series, exempt) {
     return Math.max(0, sc);
   }
   /* Soft per-bucket touch fraction. Gating is PER SIDE by regime: the
-     endangered side (trend moving away from it) sees only the strict recent
-     tail with steep decay — a stale spike or pre-crash level can't certify it.
-     A safe side sees the whole window with the flat reach decay, so a level
-     that trades a few times an hour in a flat market counts as reachable. */
+     endangered side (trend moving away from it) sees only the strict FRESH
+     tail (last ~3 buckets) with steep decay — a pre-crash level can't certify
+     it. A safe side sees the whole window with the flat reach decay, so a
+     level that trades a few times an hour in a flat market is reachable. */
   function qTouch(c, side) {
     const endangered = side === 'buy' ? buyEndangered : sellEndangered;
     let acc = 0, W = 0;
     for (const b of B) {
-      if (endangered && !b.recent) continue;
+      if (endangered && !b.fresh) continue;
       const sc = deblur(b, side);
-      const w = endangered ? (side === 'buy' ? b.wL : b.wH)
+      const w = endangered ? (side === 'buy' ? b.wFreshL : b.wFreshH)
                            : (side === 'buy' ? b.wReachL : b.wReachH);
       let f;
       if (side === 'buy') { const p = b.lo, ext = p - sc; f = c >= p ? 1 : (c <= ext ? 0 : (c - ext) / (p - ext)); }
@@ -3163,8 +3191,39 @@ function computeTargets(node, series, exempt) {
     }
     return W > 0 ? acc / W : 0;
   }
-  const Pfill = (c, side) => 1 - Math.pow(1 - qTouch(c, side), side === 'buy' ? NeffBuy : NeffSell);
-  const reachable = (c, side) => qTouch(c, side) >= C.pMin;
+  /* Distinct touch EPISODES (runs of consecutive touching buckets). The
+     holding-window bonus 1-(1-q)^N assumes the level is REVISITED; a single
+     contiguous dead cluster is one visit, not N chances. A periodic level
+     (touched every few buckets) keeps its full N. */
+  function touchEpisodes(c, side) {
+    let eps = 0, inTouch = false;
+    for (const b of B) { // oldest → newest
+      const sc = deblur(b, side);
+      const t = side === 'buy' ? (c >= b.lo - sc) : (c <= b.hi + sc);
+      if (t && !inTouch) eps++;
+      inTouch = t;
+    }
+    return eps;
+  }
+  const Pfill = (c, side) => {
+    const base = side === 'buy' ? NeffBuy : NeffSell;
+    const n = Math.max(1, Math.min(base, touchEpisodes(c, side)));
+    return 1 - Math.pow(1 - qTouch(c, side), n);
+  };
+  /* Recent-tail corroboration, in ALL regimes: a level only counts as fillable
+     if the tail still touches it (within deblur). A genuinely recurring
+     dip/pop keeps printing in the tail by definition — ambition is preserved —
+     but an 8h-dead whale wall, a pulled buy wall, or a one-off cluster whose
+     flow vanished can no longer certify an ask the live market never visits. */
+  function tailTouches(c, side) {
+    for (const b of B) {
+      if (!b.recent) continue;
+      const sc = deblur(b, side);
+      if (side === 'buy' ? (c >= b.lo - sc) : (c <= b.hi + sc)) return true;
+    }
+    return false;
+  }
+  const reachable = (c, side) => qTouch(c, side) >= C.pMin && tailTouches(c, side);
 
   // ---- live-anchor blend (staleness trust + slew cap) -----------------------
   const tradesPerMin = cum / Math.max(1, span / 60);
@@ -3182,7 +3241,11 @@ function computeTargets(node, series, exempt) {
   function blend(dist, live, ageSec, p1, p99) {
     if (!(live > 0)) return { price: Math.round(dist), t: 0 };
     let t = trust(ageSec);
-    if (live < p1 || live > p99) t = 0; // hard outlier guard (fat-finger live tick)
+    /* Fat-finger guard — but NOT when both live legs breach the band in the
+       same direction: that is the regime moving, and the live quote is then
+       the only honest anchor (a crash pins fresh quotes below P1 precisely
+       when trusting them matters most). */
+    if ((live < p1 || live > p99) && !(bothBreachDown || bothBreachUp)) t = 0;
     const clamped = Math.max(dist - delta, Math.min(dist + delta, live));
     const a = C.ALPHA_LIVE * t;
     return { price: Math.round((1 - a) * dist + a * clamped), t };
@@ -3196,22 +3259,28 @@ function computeTargets(node, series, exempt) {
   const sAbs = sigma * ((aBuy.price + aSell.price) / 2);
   const eMax = Math.max(1, Math.min(C.kMax * sAbs, C.maxFrac * aBuy.price));
   const step = Math.max(1, Math.round(eMax / 40));
+  /* Never bid ABOVE the fresh live insta-sell: sellers are demonstrably
+     accepting rawLow right now, so a standing bid above it just becomes the
+     price the next impatient seller hits — pure overpay (this is how a crash
+     tape produced a bid 26 gp above the live market). Ambition means bidding
+     BELOW the market, never above it. Only enforced when the quote is trusted. */
+  const buyCapLive = (rawLow > 0 && aBuy.t >= 0.5) ? rawLow : Infinity;
   const buyCands = [], sellCands = [];
   for (let e = 0; e <= eMax; e += step) {
-    const bb = Math.round(aBuy.price - e); if (bb >= 1) buyCands.push(bb);
+    const bb = Math.round(aBuy.price - e); if (bb >= 1 && bb <= buyCapLive) buyCands.push(bb);
     sellCands.push(Math.round(aSell.price + e));
   }
   // fillable band from the same per-side evidence set as reachability: strict
-  // recent tail for an endangered side (can't widen into a stale spike),
+  // fresh tail for an endangered side (can't widen into a stale spike),
   // whole winsorized window for a safe side (recurring levels are fair game)
-  const loEvid = (buyEndangered ? recentB : B).map(b => b.lo);
-  const hiEvid = (sellEndangered ? recentB : B).map(b => b.hi);
+  const loEvid = ((buyEndangered ? freshB : B).length ? (buyEndangered ? freshB : B) : B).map(b => b.lo);
+  const hiEvid = ((sellEndangered ? freshB : B).length ? (sellEndangered ? freshB : B) : B).map(b => b.hi);
   const buyFloor = Math.min(rawLow > 0 ? rawLow : Infinity, percentile(loEvid.length ? loEvid : loArr, 2));
   const sellCap  = Math.max(rawHigh > 0 ? rawHigh : 0, percentile(hiEvid.length ? hiEvid : hiArr, 98));
 
   // an "easy" fill the drift is FEEDING is a trap (buy into a crash / sell into a
   // spike you can't repeat) — discount that leg so the optimizer can't reward it.
-  const strongDrift = Math.abs(driftFrac) >= 3 * C.DRIFT_GATE;
+  const strongDrift = Math.abs(effDrift) >= 3 * C.DRIFT_GATE;
   function score(side, c, otherTarget) {
     if (!reachable(c, side)) return -1;                 // recency gate
     const p0 = Pfill(c, side);
@@ -3220,8 +3289,8 @@ function computeTargets(node, series, exempt) {
     if (margin <= 0) return -1;
     let p = p0;
     if (strongDrift) {
-      if (side === 'buy'  && driftFrac < 0) p *= 0.5;
-      if (side === 'sell' && driftFrac > 0) p *= 0.5;
+      if (side === 'buy'  && effDrift < 0) p *= 0.5;
+      if (side === 'sell' && effDrift > 0) p *= 0.5;
     }
     const eB = aBuy.price - (side === 'buy' ? c : otherTarget);
     const eS = (side === 'sell' ? c : otherTarget) - aSell.price;
@@ -3244,9 +3313,14 @@ function computeTargets(node, series, exempt) {
   }
 
   // ---- coupled 2-sweep fixed point ------------------------------------------
-  let s = Math.min(Math.max(distSell, aSell.price), sellCap);
+  let s = Math.round(Math.min(Math.max(distSell, aSell.price), sellCap));
   let b = argmax(buyCands, 'buy', s); if (b != null) s = argmax(sellCands, 'sell', b) ?? s;
   if (b != null) { b = argmax(buyCands, 'buy', s) ?? b; s = argmax(sellCands, 'sell', b) ?? s; }
+  /* A seed that never passed an argmax sweep was never validated by the fill
+     model — it must not slip through the money gate as a "viable" target
+     (that's how a stale anchor above the fresh tape leaked out as a sell). */
+  if (s != null && !reachable(s, 'sell')) s = null;
+  if (b != null && (!reachable(b, 'buy') || b > buyCapLive)) b = null;
 
   // ---- money floor / safety rails -------------------------------------------
   const edgeReq = lowConf
@@ -3260,8 +3334,14 @@ function computeTargets(node, series, exempt) {
   }
 
   // widen minimally, staying inside the RECENT fillable band + recency gate
-  if (b == null) b = Math.max(1, Math.round(aBuy.price));
+  if (b == null) b = Math.max(1, Math.min(Math.round(aBuy.price), buyCapLive));
   if (s == null) s = Math.round(aSell.price);
+  /* Pull the sell seed down into validated territory before the money gate:
+     an anchor stranded above the fresh tape must not pass as-is. Selling AT
+     the live insta-buy is definitionally fillable, so stop there. */
+  let seedGuard = 0;
+  while (s > (rawHigh || 1) && !reachable(s, 'sell') && ++seedGuard < 20000) s--;
+  if (rawHigh > 0 && s < rawHigh) s = rawHigh;
   let guard = 0;
   while (netKept(b, s, exempt) < edgeReq) {
     const canLower = (b - 1) >= buyFloor && (b - 1) >= 1 && reachable(b - 1, 'buy');
@@ -3276,9 +3356,10 @@ function computeTargets(node, series, exempt) {
 
   // No clean flip. Return the tightest CURRENTLY-FILLABLE honest pair (never a
   // stale-unreachable price); the Grade surfaces the thin/negative margin.
-  const honestBuy = Math.round(aBuy.price);
+  const honestBuy = Math.min(Math.round(aBuy.price), buyCapLive);
   let honestSell = Math.max(Math.round(aSell.price), rawHigh || 0);
   if (aSell.t < 0.5) honestSell = Math.round(aSell.price); // don't pin to a stale live spike
+  else if (sellEndangered && rawHigh > 0) honestSell = rawHigh; // falling market: live is the honest ask
   return NO('spread does not clear the 2% tax right now', honestBuy, honestSell, lowConf);
 }
 
