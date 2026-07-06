@@ -456,7 +456,7 @@ button, input { touch-action: manipulation; }
 .pct-chg.negative { color: var(--negative); }
 .pct-chg.neutral { color: var(--text-muted); }
 .chart-container { flex: 1; display: flex; flex-direction: column; min-width: 0; background: var(--bg-chart); border: 1px solid var(--border-main); border-radius: 6px; position: relative; overflow: hidden; }
-.chart { flex: 1; width: 100%; display: block; touch-action: none; }
+.chart { flex: 1; min-height: 0; width: 100%; display: block; touch-action: none; }
 /* The price strip lives above the chart now (not as an overlay) so the
    target / grade boxes can never cover chart data. The flex-row puts buy +
    sell side by side; on narrow widths they wrap and the chart simply moves
@@ -1109,19 +1109,8 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .qf-fresh { color:var(--rs-green-deep); } .qf-ok { color:var(--text-muted); } .qf-stale { color:var(--rs-gold-deep); }
 .qf-sep { color:var(--border-light); flex:0 0 auto; }
 
-/* ── Flip trust bar ──────────────────────────────────────────────────────── */
-.flip-trust { display:flex; align-items:center; gap:8px; flex-wrap:wrap; padding:5px 10px; margin:4px 0 0; border-radius:5px; font-size:11px; line-height:1.35; border:1px solid var(--border-light); }
-.flip-trust.ok   { background:rgba(31,184,92,.08); border-color:rgba(31,184,92,.35); color:var(--text-main); }
-.flip-trust.none { background:rgba(120,123,134,.06); border-color:var(--border-light); color:var(--text-muted); }
-.ft-badge { font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.4px; color:var(--rs-green-deep); flex:0 0 auto; }
-.ft-badge.warn { color:var(--text-muted); }
-.ft-text { flex:1 1 160px; min-width:0; } .ft-text strong { color:var(--rs-green-deep); }
-.flip-trust.none .ft-text { color:var(--text-muted); }
-.ft-caveat { color:var(--fav-gold); font-weight:700; }
-
 body.flip-mode #quickFacts,
 body.flip-mode #flipFinder,
-body.flip-mode #flipTrust,
 body.flip-mode #ratingGauge { display:none !important; }
 </style>
 </head>
@@ -1308,8 +1297,6 @@ body.flip-mode #ratingGauge { display:none !important; }
           <div class="price-grade" id="sellGrade"></div>
         </div>
       </div>
-
-      <div class="flip-trust" id="flipTrust" style="display:none"></div>
 
       <div class="chart-container">
         <canvas id="chart" class="chart"></canvas>
@@ -1831,17 +1818,28 @@ function updateFavoriteBtn() {
   $('#btnFav').classList.toggle('active', favorites.includes(String(selected.id)));
 }
 
+/* CSS-pixel drawing space of the last resizeCanvas() — drawChart must use
+   these exact values so its coordinates always match the bitmap + transform. */
+let chartCssW = 0, chartCssH = 0;
 function resizeCanvas() {
+  /* Width tracks the container; height tracks the canvas's own flexed box
+     (container minus the legend footer's REAL height — it varies with
+     wrapping, so never derive it as parent-minus-a-guessed-constant). Any
+     gap between the bitmap size and the flexed display size makes the
+     browser scale the bitmap to fit, rendering the chart vertically
+     squashed or stretched. */
   const rect = canvas.parentElement.getBoundingClientRect();
+  const boxH = canvas.getBoundingClientRect().height;
   /* Skip transient zero/tiny sizes (mid-rotation, or when the on-screen keyboard
      collapses the layout) — sizing the canvas to those values breaks the chart. */
-  if (rect.width < 10 || rect.height < 60) return;
+  if (rect.width < 10 || boxH < 60) return;
   /* HD canvas. devicePixelRatio scaling makes text + lines render at native
      pixel density. Round the backing-store dimensions to whole pixels so we
      don't paint into fractional pixels (which is what makes text look blurred). */
   const dpr = Math.max(1, window.devicePixelRatio || 1);
   const cssW = Math.floor(rect.width);
-  const cssH = Math.floor(rect.height - 24);
+  const cssH = Math.floor(boxH);
+  chartCssW = cssW; chartCssH = cssH;
   canvas.width = Math.round(cssW * dpr);
   canvas.height = Math.round(cssH * dpr);
   canvas.style.width = `${cssW}px`;
@@ -1863,6 +1861,14 @@ window.addEventListener('resize', () => scheduleResize(60));
 /* Orientation changes settle layout asynchronously on mobile; re-measure after
    a short delay (and again later) so portrait↔landscape doesn't leave a broken canvas. */
 window.addEventListener('orientationchange', () => { scheduleResize(250); setTimeout(resizeCanvas, 600); });
+/* The chart container is flex:1, so its height also changes when siblings
+   appear/disappear (banners, quick-facts strip, the item icon loading) with
+   no window resize event. If the canvas bitmap isn't re-synced the browser
+   scales the stale bitmap to the new box and the chart renders vertically
+   squashed. Observe the container itself so every layout shift re-sizes. */
+if (window.ResizeObserver) {
+  new ResizeObserver(() => scheduleResize(0)).observe(canvas.parentElement);
+}
 
 /* Deep scan: 1Y/5Y lows + 1M margins. Wiki API has no bulk endpoint for these,
    so we per-item fetch a bounded pool (top vol + top price), throttled & cached. */
@@ -3616,35 +3622,13 @@ function renderQuickFacts(m, node) {
   el.innerHTML = parts.join('<span class="qf-sep">·</span>'); el.style.display = '';
 }
 
-/* Trust bar under the gauge: reads the selected item's engine result. Honest —
-   the engine guarantees tax-clearing + recently-traded reachability, NOT a
-   guaranteed/fast fill, so the copy says "a patient offer should fill". */
-function renderFlipTrust(t) {
-  const el = document.getElementById('flipTrust'); if (!el) return;
-  if (!t) { el.style.display = 'none'; return; }
-  if (t.viable) {
-    const edgeTxt = t.edge > 0 ? ` <strong>+${fmtGp(t.edge)} gp/ea</strong> after tax, if both legs fill.` : '';
-    el.className = 'flip-trust ok';
-    el.innerHTML = `<span class="ft-badge">✓ Safe flip</span>` +
-      `<span class="ft-text">Clears the 2% GE tax; both sides recently traded, so a patient offer should fill.${edgeTxt}` +
-      (t.lowConf ? ` <span class="ft-caveat">Thin recent trades — treat as a guide and size down.</span>` : ``) + `</span>`;
-  } else {
-    const why = t.reason ? t.reason.charAt(0).toUpperCase() + t.reason.slice(1) : 'No margin that clears tax right now';
-    el.className = 'flip-trust none';
-    el.innerHTML = `<span class="ft-badge warn">No safe flip</span>` +
-      `<span class="ft-text">${why} — numbers shown for reference only, not a recommendation.</span>`;
-  }
-  el.style.display = '';
-}
-
 /* One call every price-render site adds to keep the insights row in sync.
    Guard against a stale async render: setItem is async, so a late call for
    item A can land after the user has switched to B (selected === B). Bail so
-   the gauge (which reads the global selected/currentSeries) can't disagree with
-   the trust bar / quick-facts (which read the passed m/node). */
-function refreshItemInsights(m, node, targets) {
+   the gauge (which reads the global selected/currentSeries) can't disagree
+   with the quick-facts strip (which reads the passed m/node). */
+function refreshItemInsights(m, node) {
   if (m && selected && String(m.id) !== String(selected.id)) return;
-  renderFlipTrust(targets || null);
   renderQuickFacts(m || null, node || null);
   renderRatingGauge(selected, document.getElementById('ratingGauge'));
 }
@@ -4194,8 +4178,9 @@ function renderNotifCenter() {
 }
 
 function drawChart(series) {
-  const rect = canvas.parentElement.getBoundingClientRect();
-  const W = rect.width, H = rect.height - 24;
+  /* Draw in the exact space the bitmap was sized for (see resizeCanvas) —
+     re-measuring the DOM here can disagree with a not-yet-resynced bitmap. */
+  const W = chartCssW || canvas.clientWidth, H = chartCssH || canvas.clientHeight;
   /* Inner chart padding (y0 = top, x0 = left for y-axis labels, 15 = right,
      20 = bottom for x-axis labels). Originally a fixed 60px top — fine on a
      600px tall desktop chart (10%), but on a 280-320px mobile chart that's
@@ -4722,7 +4707,7 @@ function renderOverMax(m) {
   selectedAbsIdx = null;
   offset = Math.max(0, currentSeries.labels.length - Math.floor(currentSeries.labels.length / zoom));
   updateGradeBadge();
-  refreshItemInsights(m, null, null);
+  refreshItemInsights(m, null);
   resizeCanvas();
   $("#status").textContent = "Live"; $("#status").classList.add("live");
 }
@@ -4751,7 +4736,7 @@ function refreshChart() {
   $("#sellPrice").innerHTML = `<div class="price-label">Target Sell <span class="live-val">Live: ${fmtGp(liveSellRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedSell)}</span></div><div class="price-grade" id="sellGrade"></div>`;
   restoreCalculator(selected.limit, recommendedBuy, recommendedSell);
   updateGradeBadge();
-  refreshItemInsights(selected, latest?.data?.[String(selected.id)], targets);
+  refreshItemInsights(selected, latest?.data?.[String(selected.id)]);
   resizeCanvas();
 }
 
@@ -4891,7 +4876,7 @@ async function setItem(m, opts = {}) {
   restoreCalculator(m.limit, recommendedBuy, recommendedSell);
   offset = Math.max(0, currentSeries.labels.length - Math.floor(currentSeries.labels.length / zoom));
   updateGradeBadge();
-  refreshItemInsights(m, node, targets);
+  refreshItemInsights(m, node);
   resizeCanvas();
   $("#status").textContent = "Live"; $("#status").classList.add("live");
 }
@@ -5099,7 +5084,7 @@ setItem._userPicked = false;
           $("#buyPrice").innerHTML = `<div class="price-label">Target Buy <span class="live-val">Live: ${fmtGp(liveBuyRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedBuy)}</span></div><div class="price-grade" id="buyGrade"></div>`;
           $("#sellPrice").innerHTML = `<div class="price-label">Target Sell <span class="live-val">Live: ${fmtGp(liveSellRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedSell)}</span></div><div class="price-grade" id="sellGrade"></div>`;
           updateGradeBadge();
-          refreshItemInsights(selected, node, targets);
+          refreshItemInsights(selected, node);
           queueDraw();
         }
         ensureFlipCard();
