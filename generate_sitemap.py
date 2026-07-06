@@ -1,0 +1,69 @@
+#!/usr/bin/env python3
+"""Regenerate sitemap.xml with every GE-tradeable item.
+
+Reads ./items-json (kept fresh by update_items.py), keeps only items that are
+actually tradeable on the Grand Exchange, folds duplicate names, and writes a
+single sitemap (well under the 50,000-URL / 50 MB limits) whose item URLs use
+exactly the /?q=<Name> encoding the app itself produces via
+encodeURIComponent — so the URL Google crawls is byte-identical to the
+canonical the page declares about itself.
+
+Run from the repo root after update_items.py:  python3 generate_sitemap.py
+"""
+import json
+from datetime import date
+from pathlib import Path
+from urllib.parse import quote
+
+SITE = "https://pocketge.com"
+ITEMS_DIR = Path("./items-json")
+OUT = Path("./sitemap.xml")
+
+# encodeURIComponent leaves - _ . ! ~ * ' ( ) unescaped; match it exactly so
+# sitemap URL == the canonical the SPA sets (history.replaceState uses it).
+ENC_SAFE = "-_.!~*'()"
+
+
+def ge_items():
+    seen = {}
+    for f in ITEMS_DIR.glob("*.json"):
+        try:
+            it = json.loads(f.read_text())
+        except Exception:
+            continue
+        if not it.get("tradeable_on_ge"):
+            continue
+        if it.get("noted") or it.get("placeholder") or it.get("stacked") or it.get("duplicate"):
+            continue
+        key = it["name"].lower()
+        # A few names exist under several ids (charge variants etc.) — one URL
+        # per name, since the app resolves ?q= by name.
+        if key not in seen or it["id"] < seen[key]["id"]:
+            seen[key] = it
+    return sorted(seen.values(), key=lambda it: it["name"].lower())
+
+
+def main():
+    items = ge_items()
+    today = date.today().isoformat()
+    rows = [
+        f"{SITE}/|{today}|daily|1.0",
+        f"{SITE}/flipping-guide.html|{today}|monthly|0.8",
+    ]
+    for it in items:
+        rows.append(f"{SITE}/?q={quote(it['name'], safe=ENC_SAFE)}|{today}|daily|0.7")
+
+    out = ['<?xml version="1.0" encoding="UTF-8"?>',
+           '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">']
+    for row in rows:
+        loc, lastmod, freq, prio = row.split("|")
+        loc = loc.replace("&", "&amp;")
+        out.append(f"  <url><loc>{loc}</loc><lastmod>{lastmod}</lastmod>"
+                   f"<changefreq>{freq}</changefreq><priority>{prio}</priority></url>")
+    out.append("</urlset>")
+    OUT.write_text("\n".join(out) + "\n")
+    print(f"Wrote {OUT} — {len(rows)} URLs ({len(items)} items).")
+
+
+if __name__ == "__main__":
+    main()
