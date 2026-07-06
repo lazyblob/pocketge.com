@@ -20,18 +20,18 @@
 <meta property="og:description" content="Find profitable OSRS flips in seconds. Live GE prices, target buy/sell with the 2% tax built in, reliable-margin finder, 5-day breakouts, Bank tracker. Free, no login.">
 <meta property="og:type" content="website">
 <meta property="og:url" content="https://pocketge.com/">
-<meta property="og:image" content="https://oldschool.runescape.wiki/images/Gilded_scimitar.png">
-<meta property="og:image:width" content="100">
-<meta property="og:image:height" content="100">
-<meta property="og:image:alt" content="PocketGE — OSRS Grand Exchange flipping tracker">
+<meta property="og:image" content="https://pocketge.com/og-image.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="PocketGE — live OSRS Grand Exchange prices and flip margins after tax">
 <meta property="og:site_name" content="PocketGE">
 <meta property="og:locale" content="en_US">
 
-<meta name="twitter:card" content="summary">
+<meta name="twitter:card" content="summary_large_image">
 <meta name="twitter:title" content="PocketGE — Live OSRS Grand Exchange Prices & Flipping Margins">
 <meta name="twitter:description" content="Find profitable OSRS flips in seconds. Live GE prices, 2% tax built in, reliable-margin finder, Bank tracker. Free.">
-<meta name="twitter:image" content="https://oldschool.runescape.wiki/images/Gilded_scimitar.png">
-<meta name="twitter:image:alt" content="PocketGE — OSRS Grand Exchange flipping tracker">
+<meta name="twitter:image" content="https://pocketge.com/og-image.png">
+<meta name="twitter:image:alt" content="PocketGE — live OSRS Grand Exchange prices and flip margins after tax">
 
 <link id="favicon1" rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
 <link id="favicon2" rel="icon" type="image/png" sizes="192x192" href="https://oldschool.runescape.wiki/images/Gilded_scimitar.png">
@@ -49,10 +49,10 @@
   "operatingSystem": "Any",
   "browserRequirements": "Requires JavaScript. Works in any modern browser.",
   "description": "Mobile-first OSRS Grand Exchange tracker — live margins with 2% GE tax baked in, 5-day breakout scanner split by high vs low volume, Bank of Gielinor stack tracker with per-stack alerts, and browser push notifications when favorites break above/below their 24H or 5D extremes.",
-  "image": "https://oldschool.runescape.wiki/images/Gilded_scimitar.png",
+  "image": "https://pocketge.com/og-image.png",
   "isAccessibleForFree": true,
-  "codeRepository": "https://github.com/lazyblob/grantexchange",
-  "sameAs": ["https://github.com/lazyblob/grantexchange"],
+  "codeRepository": "https://github.com/lazyblob/pocketge.com",
+  "sameAs": ["https://github.com/lazyblob/pocketge.com"],
   "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" }
 }
 </script>
@@ -2193,11 +2193,21 @@ function countFavoriteBreakouts() {
    visible title/meta/canonical brand-focused instead of itemising "/". */
 const BRAND_TITLE = 'PocketGE — Live OSRS Grand Exchange Prices & Flipping Margins';
 let isHomepageDefault = false;
+/* SERP title, keyword-first ("<Item> Price OSRS") with the live gp figure
+   once prices land — numbers in titles measurably lift click-through and
+   signal freshness. Googlebot renders JS, so it indexes the gp variant. */
+function itemSeoTitle() {
+  if (!selected) return BRAND_TITLE;
+  const gp = (typeof liveSellRaw === 'number' && liveSellRaw > 0) ? `${fmtGp(liveSellRaw)} gp · ` : '';
+  return `${selected.name} Price OSRS — ${gp}Live GE Chart & Flip Margin | PocketGE`;
+}
 function applyTitleBadge() {
-  const base = isHomepageDefault ? BRAND_TITLE
-             : selected ? `${selected.name} price - PocketGE`
-             : BRAND_TITLE;
-  const n = countFavoriteBreakouts();
+  const base = isHomepageDefault ? BRAND_TITLE : itemSeoTitle();
+  /* The (n) breakout badge exists so an already-open tab can flag alerts.
+     Gate it to returning visitors: a crawler (or any first render) must
+     never index "(2) Ruby Price OSRS…" as the page title. */
+  let n = 0;
+  try { if (localStorage.getItem('ge_visited') === '1') n = countFavoriteBreakouts(); } catch (e) {}
   document.title = n > 0 ? `(${n}) ${base}` : base;
 }
 
@@ -2212,6 +2222,7 @@ function restoreBrandMeta() {
   setMetaTag('twitter:title', BRAND_TITLE);
   setMetaTag('twitter:description', desc);
   setCanonicalLink('https://pocketge.com/');
+  removeItemJsonLd();
 }
 
 /* Footer freshness signal — stamps the last successful price refresh so a
@@ -2228,7 +2239,7 @@ function updateFootFresh() {
    bump it for a week the footer doesn't go suspiciously stale-looking
    (which would HURT trust). Updated in the same commit as user-facing
    changes — git history is the source of truth, this is the surface. */
-const BUILD_DATE = '2026-06-22';
+const BUILD_DATE = '2026-07-06';
 function updateFootUpdated() {
   const el = document.getElementById('footUpdated');
   if (!el) return;
@@ -2270,8 +2281,25 @@ function setCanonicalLink(url) {
 }
 function updateMetaForItem(m) {
   if (!m) return;
-  const title = `${m.name} OSRS price — live GE buy & sell | PocketGE`;
-  const desc = `How much is ${m.name} in OSRS right now? Live Grand Exchange buy and sell prices, target offer prices with the 2% GE tax already built in, daily volume, and the 5-day high/low. Free flipping helper, no login.`;
+  const title = itemSeoTitle();
+  /* Once live prices exist, the description carries real numbers (price,
+     insta-buy/-sell, volume, buy limit) — a data-rich snippet beats generic
+     boilerplate for CTR and reads as fresh. Before prices land (or if the
+     fetch fails) fall back to the evergreen question-form copy. */
+  const isSel = selected && String(selected.id) === String(m.id);
+  const gp = isSel && liveSellRaw > 0 ? liveSellRaw : 0;
+  let desc;
+  if (gp) {
+    /* Keep it ≤ ~160 chars so Google shows the whole snippet un-truncated. */
+    const vol = dailyVolume(m.id);
+    desc = `${m.name} is ${fmtGp(gp)} gp on the OSRS Grand Exchange` +
+      (liveBuyRaw > 0 ? ` (insta-buy ${fmtGp(gp)}, insta-sell ${fmtGp(liveBuyRaw)})` : '') + '.' +
+      ` Live chart & flip margin after 2% tax` +
+      (vol ? ` · ${abbreviateNumber(vol)} traded/day` : '') +
+      (m.limit ? ` · ${abbreviateNumber(m.limit)} buy limit` : '') + '.';
+  } else {
+    desc = `How much is ${m.name} in OSRS right now? Live Grand Exchange buy and sell prices, target offer prices with the 2% GE tax already built in, daily volume, and the 5-day high/low. Free flipping helper, no login.`;
+  }
   const url = window.location.href;
   setMetaTag('description', desc);
   setMetaTag('og:title', title, true);
@@ -2280,6 +2308,49 @@ function updateMetaForItem(m) {
   setMetaTag('twitter:title', title);
   setMetaTag('twitter:description', desc.length > 200 ? desc.slice(0, 197) + '…' : desc);
   setCanonicalLink(url.split('#')[0]);
+  setItemJsonLd(m, gp, desc);
+}
+
+/* Per-item structured data, swapped in place on every item change:
+   BreadcrumbList gives the SERP a "pocketge.com › <Item>" trail, ItemPage +
+   dateModified marks the page as a live, per-item document. (No Product/
+   Offer schema on purpose — gp is not an ISO-4217 currency, and invalid
+   offer markup risks a manual action rather than a rich result.) */
+function setItemJsonLd(m, gp, desc) {
+  let el = document.getElementById('itemJsonLd');
+  if (!el) {
+    el = document.createElement('script');
+    el.type = 'application/ld+json'; el.id = 'itemJsonLd';
+    document.head.appendChild(el);
+  }
+  const url = `https://pocketge.com/?q=${encodeURIComponent(m.name)}`;
+  el.textContent = JSON.stringify([
+    {
+      "@context": "https://schema.org", "@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@type": "ListItem", "position": 1, "name": "PocketGE — OSRS GE Prices", "item": "https://pocketge.com/" },
+        { "@type": "ListItem", "position": 2, "name": m.name }
+      ]
+    },
+    {
+      "@context": "https://schema.org", "@type": "ItemPage",
+      "url": url,
+      "name": `${m.name} — live OSRS Grand Exchange price`,
+      "description": desc,
+      "dateModified": new Date().toISOString(),
+      "isPartOf": { "@type": "WebSite", "name": "PocketGE", "url": "https://pocketge.com/" },
+      "mainEntity": {
+        "@type": "Thing",
+        "name": m.name,
+        "image": `https://pocketge.com/images/${m.id}.png`,
+        "description": `${m.name} — tradeable Old School RuneScape item.` + (m.limit ? ` Grand Exchange buy limit: ${m.limit.toLocaleString()} per 4 hours.` : '')
+      }
+    }
+  ]);
+}
+function removeItemJsonLd() {
+  const el = document.getElementById('itemJsonLd');
+  if (el) el.remove();
 }
 
 /* Render the column-customize dropdown PLUS inline sort labels. The ⋯
@@ -3654,6 +3725,10 @@ function refreshItemInsights(m, node) {
   if (m && selected && String(m.id) !== String(selected.id)) return;
   renderQuickFacts(m || null, node || null);
   renderRatingGauge(selected, document.getElementById('ratingGauge'));
+  /* Live numbers just (re)rendered — sync the SERP surface (title + meta
+     description + JSON-LD) so a crawler that executes JS indexes the page
+     with the actual price in it, and every 5-min refresh keeps it current. */
+  if (!isHomepageDefault && m) { applyTitleBadge(); updateMetaForItem(m); }
 }
 
 /* ════════════════════════════════════════════════════════════════════════
@@ -5138,6 +5213,16 @@ setItem._userPicked = false;
     const eligible = (m) => m && (membersOn || !m.members);
     const urlQ = (() => { try { return new URLSearchParams(window.location.search).get('q'); } catch (e) { return null; } })();
     const urlItem = urlQ ? mapping.find(x => x.name.toLowerCase() === urlQ.toLowerCase()) : null;
+    /* A ?q= deep link must ALWAYS resolve to its item. Googlebot and shared
+       links arrive with no saved prefs — i.e. F2P mode — and members-only
+       items used to fail eligible() and fall back to the brand homepage
+       (canonical https://pocketge.com/), which silently de-indexed every
+       members item. Flip to P2P for this session only (not persisted, so a
+       link never rewrites the user's saved mode). */
+    if (urlItem && urlItem.members && !membersOn) {
+      membersOn = true;
+      $("#btnMembers").classList.add("active"); $("#btnF2P").classList.remove("active");
+    }
     const lastId = (() => { try { return localStorage.getItem('ge_lastItem'); } catch (e) { return null; } })();
     const last = lastId ? mapping.find(x => String(x.id) === lastId) : null;
     /* When falling back to a default (no ?q=, no remembered last item),
@@ -5360,7 +5445,7 @@ if ('serviceWorker' in navigator) {
       <a href="/?q=Shark">Shark price</a>
       <a href="/?q=Manta%20ray">Manta ray price</a>
       <a href="/?q=Anglerfish">Anglerfish price</a>
-      <a href="/?q=Karambwan">Karambwan price</a>
+      <a href="/?q=Cooked%20karambwan">Cooked karambwan price</a>
       <a href="/?q=Cake">Cake price</a>
       <a href="/?q=Anchovy%20pizza">Anchovy pizza price</a>
     </div>
@@ -5388,7 +5473,7 @@ if ('serviceWorker' in navigator) {
     <h3>PvM drops &amp; high-tier gear</h3>
     <div class="item-grid">
       <a href="/?q=Twisted%20bow">Twisted bow price</a>
-      <a href="/?q=Scythe%20of%20vitur">Scythe of vitur price</a>
+      <a href="/?q=Scythe%20of%20vitur%20(uncharged)">Scythe of vitur price</a>
       <a href="/?q=Dragon%20claws">Dragon claws price</a>
       <a href="/?q=Bandos%20chestplate">Bandos chestplate price</a>
       <a href="/?q=Bandos%20tassets">Bandos tassets price</a>
@@ -5396,9 +5481,9 @@ if ('serviceWorker' in navigator) {
       <a href="/?q=Armadyl%20chainskirt">Armadyl chainskirt price</a>
       <a href="/?q=Abyssal%20whip">Abyssal whip price</a>
       <a href="/?q=Dragon%20scimitar">Dragon scimitar price</a>
-      <a href="/?q=Toxic%20blowpipe">Toxic blowpipe price</a>
-      <a href="/?q=Trident%20of%20the%20seas">Trident of the seas price</a>
-      <a href="/?q=Trident%20of%20the%20swamp">Trident of the swamp price</a>
+      <a href="/?q=Toxic%20blowpipe%20(empty)">Toxic blowpipe price</a>
+      <a href="/?q=Trident%20of%20the%20seas%20(full)">Trident of the seas price</a>
+      <a href="/?q=Uncharged%20toxic%20trident">Trident of the swamp price</a>
       <a href="/?q=Berserker%20ring">Berserker ring price</a>
       <a href="/?q=Amulet%20of%20fury">Amulet of fury price</a>
       <a href="/?q=Amulet%20of%20torture">Amulet of torture price</a>
@@ -5409,8 +5494,8 @@ if ('serviceWorker' in navigator) {
     <div class="item-grid">
       <a href="/?q=Gilded%20scimitar">Gilded scimitar price</a>
       <a href="/?q=3rd%20age%20longsword">3rd age longsword price</a>
-      <a href="/?q=Party%20hat%20(red)">Red party hat price</a>
-      <a href="/?q=Halloween%20mask%20(red)">Red Halloween mask price</a>
+      <a href="/?q=Red%20partyhat">Red partyhat price</a>
+      <a href="/?q=Red%20halloween%20mask">Red halloween mask price</a>
     </div>
   </div>
 </section>
@@ -5425,11 +5510,11 @@ if ('serviceWorker' in navigator) {
     <span class="foot-updated" id="footUpdated">Updated recently</span>
   </div>
   <div class="foot-row">
-    <a href="https://github.com/lazyblob/grantexchange/issues/new?labels=feedback&amp;title=Feature+idea%3A+" rel="noopener" target="_blank" class="foot-cta">💡 Suggest a feature</a>
+    <a href="https://github.com/lazyblob/pocketge.com/issues/new?labels=feedback&amp;title=Feature+idea%3A+" rel="noopener" target="_blank" class="foot-cta">💡 Suggest a feature</a>
     <span>·</span>
-    <a href="https://github.com/lazyblob/grantexchange/issues/new?labels=bug&amp;title=Bug%3A+" rel="noopener" target="_blank">Report a bug</a>
+    <a href="https://github.com/lazyblob/pocketge.com/issues/new?labels=bug&amp;title=Bug%3A+" rel="noopener" target="_blank">Report a bug</a>
     <span>·</span>
-    <a href="https://github.com/lazyblob/grantexchange" rel="noopener" target="_blank">Open source on GitHub</a>
+    <a href="https://github.com/lazyblob/pocketge.com" rel="noopener" target="_blank">Open source on GitHub</a>
     <span>·</span>
     <a href="/flipping-guide.html">OSRS Flipping Guide</a>
     <span>·</span>
