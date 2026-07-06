@@ -1865,9 +1865,13 @@ window.addEventListener('orientationchange', () => { scheduleResize(250); setTim
    appear/disappear (banners, quick-facts strip, the item icon loading) with
    no window resize event. If the canvas bitmap isn't re-synced the browser
    scales the stale bitmap to the new box and the chart renders vertically
-   squashed. Observe the container itself so every layout shift re-sizes. */
+   squashed. Observe both the container (siblings shifting it) and the canvas
+   itself (in-flow content inside the container, e.g. the legend wrapping,
+   resizes the canvas without changing the container). */
 if (window.ResizeObserver) {
-  new ResizeObserver(() => scheduleResize(0)).observe(canvas.parentElement);
+  const ro = new ResizeObserver(() => scheduleResize(0));
+  ro.observe(canvas.parentElement);
+  ro.observe(canvas);
 }
 
 /* Deep scan: 1Y/5Y lows + 1M margins. Wiki API has no bulk endpoint for these,
@@ -3807,7 +3811,12 @@ function wireFlipButtons(){
 function openFlip(id){
   const m = mapping.find(x => String(x.id) === String(id)); if (!m) return;
   setItem._userPicked = false; setItem(m);
-  try { document.querySelector('.price-strip')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+  /* Only the stacked mobile layout needs to jump to the chart (the flip card
+     lives below it there). On desktop the chart is already on screen and
+     scrollIntoView just yanks the whole page down past the header. */
+  if (window.innerWidth < 1024) {
+    try { document.querySelector('.price-strip')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+  }
 }
 /* Re-check a buffered rec against the CURRENT live quote (0 API — reuses the
    stored series). Returns a freshly-priced rec if it still clears tax and is
@@ -4182,12 +4191,12 @@ function drawChart(series) {
      re-measuring the DOM here can disagree with a not-yet-resynced bitmap. */
   const W = chartCssW || canvas.clientWidth, H = chartCssH || canvas.clientHeight;
   /* Inner chart padding (y0 = top, x0 = left for y-axis labels, 15 = right,
-     20 = bottom for x-axis labels). Originally a fixed 60px top — fine on a
-     600px tall desktop chart (10%), but on a 280-320px mobile chart that's
-     20% of the canvas burned to dead space. Scale top padding with canvas
-     height so the data fills the available room. The y-axis label gutter
-     also shrinks on narrow screens. */
-  const y0 = H < 360 ? 22 : H < 480 ? 36 : 60;
+     20 = bottom for x-axis labels). The top pad only needs to clear the
+     target-price pill (16px, and it flips below its line when cramped) and
+     the extreme-point orbs — the price boxes that once overlaid the chart
+     top are gone, so anything more is dead space. Scale with height,
+     clamped, so short mobile charts don't burn 20% of the canvas either. */
+  const y0 = Math.max(18, Math.min(34, Math.round(H * 0.06)));
   const x0 = W < 480 ? 38 : 45;
   const w = W - x0 - 15, h = H - y0 - 20;
   ctx.clearRect(0, 0, W, H);
@@ -4223,10 +4232,10 @@ function drawChart(series) {
   const xStep = Math.max(1, Math.floor(L.length / linesX));
   const stepX = dataW / Math.max(1, (L.length - 1));
 
-  /* price chart occupies the top 80%, volume bars the bottom 20%. The y-axis
+  /* price chart occupies the top 84%, volume bars the bottom 16%. The y-axis
      gridlines/labels must use h_price (not h) so the labels line up with where
      prices are actually plotted. */
-  const h_price = h * 0.80, h_vol = h * 0.20, y0_vol = y0 + h_price;
+  const h_price = h * 0.84, h_vol = h * 0.16, y0_vol = y0 + h_price;
 
   chartData = { L, LO, HI, VO, vmin, vmax, stepX, dataW, x0, y0, h, H, win, n, h_price };
 
@@ -4258,7 +4267,10 @@ function drawChart(series) {
   const axisFontPx = W >= 800 ? 12 : 10;
   ctx.font = `${axisFontPx}px BlinkMacSystemFont, sans-serif`; ctx.textAlign = "right"; ctx.textBaseline = "middle";
   const mutedTickCol = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
-  for (const v of niceTicks(vmin, vmax, 5)) {
+  /* Tick density follows the plot's pixel height (one label per ~60px) so a
+     tall desktop chart gets more price levels instead of 5 labels floating
+     in empty space, while short mobile charts stay uncluttered. */
+  for (const v of niceTicks(vmin, vmax, Math.max(4, Math.min(8, Math.round(h_price / 60))))) {
     if (v < vmin || v > vmax) continue;
     const y = ypx(v, vmin, vmax, y0, h_price);
     ctx.strokeStyle = "rgba(255,255,255,0.03)"; ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + w, y); ctx.stroke();
