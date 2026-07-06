@@ -419,35 +419,36 @@ button, input { touch-action: manipulation; }
 .status-text { font-size: 11px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 5px; }
 .status-text.live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--positive); box-shadow: 0 0 6px var(--positive); animation: status-pulse 2s ease-in-out infinite; }
 @keyframes status-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
-.ticker-header { background: var(--bg-panel); border: 1px solid var(--border-main); border-radius: 6px; padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
-.ticker-title-group { display: flex; align-items: center; gap: 12px; }
-.ticker-title-group img { width: 48px; height: 48px; image-rendering: pixelated; }
+/* Keep this row lean — every px of chrome here is a px the chart loses. */
+.ticker-header { background: var(--bg-panel); border: 1px solid var(--border-main); border-radius: 6px; padding: 6px 14px; display: flex; justify-content: space-between; align-items: center; flex-shrink: 0; }
+.ticker-title-group { display: flex; align-items: center; gap: 10px; }
+.ticker-title-group img { width: 34px; height: 34px; image-rendering: pixelated; }
 .ticker-wiki-link { display: inline-flex; color: inherit; text-decoration: none; line-height: 0; cursor: pointer; }
 .ticker-name-link { line-height: normal; }
 .ticker-name-link:hover h2 { text-decoration: underline; text-decoration-color: var(--text-muted); text-underline-offset: 3px; }
 .ticker-wiki-link:focus-visible { outline: 2px solid var(--accent, #6aa9ff); outline-offset: 2px; border-radius: 4px; }
-.ticker-info h2 { margin: 0; font-size: 28px; font-weight: 800; color: #fff; letter-spacing: -0.5px; }
+.ticker-info h2 { margin: 0; font-size: 20px; font-weight: 800; color: #fff; letter-spacing: -0.4px; }
 /* Explicit "Wiki ↗" indicator on the ticker title link — desktop is wide
    enough that the wiki affordance is obvious, but on mobile the title block
    looked exactly like a search bar and users were tapping it by accident
    reaching for the timeframe buttons. The chip is hidden by default
    (desktop) and revealed by the mobile media queries below. */
 .wiki-hint { display: none; }
-.ticker-price-row { margin-top: 2px; display: flex; align-items: center; gap: 10px; }
-.ticker-price-row .price { font-size: 18px; font-weight: 700; color: var(--text-main); }
-.ticker-price-row .price .tlp-gp { font-size: 11px; font-weight: 600; color: var(--text-muted); }
-.ticker-price-row .change { font-size: 14px; font-weight: 600; }
+.ticker-price-row { display: flex; align-items: center; gap: 10px; }
+.ticker-price-row .price { font-size: 14px; font-weight: 700; color: var(--text-main); }
+.ticker-price-row .price .tlp-gp { font-size: 10px; font-weight: 600; color: var(--text-muted); }
+.ticker-price-row .change { font-size: 12px; font-weight: 600; }
 .change.positive { color: var(--positive); }
 .change.negative { color: var(--negative); }
 .change.neutral { color: var(--text-muted); }
 .toolbar { display: flex; background: var(--bg-input); border-radius: 4px; padding: 3px; gap: 2px; }
 .toolbar button { background: transparent; border: none; color: var(--text-muted); border-radius: 3px; padding: 4px 10px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.15s; display: flex; flex-direction: column; align-items: center; justify-content: center; min-width: 45px; }
-/* Desktop has way more horizontal space than the toolbar was using. Beef up
-   the time-range buttons so they're a primary affordance, not a tiny strip. */
+/* Desktop time-range buttons: wide enough to stay a primary affordance, but
+   short — vertical space here comes straight out of the chart's height. */
 @media (min-width: 1024px) {
-  .toolbar { padding: 6px; gap: 6px; }
-  .toolbar button { padding: 10px 20px; font-size: 16px; min-width: 80px; font-weight: 700; letter-spacing: 0.5px; }
-  .toolbar button .pct-chg { font-size: 11px; margin-top: 4px; }
+  .toolbar { padding: 4px; gap: 4px; }
+  .toolbar button { padding: 4px 18px; font-size: 14px; min-width: 72px; font-weight: 700; letter-spacing: 0.5px; }
+  .toolbar button .pct-chg { font-size: 10px; margin-top: 1px; }
 }
 .toolbar button:hover { color: var(--text-main); }
 .toolbar button.active { background: var(--border-light); color: #fff; }
@@ -1865,9 +1866,13 @@ window.addEventListener('orientationchange', () => { scheduleResize(250); setTim
    appear/disappear (banners, quick-facts strip, the item icon loading) with
    no window resize event. If the canvas bitmap isn't re-synced the browser
    scales the stale bitmap to the new box and the chart renders vertically
-   squashed. Observe the container itself so every layout shift re-sizes. */
+   squashed. Observe both the container (siblings shifting it) and the canvas
+   itself (in-flow content inside the container, e.g. the legend wrapping,
+   resizes the canvas without changing the container). */
 if (window.ResizeObserver) {
-  new ResizeObserver(() => scheduleResize(0)).observe(canvas.parentElement);
+  const ro = new ResizeObserver(() => scheduleResize(0));
+  ro.observe(canvas.parentElement);
+  ro.observe(canvas);
 }
 
 /* Deep scan: 1Y/5Y lows + 1M margins. Wiki API has no bulk endpoint for these,
@@ -3807,7 +3812,12 @@ function wireFlipButtons(){
 function openFlip(id){
   const m = mapping.find(x => String(x.id) === String(id)); if (!m) return;
   setItem._userPicked = false; setItem(m);
-  try { document.querySelector('.price-strip')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+  /* Only the stacked mobile layout needs to jump to the chart (the flip card
+     lives below it there). On desktop the chart is already on screen and
+     scrollIntoView just yanks the whole page down past the header. */
+  if (window.innerWidth < 1024) {
+    try { document.querySelector('.price-strip')?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (e) {}
+  }
 }
 /* Re-check a buffered rec against the CURRENT live quote (0 API — reuses the
    stored series). Returns a freshly-priced rec if it still clears tax and is
@@ -4182,12 +4192,12 @@ function drawChart(series) {
      re-measuring the DOM here can disagree with a not-yet-resynced bitmap. */
   const W = chartCssW || canvas.clientWidth, H = chartCssH || canvas.clientHeight;
   /* Inner chart padding (y0 = top, x0 = left for y-axis labels, 15 = right,
-     20 = bottom for x-axis labels). Originally a fixed 60px top — fine on a
-     600px tall desktop chart (10%), but on a 280-320px mobile chart that's
-     20% of the canvas burned to dead space. Scale top padding with canvas
-     height so the data fills the available room. The y-axis label gutter
-     also shrinks on narrow screens. */
-  const y0 = H < 360 ? 22 : H < 480 ? 36 : 60;
+     20 = bottom for x-axis labels). The top pad only needs to clear the
+     target-price pill (16px, and it flips below its line when cramped) and
+     the extreme-point orbs — the price boxes that once overlaid the chart
+     top are gone, so anything more is dead space. Scale with height,
+     clamped, so short mobile charts don't burn 20% of the canvas either. */
+  const y0 = Math.max(18, Math.min(34, Math.round(H * 0.06)));
   const x0 = W < 480 ? 38 : 45;
   const w = W - x0 - 15, h = H - y0 - 20;
   ctx.clearRect(0, 0, W, H);
@@ -4223,10 +4233,10 @@ function drawChart(series) {
   const xStep = Math.max(1, Math.floor(L.length / linesX));
   const stepX = dataW / Math.max(1, (L.length - 1));
 
-  /* price chart occupies the top 80%, volume bars the bottom 20%. The y-axis
+  /* price chart occupies the top 84%, volume bars the bottom 16%. The y-axis
      gridlines/labels must use h_price (not h) so the labels line up with where
      prices are actually plotted. */
-  const h_price = h * 0.80, h_vol = h * 0.20, y0_vol = y0 + h_price;
+  const h_price = h * 0.84, h_vol = h * 0.16, y0_vol = y0 + h_price;
 
   chartData = { L, LO, HI, VO, vmin, vmax, stepX, dataW, x0, y0, h, H, win, n, h_price };
 
@@ -4258,7 +4268,10 @@ function drawChart(series) {
   const axisFontPx = W >= 800 ? 12 : 10;
   ctx.font = `${axisFontPx}px BlinkMacSystemFont, sans-serif`; ctx.textAlign = "right"; ctx.textBaseline = "middle";
   const mutedTickCol = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
-  for (const v of niceTicks(vmin, vmax, 5)) {
+  /* Tick density follows the plot's pixel height (one label per ~60px) so a
+     tall desktop chart gets more price levels instead of 5 labels floating
+     in empty space, while short mobile charts stay uncluttered. */
+  for (const v of niceTicks(vmin, vmax, Math.max(4, Math.min(8, Math.round(h_price / 60))))) {
     if (v < vmin || v > vmax) continue;
     const y = ypx(v, vmin, vmax, y0, h_price);
     ctx.strokeStyle = "rgba(255,255,255,0.03)"; ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + w, y); ctx.stroke();
