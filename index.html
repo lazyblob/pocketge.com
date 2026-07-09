@@ -891,25 +891,25 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
   .more-actions .icon-btn:hover, .more-actions .icon-btn:active { background: var(--bg-input); }
   .more-actions .icon-label { display: inline; font-size: 13px; }
   .content-area { flex-direction: column; gap: 3px; }
-  /* Item title + wiki link on mobile. The previous version looked like a
-     second search bar (icon + name in a horizontal pill), and users were
-     tapping it by accident going for the timeframe row below. Reworked:
-     icon is small and inline-aligned with the name; the name reads as a
-     PAGE TITLE (larger, no background pill); an explicit "Wiki ↗" chip
-     after the name makes the affordance unmistakable. The whole strip is
-     left-aligned with extra bottom margin so accidental thumb-taps from
-     the timeframe row below don't reach it. */
-  .ticker-title-group { display: flex !important; align-items: baseline; gap: 7px; padding: 2px 2px 6px; }
-  .ticker-title-group img { width: 20px; height: 20px; align-self: center; }
-  .ticker-info { display: flex; align-items: baseline; gap: 8px; flex-wrap: wrap; min-width: 0; }
-  .ticker-info h2 { font-size: 19px; font-weight: 800; letter-spacing: -0.3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 50vw; }
+  /* Item name + timeframe SHARE ONE ROW (previously the name had its own
+     full-width row above the toolbar — a ~44px band of dead space the user
+     flagged). The name itself is the wiki link (whole-name tap target) with
+     a ↗ cue; the icon is dropped here since it's already shown inside the
+     search bar above, and the price-row is redundant with the Target boxes
+     below. The toolbar takes the remaining width. */
+  .ticker-header { padding: 0; border: none; background: transparent; gap: 8px; height: auto; flex-direction: row; align-items: center; }
+  .ticker-title-group { display: flex !important; align-items: center; gap: 0; padding: 0; flex: 0 1 auto; min-width: 0; }
+  .ticker-title-group img { display: none; }
+  .ticker-info { display: flex; align-items: baseline; gap: 0; flex-wrap: nowrap; min-width: 0; }
+  .ticker-info h2 { font-size: 15px; font-weight: 800; letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
   .ticker-info .ticker-price-row { display: none; }
-  .ticker-info .wiki-hint { display: inline-block; font-size: 9px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.5px; text-transform: uppercase; padding: 2px 6px; border: 1px solid var(--border-light); border-radius: 3px; }
-  .ticker-header { padding: 0; border: none; background: transparent; gap: 4px; height: auto; flex-direction: column; align-items: stretch; }
-  .toolbar { width: 100%; justify-content: space-between; padding: 2px; }
-  .toolbar button { flex: 1; padding: 4px 2px; font-size: 12px; min-width: 0; }
+  .ticker-info .wiki-hint { display: none; }
+  .ticker-name-link { display: inline-flex; align-items: baseline; min-width: 0; max-width: 100%; }
+  .ticker-name-link::after { content: "↗"; margin-left: 3px; font-size: 10px; font-weight: 700; color: var(--text-muted); flex: 0 0 auto; }
+  .toolbar { flex: 1 1 auto; min-width: 0; justify-content: space-between; padding: 2px; }
+  .toolbar button { flex: 1; padding: 5px 2px; font-size: 12px; min-width: 0; }
   .pct-chg { display: none !important; }
-  .chart-container { flex: none; height: 48vh; min-height: 300px; margin-bottom: 0; }
+  .chart-container { flex: none; height: 52vh; min-height: 320px; min-width: 0; margin-bottom: 0; }
   .watchlist-container { width: 100%; flex: 1; min-height: 400px; }
   .status-text { display: none; }
   /* Stack price boxes vertically on portrait mobile — explicit column layout
@@ -917,12 +917,12 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
      narrower than full width and still clipping the verdict chip). Buy on
      top, Sell below; each box gets the full strip width with room for the
      verdict chip ("STRONG ENTRY" / "TOP SELL"). */
-  .price-strip { flex-direction: column; gap: 4px; }
+  .price-strip { flex-direction: column; gap: 3px; }
   .price-strip .price-box { width: 100%; flex: 0 0 auto; min-width: 0; }
-  .price-box { display: flex; align-items: center; gap: 8px; padding: 4px 10px; min-width: 0; overflow: hidden; }
+  .price-box { display: flex; align-items: center; gap: 8px; padding: 3px 10px; min-width: 0; overflow: hidden; }
   .price-label { flex-direction: column; align-items: flex-start; gap: 0; flex-shrink: 0; font-size: 9px; }
   .live-val { font-size: 9px; }
-  .price-val { font-size: 19px; margin-top: 0; flex-shrink: 0; white-space: nowrap; line-height: 1.1; letter-spacing: -0.4px; }
+  .price-val { font-size: 18px; margin-top: 0; flex-shrink: 0; white-space: nowrap; line-height: 1.1; letter-spacing: -0.4px; }
   .price-grade, .price-box.selected .price-grade {
     display: flex; align-items: center; gap: 4px;
     margin-top: 0; padding-top: 0; border-top: none;
@@ -940,41 +940,67 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
   .calc-container input { font-size: 16px; }
 }
 @media screen and (max-width: 1023px) and (orientation: landscape), screen and (max-height: 600px) and (orientation: landscape) {
-  /* Mobile landscape: every gap collapsed so chart starts higher up. */
+  /* Mobile landscape: vertical space is the scarce axis (~390px tall) while
+     width is abundant (~844px). So DON'T stack — put the top panel (search +
+     icons) and the ticker (name + timeframe) side by side on ONE row, and
+     drop the onboarding banner. Reclaims ~80px straight into the chart,
+     which was being squeezed to ~100px. */
   .wrap { padding: 3px; gap: 3px; }
   .main-column { gap: 3px; }
   .content-area { flex-direction: row; gap: 4px; }
-  /* Stack the top-panel (search + icons) above its own dedicated time-toolbar
-     row so the 1D/5D/1M/6M/1Y/5Y buttons get the full width — previously
-     they shared a row with the search and were crammed into ~30px each. */
-  .top-row-wrapper { flex-direction: column; gap: 2px; height: auto; }
-  .top-panel { flex: 0 0 auto; padding: 3px 6px; }
+  .onboard-banner { display: none !important; }
+  .top-row-wrapper { flex-direction: row; gap: 6px; height: auto; align-items: stretch; }
+  .top-panel { flex: 1 1 42%; min-width: 0; padding: 3px 6px; }
   .panel-left { flex-wrap: nowrap; gap: 4px; }
   .mode-pill { height: 28px; }
-  .sbar { flex: 1 1 0; min-width: 80px; width: auto; }
+  .sbar { flex: 1 1 0; min-width: 60px; width: auto; }
   .sbar input { padding-top: 2px; padding-bottom: 2px; height: 28px; font-size: 16px; }
   .brand-logo { display: none !important; }
-  /* Show the item title + wiki link on landscape too — phones in landscape
-     and small laptops in this band previously had no way to open the wiki.
-     Compact: icon + name + "Wiki ↗" chip, all clickable. */
-  .ticker-title-group { display: flex !important; align-items: center; gap: 6px; flex: 0 0 auto; padding: 0 6px; }
-  .ticker-title-group img { width: 22px; height: 22px; }
-  .ticker-info h2 { font-size: 14px; letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 30vw; }
+  /* Item name shares the toolbar row; the name IS the wiki link (with a ↗
+     cue). Icon dropped (already in the search bar), chip dropped, name
+     shrinks/ellipsizes so the timeframe buttons always keep their width. */
+  .ticker-title-group { display: flex !important; align-items: center; gap: 0; flex: 0 1 auto; min-width: 0; padding: 0 4px; }
+  .ticker-title-group img { display: none; }
+  .ticker-info { display: flex; align-items: baseline; gap: 0; min-width: 0; }
+  .ticker-info h2 { font-size: 13px; letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 26vw; }
   .ticker-info .ticker-price-row { display: none; }
-  .ticker-info .wiki-hint { display: inline-block; font-size: 8.5px; font-weight: 700; color: var(--text-muted); letter-spacing: 0.4px; text-transform: uppercase; padding: 1px 5px; border: 1px solid var(--border-light); border-radius: 3px; margin-left: 6px; }
-  .ticker-header { flex: 0 0 auto; min-width: 0; padding: 2px; border: 1px solid var(--border-main); background: var(--bg-panel); border-radius: 6px; display: flex; gap: 8px; }
-  .toolbar { width: 100%; padding: 0; gap: 3px; }
-  .toolbar button { flex: 1; min-width: 0; padding: 6px 0; font-size: 13px; min-height: 32px; }
+  .ticker-info .wiki-hint { display: none; }
+  .ticker-name-link { display: inline-flex; align-items: baseline; min-width: 0; max-width: 100%; }
+  .ticker-name-link::after { content: "↗"; margin-left: 3px; font-size: 9px; font-weight: 700; color: var(--text-muted); flex: 0 0 auto; }
+  .ticker-header { flex: 1 1 58%; min-width: 0; padding: 2px; border: 1px solid var(--border-main); background: var(--bg-panel); border-radius: 6px; display: flex; align-items: center; gap: 6px; }
+  .toolbar { flex: 1 1 auto; width: auto; min-width: 0; padding: 0; gap: 3px; }
+  .toolbar button { flex: 1; min-width: 0; padding: 5px 0; font-size: 13px; min-height: 30px; }
   .pct-chg { display: none !important; }
-  .watchlist-container { width: 230px; font-size: 11px; }
+  .chart-container { min-height: 0; }
+  /* Sidebar in landscape: the recommended-flip card + Potential-Profit
+     module used to eat the whole 230px-tall column, leaving the favorites
+     list clipped to nothing (it's flex:1 with overflow hidden on the
+     container). Let the WHOLE sidebar scroll as one unit instead, so the
+     flip card, calculator, then every watchlist row are all reachable. */
+  .watchlist-container { width: 234px; font-size: 11px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .watchlist-content { flex: 0 0 auto; overflow: visible; }
   .wl-item { padding: 4px 6px; font-size: 11px; }
-  .calc-container { padding: 4px 6px; gap: 4px;}
-  .calc-container input { padding: 4px 6px; font-size: 16px;}
+  .calc-container { padding: 4px 6px; gap: 3px; }
+  .calc-container input { padding: 4px 6px; font-size: 16px; }
   .price-strip { gap: 4px; }
-  .price-box { padding: 4px 6px; min-width: 0; }
+  .price-box { padding: 2px 6px; min-width: 0; }
   .price-label { font-size: 9px; }
-  .price-val { font-size: 12px; margin-top: 0px; }
+  .price-val { font-size: 13px; margin-top: 0px; }
   .status-text { display: none; }
+  /* Compact recommended-flip card for the short landscape column. */
+  .flip-finder { padding: 4px 4px 0; }
+  .flip-card { margin: 4px; padding: 6px 8px; }
+  .flip-card .fc-why { display: none; }
+  .fc-head { margin-bottom: 4px; }
+  .fc-icon { width: 24px; height: 24px; flex-basis: 24px; }
+  .fc-name { font-size: 12px; }
+  .fc-score { font-size: 15px; }
+  .fc-next { min-height: 28px; padding: 4px 10px; font-size: 11px; }
+  .fc-prices { margin: 4px 0; gap: 4px; }
+  .fc-price { padding: 3px 5px; }
+  .fc-pval { font-size: 13px; }
+  .fc-plabel { font-size: 9px; }
+  .fc-stats { gap: 2px 8px; }
 }
 
 /* First-visit onboarding banner — orients an organic searcher in one line,
