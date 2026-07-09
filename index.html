@@ -1096,7 +1096,11 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .flip-card.collapsed .fc-head { margin-bottom:0; }
 .flip-card.collapsed .fc-collapsible { display:none; }
 .flip-card.collapsed .fc-mini { display:flex; margin-top:6px; }
-.flip-card.collapsed .fc-next { display:none; }
+/* Keep "Next" available while collapsed so recs can be cycled without
+   expanding. Drop the "Recommended flip" words (the ⚡ + the item summary
+   below already identify the card) so Next + chevron always fit the narrow
+   sidebar without truncating. */
+.flip-card.collapsed .fc-kicker-txt { display:none; }
 .fc-body { display:flex; align-items:center; gap:8px; }
 .fc-icon { width:30px; height:30px; flex:0 0 30px; image-rendering:pixelated; }
 .fc-main { flex:1 1 auto; min-width:0; }
@@ -3933,7 +3937,7 @@ function renderFlipCard(rec){
   h.innerHTML = `
     <div class="flip-card${collapsed ? ' collapsed' : ''}" role="button" tabindex="0" data-id="${rec.id}" aria-label="Open ${rec.item.name} — recommended flip">
       <div class="fc-head">
-        <span class="fc-kicker">⚡ Recommended flip</span>
+        <span class="fc-kicker">⚡ <span class="fc-kicker-txt">Recommended flip</span></span>
         <div class="fc-head-ctrls">
           <button type="button" class="fc-next" id="btnNextFlip" title="Show another flip">↻ Next</button>
           <button type="button" class="fc-collapse" id="btnFlipCollapse" aria-label="Collapse recommended flip" aria-expanded="${collapsed ? 'false' : 'true'}" title="Collapse / expand">▾</button>
