@@ -983,24 +983,21 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
   .calc-container { padding: 4px 6px; gap: 3px; }
   .calc-container input { padding: 4px 6px; font-size: 16px; }
   .price-strip { gap: 4px; }
+  /* Shrink the Target boxes: the grade chip ("47 WEAK SELL") drove the box
+     height. Tiny grade + no "1D"/"?" context cuts the strip height so the
+     chart gets the room. */
   .price-box { padding: 2px 6px; min-width: 0; }
   .price-label { font-size: 9px; }
-  .price-val { font-size: 13px; margin-top: 0px; }
+  .price-val { font-size: 14px; margin-top: 0px; }
+  .price-grade .pg-num { font-size: 12px; }
+  .price-grade .pg-verdict { font-size: 8px; letter-spacing: 0.2px; }
+  .price-grade .pg-ctx { display: none; }
+  .price-grade .pg-help { display: none; }
   .status-text { display: none; }
-  /* Compact recommended-flip card for the short landscape column. */
-  .flip-finder { padding: 4px 4px 0; }
-  .flip-card { margin: 4px; padding: 6px 8px; }
-  .flip-card .fc-why { display: none; }
-  .fc-head { margin-bottom: 4px; }
-  .fc-icon { width: 24px; height: 24px; flex-basis: 24px; }
-  .fc-name { font-size: 12px; }
-  .fc-score { font-size: 15px; }
-  .fc-next { min-height: 28px; padding: 4px 10px; font-size: 11px; }
-  .fc-prices { margin: 4px 0; gap: 4px; }
-  .fc-price { padding: 3px 5px; }
-  .fc-pval { font-size: 13px; }
-  .fc-plabel { font-size: 9px; }
-  .fc-stats { gap: 2px 8px; }
+  /* NOTE: the compact recommended-flip-card overrides for landscape live in
+     their own media block AFTER the .flip-card base styles (search
+     "landscape flip-card compaction") — placing them here would lose to the
+     later base rules, since media queries don't add specificity. */
 }
 
 /* First-visit onboarding banner — orients an organic searcher in one line,
@@ -1076,12 +1073,30 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .flip-card { margin:8px; padding:9px 10px; border-radius:12px; cursor:pointer; background:var(--bg-panel);
   border:1px solid rgba(230,195,92,.30); box-shadow:0 4px 16px rgba(0,0,0,.35); }
 .flip-card:focus-visible { outline:2px solid var(--buy-color); outline-offset:2px; }
-.fc-head { display:flex; align-items:center; justify-content:space-between; margin-bottom:6px; }
+.fc-head { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-bottom:6px; }
 .fc-kicker { font-size:10.5px; font-weight:800; letter-spacing:.4px; color:var(--buy-color); text-transform:uppercase; }
+.fc-head-ctrls { display:flex; align-items:center; gap:6px; flex:0 0 auto; }
 .fc-next { min-height:34px; font-size:11.5px; font-weight:700; padding:6px 12px; border-radius:999px; cursor:pointer;
   color:var(--text-main); background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); }
 .fc-next:active { transform:translateY(1px); }
 .fc-next:disabled { opacity:.5; cursor:default; }
+/* Collapse toggle + collapsed one-line summary. Collapsing hides everything
+   in .fc-collapsible and reveals .fc-mini (name · score · edge). */
+.fc-collapse { flex:0 0 auto; width:30px; height:30px; display:flex; align-items:center; justify-content:center;
+  font-size:12px; line-height:1; cursor:pointer; border-radius:8px; color:var(--text-main);
+  background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.14); transition:transform .18s ease; }
+.fc-collapse:active { transform:translateY(1px); }
+.flip-card.collapsed .fc-collapse { transform:rotate(-90deg); }
+.fc-mini { display:none; align-items:center; gap:8px; min-width:0; }
+.fc-mini-icon { width:22px; height:22px; flex:0 0 22px; image-rendering:pixelated; }
+.fc-mini-name { flex:1 1 auto; min-width:0; font-weight:800; font-size:13px; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.fc-mini-score { flex:0 0 auto; font-weight:900; font-size:14px; line-height:1; }
+.fc-mini-edge { flex:0 0 auto; font-size:11.5px; font-weight:700; }
+.fc-mini-edge.pos { color:var(--rs-green-deep); }
+.flip-card.collapsed .fc-head { margin-bottom:0; }
+.flip-card.collapsed .fc-collapsible { display:none; }
+.flip-card.collapsed .fc-mini { display:flex; margin-top:6px; }
+.flip-card.collapsed .fc-next { display:none; }
 .fc-body { display:flex; align-items:center; gap:8px; }
 .fc-icon { width:30px; height:30px; flex:0 0 30px; image-rendering:pixelated; }
 .fc-main { flex:1 1 auto; min-width:0; }
@@ -1108,6 +1123,31 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .fc-subnote { font-size:9px; color:var(--text-muted); }
 .flip-card.ff-msg { display:flex; flex-direction:column; align-items:center; gap:10px; text-align:center; cursor:default; }
 .ff-msg-txt { font-size:12px; color:var(--text-muted); }
+
+/* landscape flip-card compaction — MUST live here (after the .flip-card base
+   rules) so it wins on source order; media queries add no specificity. The
+   short landscape sidebar can't afford the full card, so shrink it and put
+   Profit / Est-per-4h / Daily-vol on ONE inline line. */
+@media screen and (max-width: 1023px) and (orientation: landscape), screen and (max-height: 600px) and (orientation: landscape) {
+  .flip-finder { padding: 4px 4px 0; }
+  .flip-card { margin: 4px; padding: 6px 8px; }
+  .flip-card .fc-why { display: none; }
+  .flip-card .fc-head { margin-bottom: 4px; }
+  .flip-card .fc-icon { width: 24px; height: 24px; flex-basis: 24px; }
+  .flip-card .fc-name { font-size: 12px; }
+  .flip-card .fc-gauge { min-width: 50px; }
+  .flip-card .fc-score { font-size: 15px; }
+  .flip-card .fc-next { min-height: 26px; padding: 4px 9px; font-size: 11px; }
+  .flip-card .fc-collapse { width: 26px; height: 26px; }
+  .flip-card .fc-prices { margin: 4px 0; gap: 4px; }
+  .flip-card .fc-price { padding: 3px 5px; }
+  .flip-card .fc-pval { font-size: 13px; }
+  .flip-card .fc-plabel { font-size: 9px; }
+  .flip-card .fc-stats { flex-wrap: nowrap; gap: 8px; }
+  .flip-card .fc-stats > div { flex-direction: row; align-items: baseline; gap: 3px; min-width: 0; flex: 0 1 auto; }
+  .flip-card .fc-slabel { font-size: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .flip-card .fc-sval { font-size: 11px; white-space: nowrap; }
+}
 
 /* ── Analyst Rating gauge ────────────────────────────────────────────────── */
 .rg-wrap { margin:8px 0 2px; padding:9px 12px 8px; background:var(--bg-panel); border:1px solid var(--border-main); border-radius:8px; }
@@ -3885,34 +3925,48 @@ function renderFlipState(kind){
   h.innerHTML = `<div class="flip-card ff-msg">${msg}</div>`;
   wireFlipButtons();
 }
+function flipCollapsed(){ try { return localStorage.getItem('ge_flipCollapsed') === '1'; } catch (e) { return false; } }
+function setFlipCollapsed(v){ try { localStorage.setItem('ge_flipCollapsed', v ? '1' : '0'); } catch (e) {} }
 function renderFlipCard(rec){
   const h = flipHost(); if (!h) return;
+  const collapsed = flipCollapsed();
   h.innerHTML = `
-    <div class="flip-card" role="button" tabindex="0" data-id="${rec.id}" aria-label="Open ${rec.item.name} — recommended flip">
+    <div class="flip-card${collapsed ? ' collapsed' : ''}" role="button" tabindex="0" data-id="${rec.id}" aria-label="Open ${rec.item.name} — recommended flip">
       <div class="fc-head">
         <span class="fc-kicker">⚡ Recommended flip</span>
-        <button type="button" class="fc-next" id="btnNextFlip" title="Show another flip">↻ Next</button>
-      </div>
-      <div class="fc-body">
-        <img class="fc-icon" src="${itemIconUrl(rec.id)}" alt="${rec.item.name} icon" loading="lazy">
-        <div class="fc-main">
-          <div class="fc-name">${rec.item.name}</div>
-          <div class="fc-why">${rec.why}</div>
-        </div>
-        <div class="fc-gauge">
-          <div class="fc-score" style="color:${rec.color}">${rec.flipScore}</div>
-          <div class="fc-verdict" style="color:${rec.color}">${rec.verdict}</div>
-          <div class="fc-meter"><span style="width:${rec.flipScore}%;background:${rec.color}"></span></div>
+        <div class="fc-head-ctrls">
+          <button type="button" class="fc-next" id="btnNextFlip" title="Show another flip">↻ Next</button>
+          <button type="button" class="fc-collapse" id="btnFlipCollapse" aria-label="Collapse recommended flip" aria-expanded="${collapsed ? 'false' : 'true'}" title="Collapse / expand">▾</button>
         </div>
       </div>
-      <div class="fc-prices">
-        <div class="fc-price buy"><span class="fc-plabel">Buy @</span><span class="fc-pval">${fmtGp(rec.buy)}</span></div>
-        <div class="fc-price sell"><span class="fc-plabel">Sell @</span><span class="fc-pval">${fmtGp(rec.sell)}</span></div>
+      <div class="fc-mini">
+        <img class="fc-mini-icon" src="${itemIconUrl(rec.id)}" alt="" loading="lazy">
+        <span class="fc-mini-name">${rec.item.name}</span>
+        <span class="fc-mini-score" style="color:${rec.color}">${rec.flipScore}</span>
+        <span class="fc-mini-edge pos">+${fmtGp(rec.edge)}/ea</span>
       </div>
-      <div class="fc-stats">
-        <div><span class="fc-slabel">Profit / item</span><span class="fc-sval pos">+${fmtGp(rec.edge)}</span></div>
-        <div><span class="fc-slabel">Est. per 4h</span><span class="fc-sval pos">+${abbreviateNumber(rec.realizable)}</span></div>
-        <div><span class="fc-slabel">Daily vol</span><span class="fc-sval">${abbreviateNumber(rec.vol)}</span></div>
+      <div class="fc-collapsible">
+        <div class="fc-body">
+          <img class="fc-icon" src="${itemIconUrl(rec.id)}" alt="${rec.item.name} icon" loading="lazy">
+          <div class="fc-main">
+            <div class="fc-name">${rec.item.name}</div>
+            <div class="fc-why">${rec.why}</div>
+          </div>
+          <div class="fc-gauge">
+            <div class="fc-score" style="color:${rec.color}">${rec.flipScore}</div>
+            <div class="fc-verdict" style="color:${rec.color}">${rec.verdict}</div>
+            <div class="fc-meter"><span style="width:${rec.flipScore}%;background:${rec.color}"></span></div>
+          </div>
+        </div>
+        <div class="fc-prices">
+          <div class="fc-price buy"><span class="fc-plabel">Buy @</span><span class="fc-pval">${fmtGp(rec.buy)}</span></div>
+          <div class="fc-price sell"><span class="fc-plabel">Sell @</span><span class="fc-pval">${fmtGp(rec.sell)}</span></div>
+        </div>
+        <div class="fc-stats">
+          <div><span class="fc-slabel">Profit</span><span class="fc-sval pos">+${fmtGp(rec.edge)}</span></div>
+          <div><span class="fc-slabel">Per 4h</span><span class="fc-sval pos">+${abbreviateNumber(rec.realizable)}</span></div>
+          <div><span class="fc-slabel">Daily vol</span><span class="fc-sval">${abbreviateNumber(rec.vol)}</span></div>
+        </div>
       </div>
     </div>`;
   wireFlipButtons();
@@ -3922,6 +3976,18 @@ function wireFlipButtons(){
   const next = h.querySelector('#btnNextFlip');
   if (next) { next.disabled = recBusy; next.onclick = e => { e.stopPropagation(); findFlip({ advance: true }); }; }
   const card = h.querySelector('.flip-card[data-id]');
+  /* Collapse toggle: hides the card body, leaving a one-line summary (name ·
+     score · edge). Persisted so it stays collapsed across re-renders (Next,
+     the 5-min re-validate) and page loads. */
+  const col = h.querySelector('#btnFlipCollapse');
+  if (col && card) {
+    col.onclick = e => {
+      e.stopPropagation();
+      const isCollapsed = card.classList.toggle('collapsed');
+      col.setAttribute('aria-expanded', isCollapsed ? 'false' : 'true');
+      setFlipCollapsed(isCollapsed);
+    };
+  }
   if (card) {
     const id = card.getAttribute('data-id');
     card.onclick = () => openFlip(id);
