@@ -306,17 +306,31 @@ button, input { touch-action: manipulation; }
    (see the landscape media query) where the standalone search is too narrow
    and the ticker name would otherwise duplicate the item. */
 .sbar-item, .sbar-wiki { display: none; }
-.fav-btn { background: var(--bg-input); border: 1px solid var(--border-light); border-radius: 4px; padding: 5px 8px; cursor: pointer; color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; gap: 5px; transition: all 0.2s ease; }
-.fav-btn:hover { border-color: var(--fav-gold); color: var(--fav-gold); }
-.fav-btn.active { background: rgba(255, 179, 0, 0.1); border-color: var(--fav-gold); color: var(--fav-gold); }
-.fav-btn svg { width: 16px; height: 16px; fill: none; }
-.fav-btn.active svg { fill: currentColor; }
+/* Primary "Save" affordance — lives inside the ticker header next to the
+   item name, so it reads as "save THIS item". Bigger than the old top-panel
+   pill, with a filled gold star + "Saved" label once active so state reads
+   at a glance. The .fav-label / .fav-label-active spans swap via .active. */
+.fav-btn {
+  background: rgba(255, 179, 0, 0.08); border: 1.5px solid rgba(255, 179, 0, 0.42);
+  border-radius: 6px; padding: 7px 14px 7px 11px; cursor: pointer;
+  color: var(--fav-gold);
+  display: inline-flex; align-items: center; gap: 7px;
+  font-family: inherit; font-weight: 800; font-size: 13px; letter-spacing: 0.35px;
+  transition: background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease, transform 0.12s ease;
+  flex-shrink: 0;
+}
+.fav-btn:hover { background: rgba(255, 179, 0, 0.16); border-color: var(--fav-gold); box-shadow: 0 0 0 3px rgba(255, 179, 0, 0.12); }
+.fav-btn:active { transform: translateY(1px); }
+.fav-btn.active { background: linear-gradient(180deg, rgba(255,179,0,0.28) 0%, rgba(255,179,0,0.12) 100%); border-color: var(--fav-gold); color: #FFE0A0; box-shadow: 0 0 0 3px rgba(255,179,0,0.18), 0 6px 20px rgba(255,179,0,0.18); }
+.fav-btn .fav-star { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; flex-shrink: 0; }
+.fav-btn.active .fav-star { fill: currentColor; }
+.fav-btn .fav-label-active { display: none; }
+.fav-btn.active .fav-label { display: none; }
+.fav-btn.active .fav-label-active { display: inline; }
 /* Button text labels only appear when the row truly has room. At
    1024–1279px the sidebar squeezes the main column enough that labeled
    buttons wrap the top panel onto 2–3 rows (with "Live" stranded on its
    own line) — icon-only buttons keep it to a single row in that band. */
-.fav-btn .icon-label { display: none; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; }
-@media (min-width: 1280px) { .fav-btn .icon-label { display: inline; } }
 .icon-btn { background: var(--bg-input); border: 1px solid var(--border-light); border-radius: 4px; padding: 4px 7px; cursor: pointer; color: var(--text-muted); font-size: 14px; line-height: 1; transition: all 0.15s ease; display: inline-flex; align-items: center; gap: 5px; }
 .icon-btn .icon-label { display: none; font-size: 11px; font-weight: 700; letter-spacing: 0.3px; }
 @media (min-width: 1280px) { .icon-btn .icon-label { display: inline; } }
@@ -665,34 +679,6 @@ button, input { touch-action: manipulation; }
 .category-title.marginlo-title { border-left-color: #7FE3A6; }
 .category-title.steady-title { border-left-color: #6AA9FF; }
 .category-title.fall-title { border-left-color: var(--negative); }
-/* Remote Flip Mode: ultra-clean, glanceable, stealthy at-work view. Decorative
-   chrome is hidden, prices are oversized, and the chart drops everything except
-   the price line + target. */
-body.flip-mode .mode-pill,
-body.flip-mode .brand-logo,
-body.flip-mode .chart-footer,
-body.flip-mode .calc-container,
-body.flip-mode #status,
-body.flip-mode .ticker-title-group { display: none !important; }
-/* Keep the time toolbar visible in Glance Mode, but compact, so you can still
-   switch between 1D / 5D / 1M / etc. while in the clean-prices view. */
-body.flip-mode .toolbar { padding: 2px; gap: 3px; }
-body.flip-mode .toolbar button { padding: 4px 8px; font-size: 12px; min-width: 36px; }
-body.flip-mode { background: #05070C; }
-body.flip-mode .top-panel,
-body.flip-mode .ticker-header,
-body.flip-mode .chart-container,
-body.flip-mode .watchlist-container { background: #0A0D14; border-color: #1A1F2B; }
-body.flip-mode .price-strip { gap: 14px; padding: 4px 0; }
-body.flip-mode .price-box { padding: 14px 22px; min-width: 220px; border-width: 2px; }
-body.flip-mode .price-label { font-size: 12px; letter-spacing: 1px; }
-body.flip-mode .price-val { font-size: 38px; font-weight: 900; margin-top: 4px; letter-spacing: -1px; }
-body.flip-mode .live-val { font-size: 13px; opacity: 1; }
-body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var(--border-active); color: #fff; }
-@media screen and (max-width: 1023px) {
-  body.flip-mode .price-val { font-size: 32px; }
-  body.flip-mode .price-box { min-width: 160px; padding: 10px 14px; }
-}
 .category-title:hover { background: #353A47; }
 /* Chevron rendered as a clearly tappable button so users can find "close"
    without aiming at a tiny glyph. Inverts when the section is collapsed so
@@ -908,17 +894,19 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
      Wrap inside search-group: search input takes a full row, the 5 buttons
      drop to a second row underneath. Both rows now have breathing room and
      nothing clips. */
-  /* Single tidy row: search input grows, then Favorite + the ⋯ overflow
-     menu. The four secondary actions (Simple/Alerts/Bank/Help) collapse
-     into the ⋯ dropdown so the row stops looking cluttered and there's
-     room for the item title below. */
+  /* Single tidy row: search input grows, then the ⋯ overflow menu. The
+     secondary actions (Alerts/Bank/Help) collapse into the ⋯ dropdown so
+     the row stops looking cluttered. Favorite lives in the ticker header
+     below, so it's not in this row anymore. */
   .search-group { flex: 1 1 0; min-width: 0; gap: 5px; flex-wrap: nowrap; align-items: center; }
   .sbar { flex: 1 1 auto; min-width: 0; width: auto; }
   /* font-size MUST be >= 16px on touch inputs or iOS Safari auto-zooms in
      when the user taps to type, distorting the entire layout. Keep 16px. */
   .sbar input { padding: 3px 6px 3px 26px; height: 30px; font-size: 16px; }
   .icon-btn { flex: 0 0 auto; padding: 5px 9px; font-size: 15px; gap: 0; }
-  .fav-btn { padding: 5px 8px; gap: 0; flex: 0 0 auto; }
+  /* Compact fav button in the ticker header on portrait mobile. */
+  .fav-btn { padding: 5px 9px; gap: 5px; flex: 0 0 auto; font-size: 11px; }
+  .fav-btn .fav-star { width: 13px; height: 13px; }
   /* ⋯ overflow menu on mobile: button shows, container becomes a dropdown */
   .more-wrap { display: inline-flex; position: relative; flex: 0 0 auto; }
   .more-toggle { display: inline-flex !important; font-size: 18px; line-height: 1; padding: 5px 10px; min-width: 38px; justify-content: center; }
@@ -1265,10 +1253,6 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .qf-age { font-size:10px; font-weight:600; }
 .qf-fresh { color:var(--rs-green-deep); } .qf-ok { color:var(--text-muted); } .qf-stale { color:var(--rs-gold-deep); }
 .qf-sep { color:var(--border-light); flex:0 0 auto; }
-
-body.flip-mode #quickFacts,
-body.flip-mode #flipFinder,
-body.flip-mode #ratingGauge { display:none !important; }
 </style>
 </head>
 <body>
@@ -1380,16 +1364,9 @@ body.flip-mode #ratingGauge { display:none !important; }
                 <a id="sbarWiki" class="sbar-wiki" target="_blank" rel="noopener noreferrer" href="https://oldschool.runescape.wiki/" title="Open this item on the OSRS Wiki" aria-label="Open current item on the OSRS Wiki">↗</a>
                 <div id="suggestBox" class="suggest" style="display:none"></div>
               </div>
-              <button id="btnFav" class="fav-btn" title="Toggle Favorite">
-                <svg viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
-                </svg>
-                <span class="icon-label">Favorite</span>
-              </button>
               <div class="more-wrap">
                 <button id="btnMore" class="icon-btn more-toggle" title="More" aria-label="More actions" aria-expanded="false"><span aria-hidden="true">☰</span></button>
                 <div class="more-actions" id="moreActions">
-                  <button id="btnFlip" class="icon-btn" title="Simple View — huge buy/sell prices, minimal chart. Good for a quick glance or checking at work."><span>🔍</span><span class="icon-label">Simple</span></button>
                   <button id="btnNotif" class="icon-btn" title="Enable Browser Push Notifications"><span>🔕</span><span class="icon-label">Alerts</span></button>
                   <button id="btnPortfolio" class="icon-btn" title="Bank of Gielinor — track your stacks &amp; total wealth">
                     <svg class="bk-icon" viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
@@ -1425,6 +1402,16 @@ body.flip-mode #ratingGauge { display:none !important; }
                 <span id="tickerChange" class="change neutral">---</span>
               </div>
             </div>
+            <!-- Primary favorite button, right beside the item name so it reads
+                 as "save THIS item". Replaces the tiny outlined star that was
+                 buried in the top-panel icon row. -->
+            <button id="btnFav" class="fav-btn" type="button" title="Add this item to Favorites" aria-pressed="false">
+              <svg class="fav-star" viewBox="0 0 24 24" aria-hidden="true">
+                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+              </svg>
+              <span class="fav-label">Save</span>
+              <span class="fav-label-active">Saved</span>
+            </button>
           </div>
 
           <div class="toolbar" id="timeToolbar">
@@ -1660,7 +1647,6 @@ let dayHiLoCache = {};
 let steadyFlipsCache = []; // [{ id, item, meanMargin, days, vol }]
 let scanStatus = { fived: 'idle', steady: 'idle' };
 
-let flipMode = localStorage.getItem('ge_flip') === '1';
 let notifEnabled = localStorage.getItem('ge_notif') === '1';
 let notifAlertState = JSON.parse(localStorage.getItem('ge_notifAlertState') || '{}');
 const NOTIF_COOLDOWN_MS = 10 * 60 * 1000;
@@ -4609,7 +4595,7 @@ function drawChart(series) {
      adding noise. Each consecutive pair of points contributes a slim
      quadrilateral; gaps in the data cleanly skip. Drawn first so dots and
      markers paint on top. */
-  if (!flipMode) {
+  {
     ctx.save();
     /* The band between buy-low and sell-high IS the margin, drawn over time —
        the app's hero metric. Kept subtle but actually visible now (was 0.07,
@@ -4646,23 +4632,8 @@ function drawChart(series) {
 
   /* Dots-only scatter (no connecting line — that was scribbling on dense 1D
      charts). The volume needles above carry the "where did big trades happen"
-     signal; here we just plot every print clean and small. Flip Mode collapses
-     to a thin connecting line for ultra-clean at-a-glance reading. */
+     signal; here we just plot every print clean and small. */
   function drawSeries(arr, color, isHigh) {
-    if (flipMode) {
-      ctx.save();
-      ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.lineJoin = "round"; ctx.lineCap = "round";
-      ctx.beginPath();
-      let started = false;
-      for (let i = 0; i < arr.length; i++) {
-        if (arr[i] == null) { started = false; continue; }
-        const x = x0 + i * stepX, y = ypx(arr[i], vmin, vmax, y0, h_price);
-        if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-      ctx.restore();
-      return;
-    }
     /* Fixed dot radius across every timeframe. Previously it scaled with
        stepX (point spacing), so dense views like 1D rendered tiny ~1.8px
        dots while sparse views like 6M rendered fat ~3.5px dots — the
@@ -4751,7 +4722,7 @@ function drawChart(series) {
      that a raw connecting line caused on dense intraday data. Drawn on top of
      the dots so the eye can follow the trend at a glance. The EMA carries
      across small data gaps but the drawn line lifts the pen over them. */
-  if (!flipMode && L.length > 2) {
+  if (L.length > 2) {
     const period = Math.max(2, Math.round(L.length * 0.08));
     const k = 2 / (period + 1);
     let ema = null;
@@ -4782,7 +4753,7 @@ function drawChart(series) {
     ctx.save(); ctx.beginPath(); ctx.arc(x, y, 7, 0, Math.PI * 2);
     ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.stroke(); ctx.restore();
   }
-  if (!flipMode) {
+  {
     /* All four markers follow ONE consistent scheme on every view, including
        5Y/1Y: green = a HIGH, gold = a LOW; solid white-centre dot = a PERIOD
        extreme, hollow ring = a RECENT extreme. (Previously the recent rings
@@ -5304,30 +5275,6 @@ setItem._userPicked = false;
     }
     document.querySelectorAll('.mp-f2p').forEach(el => { el.onclick = () => setMembersMode(false); });
     document.querySelectorAll('.mp-p2p').forEach(el => { el.onclick = () => setMembersMode(true); });
-
-    /* Remote Flip Mode — large prices, hidden chrome. Persisted across sessions
-       and triggers a chart redraw so the simplified-chart branches kick in. */
-    function applyFlipMode() {
-      document.body.classList.toggle('flip-mode', flipMode);
-      const btn = $("#btnFlip");
-      btn.classList.toggle('active', flipMode);
-      btn.setAttribute('aria-pressed', flipMode ? 'true' : 'false');
-      /* Swap label to reflect the action the next click will take: when we
-         ARE in Simple mode the button takes you back to Detailed, and vice
-         versa. Tooltip stays in sync. */
-      const labelEl = btn.querySelector('.icon-label');
-      if (labelEl) labelEl.textContent = flipMode ? 'Detailed' : 'Simple';
-      btn.title = flipMode
-        ? 'Detailed View — restore the full chart, walls, badges, and grades.'
-        : 'Simple View — huge buy/sell prices, minimal chart. Good for a quick glance or checking at work.';
-      resizeCanvas();
-    }
-    applyFlipMode();
-    $("#btnFlip").onclick = () => {
-      flipMode = !flipMode;
-      localStorage.setItem('ge_flip', flipMode ? '1' : '0');
-      applyFlipMode();
-    };
 
     /* Bell now opens the Notification Center modal. The master toggle,
        permission request, test-fire button, and per-Bank-stack thresholds
