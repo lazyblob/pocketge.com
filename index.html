@@ -424,6 +424,40 @@ button, input { touch-action: manipulation; }
 .mode-pill { display: flex; background: var(--bg-input); border-radius: 4px; padding: 2px; height: 28px; flex-shrink: 0; }
 .mode-pill button { background: transparent; border: none; color: var(--text-muted); padding: 0 7px; cursor: pointer; font-weight: 700; font-size: 11px; border-radius: 3px; height: 100%; letter-spacing: 0.3px; }
 .mode-pill button.active { background: var(--border-active); color: #fff; }
+
+/* Sidebar mode toggle — the primary control on desktop. Hidden by default;
+   the desktop media query below shows it (and hides the small top-panel pill).
+   Uses meaningful color coding: F2P = RS-green, P2P = RS-gold, so the active
+   state tells you WHICH mode at a glance rather than just "one is selected". */
+.mode-pill-side { display: none; }
+.mode-pill-side .mps-label {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;
+  color: var(--text-muted);
+}
+.mode-pill-side .mps-btns {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+}
+.mode-pill-side .mps-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1px; padding: 8px 6px;
+  background: var(--bg-input); border: 1.5px solid var(--border-light); border-radius: 6px;
+  color: var(--text-muted); cursor: pointer; font-family: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.mode-pill-side .mps-btn:hover { color: var(--text-main); border-color: rgba(255,255,255,0.28); }
+.mode-pill-side .mps-glyph { font-size: 15px; line-height: 1; margin-bottom: 2px; }
+.mode-pill-side .mps-txt { font-size: 13px; font-weight: 900; letter-spacing: 0.4px; line-height: 1; }
+.mode-pill-side .mps-sub { font-size: 9.5px; font-weight: 700; letter-spacing: 0.3px; opacity: 0.85; line-height: 1.1; }
+.mode-pill-side .mp-f2p.active {
+  background: linear-gradient(180deg, rgba(31,184,92,0.24) 0%, rgba(31,184,92,0.10) 100%);
+  border-color: var(--rs-green-deep); color: #fff;
+  box-shadow: 0 0 0 1px rgba(31,184,92,0.35), 0 4px 14px rgba(31,184,92,0.18);
+}
+.mode-pill-side .mp-p2p.active {
+  background: linear-gradient(180deg, rgba(255,179,0,0.24) 0%, rgba(255,179,0,0.10) 100%);
+  border-color: var(--fav-gold); color: #fff;
+  box-shadow: 0 0 0 1px rgba(255,179,0,0.35), 0 4px 14px rgba(255,179,0,0.18);
+}
 .status-text { font-size: 11px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 5px; }
 .status-text.live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--positive); box-shadow: 0 0 6px var(--positive); animation: status-pulse 2s ease-in-out infinite; }
 @keyframes status-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
@@ -462,6 +496,10 @@ button, input { touch-action: manipulation; }
   .toolbar { padding: 4px; gap: 4px; }
   .toolbar button { padding: 4px 18px; font-size: 14px; min-width: 72px; font-weight: 700; letter-spacing: 0.5px; }
   .toolbar button .pct-chg { font-size: 10px; margin-top: 1px; }
+  /* Promote the sidebar mode toggle to primary on desktop; hide the small
+     top-panel pill so the mode control lives in one obvious place. */
+  .top-panel .mode-pill { display: none; }
+  .mode-pill-side { display: flex; flex-direction: column; gap: 6px; padding: 10px 10px 6px; border-bottom: 1px solid var(--border-main); }
 }
 .toolbar button:hover { color: var(--text-main); }
 .toolbar button.active { background: var(--border-light); color: #fff; }
@@ -1330,8 +1368,8 @@ body.flip-mode #ratingGauge { display:none !important; }
             <span id="logoBtn" class="brand-logo" onclick="window.location.reload();"><img src="https://oldschool.runescape.wiki/images/Gilded_scimitar.png" alt="PocketGE logo — Gilded scimitar icon">Pocket<span>GE</span></span>
 
             <div class="mode-pill">
-              <button data-mode="f2p" id="btnF2P" class="active">F2P</button>
-              <button data-mode="members" id="btnMembers" title="Members (Pay-to-Play)">P2P</button>
+              <button data-mode="f2p" id="btnF2P" class="active mp-f2p">F2P</button>
+              <button data-mode="members" id="btnMembers" class="mp-p2p" title="Members (Pay-to-Play)">P2P</button>
             </div>
 
             <div class="search-group">
@@ -1440,6 +1478,25 @@ body.flip-mode #ratingGauge { display:none !important; }
     <div class="wl-resize" id="wlResize" title="Drag to resize · double-click to reset" aria-hidden="true"></div>
 
     <div class="watchlist-container">
+      <!-- Sidebar mode toggle: the mobile-panel pill blends into the toolbar
+           row; this larger, labeled copy sits right above the watchlist it
+           filters, so it reads as an obvious primary control. Click handlers
+           are class-based so both copies stay in sync (see setMembersMode). -->
+      <div class="mode-pill-side" role="tablist" aria-label="Game mode filter">
+        <span class="mps-label">Mode</span>
+        <div class="mps-btns">
+          <button class="mps-btn mp-f2p active" role="tab" aria-selected="true" data-mode="f2p">
+            <span class="mps-glyph" aria-hidden="true">🌱</span>
+            <span class="mps-txt">F2P</span>
+            <span class="mps-sub">Free</span>
+          </button>
+          <button class="mps-btn mp-p2p" role="tab" aria-selected="false" data-mode="members">
+            <span class="mps-glyph" aria-hidden="true">👑</span>
+            <span class="mps-txt">P2P</span>
+            <span class="mps-sub">Members</span>
+          </button>
+        </div>
+      </div>
       <div class="flip-finder" id="flipFinder"></div>
       <div class="calc-container" id="sideModule"></div>
       <div class="col-header" id="colHeader"></div>
@@ -5130,8 +5187,15 @@ async function setItem(m, opts = {}) {
 setItem._userPicked = false;
 
 (async function boot() {
-  if (membersOn) { $("#btnMembers").classList.add("active"); $("#btnF2P").classList.remove("active"); }
-  else { $("#btnF2P").classList.add("active"); $("#btnMembers").classList.remove("active"); }
+  /* Sync both mode pills (top-panel + sidebar) with the persisted state. */
+  document.querySelectorAll('.mp-f2p').forEach(el => {
+    el.classList.toggle('active', !membersOn);
+    if (el.hasAttribute('role')) el.setAttribute('aria-selected', String(!membersOn));
+  });
+  document.querySelectorAll('.mp-p2p').forEach(el => {
+    el.classList.toggle('active', membersOn);
+    if (el.hasAttribute('role')) el.setAttribute('aria-selected', String(membersOn));
+  });
 
   try {
     mapping = await loadMapping();
@@ -5186,24 +5250,33 @@ setItem._userPicked = false;
       };
     });
 
-    $("#btnF2P").onclick = () => {
-      membersOn = false; localStorage.setItem('ge_members', 'false');
-      $("#btnF2P").classList.add("active"); $("#btnMembers").classList.remove("active");
+    /* Class-based mode switch — there's a second, larger mode pill in the
+       sidebar on desktop; both share the .mp-f2p / .mp-p2p classes so a
+       click on either updates both, and the .active state on both stays in
+       sync with membersOn. */
+    function setMembersMode(on) {
+      const changed = membersOn !== on;
+      membersOn = on;
+      try { localStorage.setItem('ge_members', on ? 'true' : 'false'); } catch (e) {}
+      document.querySelectorAll('.mp-f2p').forEach(el => {
+        el.classList.toggle('active', !on);
+        if (el.hasAttribute('role')) el.setAttribute('aria-selected', String(!on));
+      });
+      document.querySelectorAll('.mp-p2p').forEach(el => {
+        el.classList.toggle('active', on);
+        if (el.hasAttribute('role')) el.setAttribute('aria-selected', String(on));
+      });
+      if (!changed) return;
       dayHiLoCache = {}; steadyFlipsCache = []; scanStatus = { fived: 'idle', steady: 'idle' };
       renderWatchlist();
       resetFlipFinder();
-      if (selected?.members) {
+      if (!on && selected?.members) {
         const landing = mapping.find(x => String(x.id) === LANDING_ID);
         if (landing) { setItem._userPicked = false; setItem(landing); }
       }
-    };
-    $("#btnMembers").onclick = () => {
-      membersOn = true; localStorage.setItem('ge_members', 'true');
-      $("#btnMembers").classList.add("active"); $("#btnF2P").classList.remove("active");
-      dayHiLoCache = {}; steadyFlipsCache = []; scanStatus = { fived: 'idle', steady: 'idle' };
-      renderWatchlist();
-      resetFlipFinder();
-    };
+    }
+    document.querySelectorAll('.mp-f2p').forEach(el => { el.onclick = () => setMembersMode(false); });
+    document.querySelectorAll('.mp-p2p').forEach(el => { el.onclick = () => setMembersMode(true); });
 
     /* Remote Flip Mode — large prices, hidden chrome. Persisted across sessions
        and triggers a chart redraw so the simplified-chart branches kick in. */
@@ -5358,7 +5431,8 @@ setItem._userPicked = false;
        link never rewrites the user's saved mode). */
     if (urlItem && urlItem.members && !membersOn) {
       membersOn = true;
-      $("#btnMembers").classList.add("active"); $("#btnF2P").classList.remove("active");
+      document.querySelectorAll('.mp-p2p').forEach(el => { el.classList.add('active'); if (el.hasAttribute('role')) el.setAttribute('aria-selected', 'true'); });
+      document.querySelectorAll('.mp-f2p').forEach(el => { el.classList.remove('active'); if (el.hasAttribute('role')) el.setAttribute('aria-selected', 'false'); });
     }
     const lastId = (() => { try { return localStorage.getItem('ge_lastItem'); } catch (e) { return null; } })();
     const last = lastId ? mapping.find(x => String(x.id) === lastId) : null;
