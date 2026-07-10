@@ -821,14 +821,17 @@ button, input { touch-action: manipulation; }
 .wl-trend.neutral { color: var(--text-muted); }
 /* Unified meta row — fixed-width right-aligned cells laid out as a flex row
    so each metric stacks into its own column across rows. */
-.wl-meta { display: flex; align-items: center; gap: 5px; font-size: 9.5px; line-height: 1.2; white-space: nowrap; }
-.wl-meta .meta-piece { cursor: help; }
-.wl-meta .meta-chg.up { color: var(--positive); }
-.wl-meta .meta-chg.down { color: var(--negative); }
+.wl-meta { display: flex; align-items: center; gap: 5px; font-size: 10.5px; line-height: 1.2; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.wl-meta .meta-piece { cursor: help; font-weight: 600; }
+.wl-meta .meta-chg.up { color: var(--positive); font-weight: 700; }
+.wl-meta .meta-chg.down { color: var(--negative); font-weight: 700; }
 .wl-meta .meta-chg.neutral { color: var(--text-muted); }
-.wl-meta .meta-ea.up { color: var(--positive); }
+.wl-meta .meta-ea.up { color: var(--positive); font-weight: 700; }
 .wl-meta .meta-ea.neutral { color: var(--text-muted); }
-.wl-meta .meta-vol { color: var(--text-muted); }
+/* VOL was text-muted at 9.5px next to the bright red/green CHG% and
+   effectively disappeared. Give it real weight in text-main so the eye
+   registers it as data on par with change % / margin. */
+.wl-meta .meta-vol { color: var(--text-main); font-weight: 700; }
 /* Single header bar — ⋯ menu on the LEFT, then the clickable sortable column
    labels. No right gutter: the data columns run to the right edge so the item
    name gets maximum room. Column widths match the data-row cells. */
@@ -3044,13 +3047,17 @@ function niceTicks(min, max, count) {
   const rawStep = range / Math.max(1, count);
   const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
   const norm = rawStep / mag;
-  /* Snap the step UP to the nearest nice number so we never EXCEED `count`
-     divisions. Snapping down produced too many crammed labels — e.g. range
-     70 gp / count 8 wants ~8.75 gp; snapping down to 5 gave 15 labels (5 gp
-     increments), snapping up to 10 gives 7 labels (10 gp increments) which
-     is what a trader actually wants to read. 2.5× steps only "nice" when
-     they land on whole gp (25, 250, …). */
-  const niceNorm = norm > 5 ? 10 : norm > 2 ? 5 : (norm > 2 && mag >= 10) ? 2.5 : norm > 1 ? 2 : 1;
+  /* Snap the step DOWN to the nearest nice base (1 / 2 / 5) so we get MORE
+     labels rather than fewer — traders want to read the scale, not decode
+     wide gaps. E.g. range 70 gp, target ~14 labels: rawStep ≈ 5, snap-down
+     to 5 gives 15 labels at clean 5-gp increments (1600, 1605, 1610, …).
+     Skip 2.5× because at mag 1 it rounds to uneven whole-gp jumps
+     (288 / 290 / 293 / 295); it only lands nicely at mag ≥ 10 (25, 250, …). */
+  let niceNorm;
+  if (norm >= 5) niceNorm = 5;
+  else if (norm >= 2.5 && mag >= 10) niceNorm = 2.5;
+  else if (norm >= 2) niceNorm = 2;
+  else niceNorm = 1;
   const step = Math.max(1, niceNorm * mag);
   const ticks = [];
   for (let v = Math.ceil(min / step) * step; v <= max + step * 0.001; v += step) ticks.push(Math.round(v));
@@ -4534,7 +4541,10 @@ function drawChart(series) {
   /* Tick density follows the plot's pixel height (one label per ~60px) so a
      tall desktop chart gets more price levels instead of 5 labels floating
      in empty space, while short mobile charts stay uncluttered. */
-  for (const v of niceTicks(vmin, vmax, Math.max(4, Math.min(8, Math.round(h_price / 60))))) {
+  /* Target ~1 label per 40 px of plot height (was 60). Combined with the
+     snap-down step, a 500-px tall desktop chart gets ~12 labels instead
+     of 7, and a 300-px mobile chart still stays uncluttered at ~7. */
+  for (const v of niceTicks(vmin, vmax, Math.max(5, Math.min(14, Math.round(h_price / 40))))) {
     if (v < vmin || v > vmax) continue;
     const y = ypx(v, vmin, vmax, y0, h_price);
     ctx.strokeStyle = "rgba(255,255,255,0.05)"; ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + w, y); ctx.stroke();
