@@ -291,7 +291,8 @@ button, input { touch-action: manipulation; }
 .content-area { display: flex; flex-direction: row; flex: 1; gap: 8px; min-height: 0; min-width: 0; }
 .main-column { flex: 1; display: flex; flex-direction: column; min-width: 0; gap: 8px; }
 .top-row-wrapper { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
-.top-panel { background: var(--bg-panel); border: 1px solid var(--border-main); border-radius: 6px; padding: 6px 10px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; }
+.top-panel { background: var(--bg-panel); border: 1px solid var(--border-main); border-radius: 6px; padding: 6px 10px; display: flex; justify-content: flex-start; align-items: center; flex-wrap: wrap; gap: 8px; }
+.top-panel .status-text { margin-left: 6px; }
 .panel-left { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;}
 #logoBtn { font-weight: 800; color: #fff; cursor: pointer; margin-right: 6px; font-size: 16px; letter-spacing: -0.5px; user-select: none; transition: opacity 0.15s; display: flex; align-items: center; }
 #logoBtn img { width: 18px; height: 18px; image-rendering: pixelated; margin-right: 4px; }
@@ -425,38 +426,31 @@ button, input { touch-action: manipulation; }
 .mode-pill button { background: transparent; border: none; color: var(--text-muted); padding: 0 7px; cursor: pointer; font-weight: 700; font-size: 11px; border-radius: 3px; height: 100%; letter-spacing: 0.3px; }
 .mode-pill button.active { background: var(--border-active); color: #fff; }
 
-/* Sidebar mode toggle — the primary control on desktop. Hidden by default;
-   the desktop media query below shows it (and hides the small top-panel pill).
-   Uses meaningful color coding: F2P = RS-green, P2P = RS-gold, so the active
-   state tells you WHICH mode at a glance rather than just "one is selected". */
+/* Sidebar item-list filter — the primary control on desktop. Hidden by
+   default; the desktop media query below shows it (and hides the small
+   top-panel pill). Sleek segmented control: one pill shell, split by the
+   two buttons; the active side gets a subtle tinted fill (green for F2P,
+   gold for Members) so state reads at a glance without shouting. */
 .mode-pill-side { display: none; }
-.mode-pill-side .mps-label {
-  font-size: 9px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;
-  color: var(--text-muted);
-}
-.mode-pill-side .mps-btns {
-  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
-}
 .mode-pill-side .mps-btn {
-  display: flex; flex-direction: column; align-items: center; justify-content: center;
-  gap: 1px; padding: 8px 6px;
-  background: var(--bg-input); border: 1.5px solid var(--border-light); border-radius: 6px;
+  flex: 1 1 0; min-width: 0;
+  padding: 8px 10px;
+  background: transparent; border: none;
+  border-radius: 6px;
   color: var(--text-muted); cursor: pointer; font-family: inherit;
-  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+  font-size: 12.5px; font-weight: 800; letter-spacing: 0.6px; text-transform: uppercase;
+  transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease;
 }
-.mode-pill-side .mps-btn:hover { color: var(--text-main); border-color: rgba(255,255,255,0.28); }
-.mode-pill-side .mps-glyph { font-size: 15px; line-height: 1; margin-bottom: 2px; }
-.mode-pill-side .mps-txt { font-size: 13px; font-weight: 900; letter-spacing: 0.4px; line-height: 1; }
-.mode-pill-side .mps-sub { font-size: 9.5px; font-weight: 700; letter-spacing: 0.3px; opacity: 0.85; line-height: 1.1; }
+.mode-pill-side .mps-btn:hover { color: var(--text-main); }
 .mode-pill-side .mp-f2p.active {
-  background: linear-gradient(180deg, rgba(31,184,92,0.24) 0%, rgba(31,184,92,0.10) 100%);
-  border-color: var(--rs-green-deep); color: #fff;
-  box-shadow: 0 0 0 1px rgba(31,184,92,0.35), 0 4px 14px rgba(31,184,92,0.18);
+  background: linear-gradient(180deg, rgba(31,184,92,0.16) 0%, rgba(31,184,92,0.06) 100%);
+  color: #7EE8A6;
+  box-shadow: inset 0 -2px 0 var(--rs-green-deep);
 }
 .mode-pill-side .mp-p2p.active {
-  background: linear-gradient(180deg, rgba(255,179,0,0.24) 0%, rgba(255,179,0,0.10) 100%);
-  border-color: var(--fav-gold); color: #fff;
-  box-shadow: 0 0 0 1px rgba(255,179,0,0.35), 0 4px 14px rgba(255,179,0,0.18);
+  background: linear-gradient(180deg, rgba(255,179,0,0.16) 0%, rgba(255,179,0,0.06) 100%);
+  color: #FFD97A;
+  box-shadow: inset 0 -2px 0 var(--fav-gold);
 }
 .status-text { font-size: 11px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 5px; }
 .status-text.live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--positive); box-shadow: 0 0 6px var(--positive); animation: status-pulse 2s ease-in-out infinite; }
@@ -499,7 +493,13 @@ button, input { touch-action: manipulation; }
   /* Promote the sidebar mode toggle to primary on desktop; hide the small
      top-panel pill so the mode control lives in one obvious place. */
   .top-panel .mode-pill { display: none; }
-  .mode-pill-side { display: flex; flex-direction: column; gap: 6px; padding: 10px 10px 6px; border-bottom: 1px solid var(--border-main); }
+  .mode-pill-side {
+    display: flex; gap: 4px;
+    margin: 10px 10px 4px; padding: 3px;
+    background: var(--bg-input);
+    border: 1px solid var(--border-light);
+    border-radius: 8px;
+  }
 }
 .toolbar button:hover { color: var(--text-main); }
 .toolbar button.active { background: var(--border-light); color: #fff; }
@@ -1478,24 +1478,13 @@ body.flip-mode #ratingGauge { display:none !important; }
     <div class="wl-resize" id="wlResize" title="Drag to resize · double-click to reset" aria-hidden="true"></div>
 
     <div class="watchlist-container">
-      <!-- Sidebar mode toggle: the mobile-panel pill blends into the toolbar
-           row; this larger, labeled copy sits right above the watchlist it
-           filters, so it reads as an obvious primary control. Click handlers
-           are class-based so both copies stay in sync (see setMembersMode). -->
-      <div class="mode-pill-side" role="tablist" aria-label="Game mode filter">
-        <span class="mps-label">Mode</span>
-        <div class="mps-btns">
-          <button class="mps-btn mp-f2p active" role="tab" aria-selected="true" data-mode="f2p">
-            <span class="mps-glyph" aria-hidden="true">🌱</span>
-            <span class="mps-txt">F2P</span>
-            <span class="mps-sub">Free</span>
-          </button>
-          <button class="mps-btn mp-p2p" role="tab" aria-selected="false" data-mode="members">
-            <span class="mps-glyph" aria-hidden="true">👑</span>
-            <span class="mps-txt">P2P</span>
-            <span class="mps-sub">Members</span>
-          </button>
-        </div>
+      <!-- Sidebar item-list filter (F2P items vs Members items). Sleek
+           segmented control — no glyphs; the active side gets a tinted fill
+           so it reads as "showing" rather than "purchase this tier". Click
+           handlers are class-based so both copies stay in sync. -->
+      <div class="mode-pill-side" role="tablist" aria-label="Item list filter">
+        <button class="mps-btn mp-f2p active" role="tab" aria-selected="true" data-mode="f2p">F2P</button>
+        <button class="mps-btn mp-p2p" role="tab" aria-selected="false" data-mode="members">Members</button>
       </div>
       <div class="flip-finder" id="flipFinder"></div>
       <div class="calc-container" id="sideModule"></div>
@@ -3069,11 +3058,13 @@ function niceTicks(min, max, count) {
   const rawStep = range / Math.max(1, count);
   const mag = Math.pow(10, Math.floor(Math.log10(rawStep)));
   const norm = rawStep / mag;
-  /* 2.5× steps are only "nice" when they land on whole gp (25, 250, …).
-     At mag 1 they'd label 288 / 290 / 293 / 295 — uneven rounded gaps. And
-     prices are integers, so never step finer than 1 gp (fractional steps
-     round into duplicate labels). */
-  const niceNorm = norm >= 5 ? 5 : (norm >= 2.5 && mag >= 10) ? 2.5 : norm >= 2 ? 2 : 1;
+  /* Snap the step UP to the nearest nice number so we never EXCEED `count`
+     divisions. Snapping down produced too many crammed labels — e.g. range
+     70 gp / count 8 wants ~8.75 gp; snapping down to 5 gave 15 labels (5 gp
+     increments), snapping up to 10 gives 7 labels (10 gp increments) which
+     is what a trader actually wants to read. 2.5× steps only "nice" when
+     they land on whole gp (25, 250, …). */
+  const niceNorm = norm > 5 ? 10 : norm > 2 ? 5 : (norm > 2 && mag >= 10) ? 2.5 : norm > 1 ? 2 : 1;
   const step = Math.max(1, niceNorm * mag);
   const ticks = [];
   for (let v = Math.ceil(min / step) * step; v <= max + step * 0.001; v += step) ticks.push(Math.round(v));
@@ -4800,17 +4791,53 @@ function drawChart(series) {
     ring(recHiIdx, HI, sellColor);
     ring(recLoIdx, LO, buyColor);
 
-    /* Unified volume bars — one muted color, no two-tone stack. The earlier
-       gold/teal split echoed colors that already carry meaning above, which
-       made the bottom strip read as cluttered. Modern: quiet, glanceable. */
-    const maxVol = Math.max(...VO.filter(v => v > 0), 1);
-    const barWidth = Math.max(1, stepX * 0.85);
-    ctx.fillStyle = "rgba(140, 152, 176, 0.5)";
-    for (let i = 0; i < VO.length; i++) {
-      if (LOWVOL[i] == null && HIGHVOL[i] == null) continue;
-      const totalH = ((LOWVOL[i] + HIGHVOL[i]) / maxVol) * h_vol;
-      const x = x0 + i * stepX - (barWidth / 2);
-      ctx.fillRect(x, y0_vol + h_vol - totalH, barWidth, totalH);
+    /* Aggregated two-tone volume bars. Painting one thin bar per data point
+       turned the strip into a dense noise band on 5D/1M/6M; grouping into
+       ~14px-wide chunks (~60 bars max) makes each bar a readable "period"
+       instead. Split by side: LOWVOL (traded at the low price = insta-sells)
+       stacks at the bottom in gold, HIGHVOL (traded at the high price =
+       insta-buys) stacks above in teal — so the bar shows both total volume
+       and which side drove it. Colors match the price dots directly above
+       so the eye reads them as the same series, not as new information. */
+    /* Aim for ~14px between bars. groupSize = ceil(14/stepX): if points are
+       already ≥14 px apart (short views), no aggregation; on 6M/1Y where
+       stepX shrinks to 2–3 px, groups of 5–7 points become one chunky bar. */
+    const targetBarPx = 14;
+    const groupSize = Math.max(1, Math.round(targetBarPx / Math.max(0.5, stepX)));
+    const groups = [];
+    for (let i = 0; i < L.length; i += groupSize) {
+      let sumLow = 0, sumHigh = 0, count = 0, jEnd = Math.min(i + groupSize, L.length);
+      for (let j = i; j < jEnd; j++) {
+        if (LOWVOL[j] != null) sumLow += LOWVOL[j];
+        if (HIGHVOL[j] != null) sumHigh += HIGHVOL[j];
+        if (LOWVOL[j] != null || HIGHVOL[j] != null) count++;
+      }
+      if (count === 0) continue;
+      const cx = x0 + (i + (jEnd - i - 1) / 2) * stepX;
+      groups.push({ cx, sumLow, sumHigh });
+    }
+    const maxGroupVol = Math.max(1, ...groups.map(g => g.sumLow + g.sumHigh));
+    const groupPx = groupSize * stepX;
+    const barWidth = Math.max(2, groupPx * 0.72);
+    const gapPx = 1; // hairline gap between the two-side stack, so they read as separate
+    for (const g of groups) {
+      const totalH = ((g.sumLow + g.sumHigh) / maxGroupVol) * h_vol;
+      if (totalH < 0.5) continue;
+      const lowH = (g.sumLow / maxGroupVol) * h_vol;
+      const highH = (g.sumHigh / maxGroupVol) * h_vol;
+      const x = g.cx - barWidth / 2;
+      const baseY = y0_vol + h_vol;
+      /* Insta-sells (yellow) at the bottom, insta-buys (teal) above — same
+         gold/teal identity as the price dots the volume corresponds to. */
+      if (lowH > 0.3) {
+        ctx.fillStyle = "rgba(230, 195, 92, 0.55)";
+        ctx.fillRect(x, baseY - lowH, barWidth, lowH);
+      }
+      if (highH > 0.3) {
+        const stackedY = baseY - lowH - (lowH > 0.3 ? gapPx : 0) - highH;
+        ctx.fillStyle = "rgba(38, 166, 154, 0.55)";
+        ctx.fillRect(x, stackedY, barWidth, highH);
+      }
     }
   }
 
