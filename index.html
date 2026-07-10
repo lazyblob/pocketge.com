@@ -301,6 +301,10 @@ button, input { touch-action: manipulation; }
 .sbar input { width: 100%; background: var(--bg-input); border: 1px solid var(--border-light); color: var(--text-main); border-radius: 4px; padding: 5px 8px 5px 28px; font-size: 16px; outline: none; transition: border-color 0.15s ease; }
 .sbar input:focus { border-color: var(--border-active); }
 #itemIcon { position: absolute; left: 6px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; image-rendering: pixelated; }
+/* Combined search+item+wiki overlay — off by default, enabled in landscape
+   (see the landscape media query) where the standalone search is too narrow
+   and the ticker name would otherwise duplicate the item. */
+.sbar-item, .sbar-wiki { display: none; }
 .fav-btn { background: var(--bg-input); border: 1px solid var(--border-light); border-radius: 4px; padding: 5px 8px; cursor: pointer; color: var(--text-muted); display: inline-flex; align-items: center; justify-content: center; gap: 5px; transition: all 0.2s ease; }
 .fav-btn:hover { border-color: var(--fav-gold); color: var(--fav-gold); }
 .fav-btn.active { background: rgba(255, 179, 0, 0.1); border-color: var(--fav-gold); color: var(--fav-gold); }
@@ -420,6 +424,40 @@ button, input { touch-action: manipulation; }
 .mode-pill { display: flex; background: var(--bg-input); border-radius: 4px; padding: 2px; height: 28px; flex-shrink: 0; }
 .mode-pill button { background: transparent; border: none; color: var(--text-muted); padding: 0 7px; cursor: pointer; font-weight: 700; font-size: 11px; border-radius: 3px; height: 100%; letter-spacing: 0.3px; }
 .mode-pill button.active { background: var(--border-active); color: #fff; }
+
+/* Sidebar mode toggle — the primary control on desktop. Hidden by default;
+   the desktop media query below shows it (and hides the small top-panel pill).
+   Uses meaningful color coding: F2P = RS-green, P2P = RS-gold, so the active
+   state tells you WHICH mode at a glance rather than just "one is selected". */
+.mode-pill-side { display: none; }
+.mode-pill-side .mps-label {
+  font-size: 9px; font-weight: 800; letter-spacing: 0.8px; text-transform: uppercase;
+  color: var(--text-muted);
+}
+.mode-pill-side .mps-btns {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 6px;
+}
+.mode-pill-side .mps-btn {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 1px; padding: 8px 6px;
+  background: var(--bg-input); border: 1.5px solid var(--border-light); border-radius: 6px;
+  color: var(--text-muted); cursor: pointer; font-family: inherit;
+  transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.mode-pill-side .mps-btn:hover { color: var(--text-main); border-color: rgba(255,255,255,0.28); }
+.mode-pill-side .mps-glyph { font-size: 15px; line-height: 1; margin-bottom: 2px; }
+.mode-pill-side .mps-txt { font-size: 13px; font-weight: 900; letter-spacing: 0.4px; line-height: 1; }
+.mode-pill-side .mps-sub { font-size: 9.5px; font-weight: 700; letter-spacing: 0.3px; opacity: 0.85; line-height: 1.1; }
+.mode-pill-side .mp-f2p.active {
+  background: linear-gradient(180deg, rgba(31,184,92,0.24) 0%, rgba(31,184,92,0.10) 100%);
+  border-color: var(--rs-green-deep); color: #fff;
+  box-shadow: 0 0 0 1px rgba(31,184,92,0.35), 0 4px 14px rgba(31,184,92,0.18);
+}
+.mode-pill-side .mp-p2p.active {
+  background: linear-gradient(180deg, rgba(255,179,0,0.24) 0%, rgba(255,179,0,0.10) 100%);
+  border-color: var(--fav-gold); color: #fff;
+  box-shadow: 0 0 0 1px rgba(255,179,0,0.35), 0 4px 14px rgba(255,179,0,0.18);
+}
 .status-text { font-size: 11px; color: var(--text-muted); display: inline-flex; align-items: center; gap: 5px; }
 .status-text.live::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--positive); box-shadow: 0 0 6px var(--positive); animation: status-pulse 2s ease-in-out infinite; }
 @keyframes status-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
@@ -458,6 +496,10 @@ button, input { touch-action: manipulation; }
   .toolbar { padding: 4px; gap: 4px; }
   .toolbar button { padding: 4px 18px; font-size: 14px; min-width: 72px; font-weight: 700; letter-spacing: 0.5px; }
   .toolbar button .pct-chg { font-size: 10px; margin-top: 1px; }
+  /* Promote the sidebar mode toggle to primary on desktop; hide the small
+     top-panel pill so the mode control lives in one obvious place. */
+  .top-panel .mode-pill { display: none; }
+  .mode-pill-side { display: flex; flex-direction: column; gap: 6px; padding: 10px 10px 6px; border-bottom: 1px solid var(--border-main); }
 }
 .toolbar button:hover { color: var(--text-main); }
 .toolbar button.active { background: var(--border-light); color: #fff; }
@@ -950,24 +992,40 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
   .content-area { flex-direction: row; gap: 4px; }
   .onboard-banner { display: none !important; }
   .top-row-wrapper { flex-direction: row; gap: 6px; height: auto; align-items: stretch; }
-  .top-panel { flex: 1 1 42%; min-width: 0; padding: 3px 6px; }
+  .top-panel { flex: 1 1 56%; min-width: 0; padding: 3px 6px; }
   .panel-left { flex-wrap: nowrap; gap: 4px; }
-  .mode-pill { height: 28px; }
-  .sbar { flex: 1 1 0; min-width: 60px; width: auto; }
-  .sbar input { padding-top: 2px; padding-bottom: 2px; height: 28px; font-size: 16px; }
+  .mode-pill { height: 28px; flex: 0 0 auto; }
   .brand-logo { display: none !important; }
-  /* Item name shares the toolbar row; the name IS the wiki link (with a ↗
-     cue). Icon dropped (already in the search bar), chip dropped, name
-     shrinks/ellipsizes so the timeframe buttons always keep their width. */
-  .ticker-title-group { display: flex !important; align-items: center; gap: 0; flex: 0 1 auto; min-width: 0; padding: 0 4px; }
-  .ticker-title-group img { display: none; }
-  .ticker-info { display: flex; align-items: baseline; gap: 0; min-width: 0; }
-  .ticker-info h2 { font-size: 13px; letter-spacing: -0.2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 26vw; }
-  .ticker-info .ticker-price-row { display: none; }
-  .ticker-info .wiki-hint { display: none; }
-  .ticker-name-link { display: inline-flex; align-items: baseline; min-width: 0; max-width: 100%; }
-  .ticker-name-link::after { content: "↗"; margin-left: 3px; font-size: 9px; font-weight: 700; color: var(--text-muted); flex: 0 0 auto; }
-  .ticker-header { flex: 1 1 58%; min-width: 0; padding: 2px; border: 1px solid var(--border-main); background: var(--bg-panel); border-radius: 6px; display: flex; align-items: center; gap: 6px; }
+  /* Combined search: the current item name overlays the search box (which is
+     otherwise a squished, near-invisible sliver here), and a ↗ opens its
+     wiki. The item is therefore shown ONCE — the separate ticker name is
+     hidden below. Focusing the field hides the name so you can type. */
+  .search-group { flex: 1 1 auto; min-width: 0; }
+  .sbar { flex: 1 1 auto; min-width: 90px; width: auto; }
+  .sbar input { padding: 2px 26px 2px 26px; height: 28px; font-size: 16px; }
+  .sbar-item { display: flex; position: absolute; inset: 1px 24px 1px 24px; align-items: center;
+    pointer-events: none; background: var(--bg-input); color: var(--text-main); font-weight: 700;
+    font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 4px; }
+  .sbar:focus-within .sbar-item { display: none; }
+  .sbar-wiki { display: flex; position: absolute; right: 3px; top: 50%; transform: translateY(-50%);
+    width: 21px; height: 21px; align-items: center; justify-content: center; z-index: 3; pointer-events: auto;
+    color: var(--text-muted); font-size: 12px; font-weight: 700; text-decoration: none;
+    border: 1px solid var(--border-light); border-radius: 4px; background: var(--bg-panel); }
+  .sbar-wiki:hover, .sbar-wiki:active { color: #fff; border-color: var(--border-active); }
+  /* Collapse the 4 secondary actions into the ⋯ dropdown (like portrait) so
+     the row isn't cluttered and the combined search has room. */
+  .more-wrap { display: inline-flex; position: relative; flex: 0 0 auto; }
+  .more-toggle { display: inline-flex !important; font-size: 16px; line-height: 1; padding: 4px 8px; min-width: 34px; justify-content: center; }
+  .more-actions { display: none; position: absolute; top: calc(100% + 6px); right: 0; z-index: 60;
+    flex-direction: column; gap: 2px; min-width: 168px; padding: 6px;
+    background: var(--bg-panel); border: 1px solid var(--border-light); border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.55); }
+  .more-actions.open { display: flex; }
+  .more-actions .icon-btn { width: 100%; justify-content: flex-start; gap: 10px; padding: 9px 10px; font-size: 15px; border-color: transparent; background: transparent; }
+  .more-actions .icon-label { display: inline; font-size: 13px; }
+  /* Ticker header now carries only the timeframe toolbar (item name lives in
+     the search box above). */
+  .ticker-title-group { display: none !important; }
+  .ticker-header { flex: 1 1 44%; min-width: 0; padding: 2px; border: 1px solid var(--border-main); background: var(--bg-panel); border-radius: 6px; display: flex; align-items: center; gap: 6px; }
   .toolbar { flex: 1 1 auto; width: auto; min-width: 0; padding: 0; gap: 3px; }
   .toolbar button { flex: 1; min-width: 0; padding: 5px 0; font-size: 13px; min-height: 30px; }
   .pct-chg { display: none !important; }
@@ -982,15 +1040,21 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
   .wl-item { padding: 4px 6px; font-size: 11px; }
   .calc-container { padding: 4px 6px; gap: 3px; }
   .calc-container input { padding: 4px 6px; font-size: 16px; }
+  /* Target boxes were stacked (label / value / grade on three rows) in
+     landscape — that's what made them tall. Lay each box out on a SINGLE row
+     like portrait (label · value · grade), with a tiny grade chip and no
+     "1D"/"?" context. Cuts the strip height roughly in half. */
   .price-strip { gap: 4px; }
-  /* Shrink the Target boxes: the grade chip ("47 WEAK SELL") drove the box
-     height. Tiny grade + no "1D"/"?" context cuts the strip height so the
-     chart gets the room. */
-  .price-box { padding: 2px 6px; min-width: 0; }
-  .price-label { font-size: 9px; }
-  .price-val { font-size: 14px; margin-top: 0px; }
+  .price-box { display: flex; align-items: center; gap: 8px; padding: 2px 8px; min-width: 0; overflow: hidden; }
+  .price-label { flex-direction: column; align-items: flex-start; gap: 0; flex-shrink: 0; font-size: 9px; }
+  .live-val { font-size: 9px; }
+  .price-val { font-size: 15px; margin-top: 0; flex-shrink: 0; white-space: nowrap; line-height: 1.1; letter-spacing: -0.3px; }
+  .price-grade, .price-box.selected .price-grade {
+    display: flex; align-items: center; gap: 4px; margin: 0 0 0 auto;
+    padding: 0; border-top: none; border-left: none; font-size: 8px; flex-shrink: 1; min-width: 0;
+  }
   .price-grade .pg-num { font-size: 12px; }
-  .price-grade .pg-verdict { font-size: 8px; letter-spacing: 0.2px; }
+  .price-grade .pg-verdict { font-size: 8px; letter-spacing: 0.2px; white-space: nowrap; }
   .price-grade .pg-ctx { display: none; }
   .price-grade .pg-help { display: none; }
   .status-text { display: none; }
@@ -1097,10 +1161,11 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
 .flip-card.collapsed .fc-collapsible { display:none; }
 .flip-card.collapsed .fc-mini { display:flex; margin-top:6px; }
 /* Keep "Next" available while collapsed so recs can be cycled without
-   expanding. Drop the "Recommended flip" words (the ⚡ + the item summary
-   below already identify the card) so Next + chevron always fit the narrow
-   sidebar without truncating. */
-.flip-card.collapsed .fc-kicker-txt { display:none; }
+   expanding. Header layout when collapsed: kicker takes what's left after
+   Next + chevron; the label ellipsizes as a last-resort safety net rather
+   than being hidden. */
+.flip-card.collapsed .fc-kicker { min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.flip-card.collapsed .fc-kicker-txt { font-size:9.5px; letter-spacing:.3px; }
 .fc-body { display:flex; align-items:center; gap:8px; }
 .fc-icon { width:30px; height:30px; flex:0 0 30px; image-rendering:pixelated; }
 .fc-main { flex:1 1 auto; min-width:0; }
@@ -1143,6 +1208,13 @@ body.flip-mode #btnFlip { background: rgba(41, 98, 255, 0.25); border-color: var
   .flip-card .fc-score { font-size: 15px; }
   .flip-card .fc-next { min-height: 26px; padding: 4px 9px; font-size: 11px; }
   .flip-card .fc-collapse { width: 26px; height: 26px; }
+  /* Collapsed header in the narrow landscape sidebar: shrink Next and the
+     chevron so kicker text ("⚡ Recommended flip") has room to sit alongside
+     them without ellipsizing. */
+  .flip-card.collapsed .fc-next { min-height: 22px; padding: 3px 7px; font-size: 10px; }
+  .flip-card.collapsed .fc-collapse { width: 22px; height: 22px; font-size: 11px; }
+  .flip-card.collapsed .fc-head-ctrls { gap: 4px; }
+  .flip-card.collapsed .fc-kicker-txt { font-size: 9px; letter-spacing: .2px; }
   .flip-card .fc-prices { margin: 4px 0; gap: 4px; }
   .flip-card .fc-price { padding: 3px 5px; }
   .flip-card .fc-pval { font-size: 13px; }
@@ -1296,14 +1368,16 @@ body.flip-mode #ratingGauge { display:none !important; }
             <span id="logoBtn" class="brand-logo" onclick="window.location.reload();"><img src="https://oldschool.runescape.wiki/images/Gilded_scimitar.png" alt="PocketGE logo — Gilded scimitar icon">Pocket<span>GE</span></span>
 
             <div class="mode-pill">
-              <button data-mode="f2p" id="btnF2P" class="active">F2P</button>
-              <button data-mode="members" id="btnMembers" title="Members (Pay-to-Play)">P2P</button>
+              <button data-mode="f2p" id="btnF2P" class="active mp-f2p">F2P</button>
+              <button data-mode="members" id="btnMembers" class="mp-p2p" title="Members (Pay-to-Play)">P2P</button>
             </div>
 
             <div class="search-group">
               <div class="sbar">
                 <img id="itemIcon" src="" alt="Selected OSRS item icon">
                 <input id="query" placeholder="Symbol Search..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+                <span id="sbarItem" class="sbar-item" aria-hidden="true"></span>
+                <a id="sbarWiki" class="sbar-wiki" target="_blank" rel="noopener noreferrer" href="https://oldschool.runescape.wiki/" title="Open this item on the OSRS Wiki" aria-label="Open current item on the OSRS Wiki">↗</a>
                 <div id="suggestBox" class="suggest" style="display:none"></div>
               </div>
               <button id="btnFav" class="fav-btn" title="Toggle Favorite">
@@ -1404,6 +1478,25 @@ body.flip-mode #ratingGauge { display:none !important; }
     <div class="wl-resize" id="wlResize" title="Drag to resize · double-click to reset" aria-hidden="true"></div>
 
     <div class="watchlist-container">
+      <!-- Sidebar mode toggle: the mobile-panel pill blends into the toolbar
+           row; this larger, labeled copy sits right above the watchlist it
+           filters, so it reads as an obvious primary control. Click handlers
+           are class-based so both copies stay in sync (see setMembersMode). -->
+      <div class="mode-pill-side" role="tablist" aria-label="Game mode filter">
+        <span class="mps-label">Mode</span>
+        <div class="mps-btns">
+          <button class="mps-btn mp-f2p active" role="tab" aria-selected="true" data-mode="f2p">
+            <span class="mps-glyph" aria-hidden="true">🌱</span>
+            <span class="mps-txt">F2P</span>
+            <span class="mps-sub">Free</span>
+          </button>
+          <button class="mps-btn mp-p2p" role="tab" aria-selected="false" data-mode="members">
+            <span class="mps-glyph" aria-hidden="true">👑</span>
+            <span class="mps-txt">P2P</span>
+            <span class="mps-sub">Members</span>
+          </button>
+        </div>
+      </div>
       <div class="flip-finder" id="flipFinder"></div>
       <div class="calc-container" id="sideModule"></div>
       <div class="col-header" id="colHeader"></div>
@@ -5032,6 +5125,11 @@ async function setItem(m, opts = {}) {
   const wikiURL = `https://oldschool.runescape.wiki/w/${encodeURIComponent(wikiSlug)}`;
   $("#tickerHeaderIconLink").href = wikiURL;
   $("#tickerNameLink").href = wikiURL;
+  /* Combined search control (landscape only, shown via CSS): the current item
+     name overlays the otherwise-cramped search box, and the ↗ opens its wiki —
+     so the item appears once, and the search stays usable. */
+  $("#sbarItem").textContent = m.name;
+  $("#sbarWiki").href = wikiURL;
   $("#status").textContent = "Loading..."; $("#status").classList.remove("live");
   updateFavoriteBtn();
   renderWatchlist();
@@ -5089,8 +5187,15 @@ async function setItem(m, opts = {}) {
 setItem._userPicked = false;
 
 (async function boot() {
-  if (membersOn) { $("#btnMembers").classList.add("active"); $("#btnF2P").classList.remove("active"); }
-  else { $("#btnF2P").classList.add("active"); $("#btnMembers").classList.remove("active"); }
+  /* Sync both mode pills (top-panel + sidebar) with the persisted state. */
+  document.querySelectorAll('.mp-f2p').forEach(el => {
+    el.classList.toggle('active', !membersOn);
+    if (el.hasAttribute('role')) el.setAttribute('aria-selected', String(!membersOn));
+  });
+  document.querySelectorAll('.mp-p2p').forEach(el => {
+    el.classList.toggle('active', membersOn);
+    if (el.hasAttribute('role')) el.setAttribute('aria-selected', String(membersOn));
+  });
 
   try {
     mapping = await loadMapping();
@@ -5145,24 +5250,33 @@ setItem._userPicked = false;
       };
     });
 
-    $("#btnF2P").onclick = () => {
-      membersOn = false; localStorage.setItem('ge_members', 'false');
-      $("#btnF2P").classList.add("active"); $("#btnMembers").classList.remove("active");
+    /* Class-based mode switch — there's a second, larger mode pill in the
+       sidebar on desktop; both share the .mp-f2p / .mp-p2p classes so a
+       click on either updates both, and the .active state on both stays in
+       sync with membersOn. */
+    function setMembersMode(on) {
+      const changed = membersOn !== on;
+      membersOn = on;
+      try { localStorage.setItem('ge_members', on ? 'true' : 'false'); } catch (e) {}
+      document.querySelectorAll('.mp-f2p').forEach(el => {
+        el.classList.toggle('active', !on);
+        if (el.hasAttribute('role')) el.setAttribute('aria-selected', String(!on));
+      });
+      document.querySelectorAll('.mp-p2p').forEach(el => {
+        el.classList.toggle('active', on);
+        if (el.hasAttribute('role')) el.setAttribute('aria-selected', String(on));
+      });
+      if (!changed) return;
       dayHiLoCache = {}; steadyFlipsCache = []; scanStatus = { fived: 'idle', steady: 'idle' };
       renderWatchlist();
       resetFlipFinder();
-      if (selected?.members) {
+      if (!on && selected?.members) {
         const landing = mapping.find(x => String(x.id) === LANDING_ID);
         if (landing) { setItem._userPicked = false; setItem(landing); }
       }
-    };
-    $("#btnMembers").onclick = () => {
-      membersOn = true; localStorage.setItem('ge_members', 'true');
-      $("#btnMembers").classList.add("active"); $("#btnF2P").classList.remove("active");
-      dayHiLoCache = {}; steadyFlipsCache = []; scanStatus = { fived: 'idle', steady: 'idle' };
-      renderWatchlist();
-      resetFlipFinder();
-    };
+    }
+    document.querySelectorAll('.mp-f2p').forEach(el => { el.onclick = () => setMembersMode(false); });
+    document.querySelectorAll('.mp-p2p').forEach(el => { el.onclick = () => setMembersMode(true); });
 
     /* Remote Flip Mode — large prices, hidden chrome. Persisted across sessions
        and triggers a chart redraw so the simplified-chart branches kick in. */
@@ -5317,7 +5431,8 @@ setItem._userPicked = false;
        link never rewrites the user's saved mode). */
     if (urlItem && urlItem.members && !membersOn) {
       membersOn = true;
-      $("#btnMembers").classList.add("active"); $("#btnF2P").classList.remove("active");
+      document.querySelectorAll('.mp-p2p').forEach(el => { el.classList.add('active'); if (el.hasAttribute('role')) el.setAttribute('aria-selected', 'true'); });
+      document.querySelectorAll('.mp-f2p').forEach(el => { el.classList.remove('active'); if (el.hasAttribute('role')) el.setAttribute('aria-selected', 'false'); });
     }
     const lastId = (() => { try { return localStorage.getItem('ge_lastItem'); } catch (e) { return null; } })();
     const last = lastId ? mapping.find(x => String(x.id) === lastId) : null;
