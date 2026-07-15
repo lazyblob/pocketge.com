@@ -305,9 +305,13 @@ button, input { touch-action: manipulation; }
 #logoBtn img { width: 18px; height: 18px; image-rendering: pixelated; margin-right: 4px; }
 #logoBtn:hover { opacity: 0.8; }
 .search-group { display: flex; align-items: center; gap: 4px; }
-.sbar { position: relative; width: clamp(150px, 16vw, 220px); }
-.sbar input { width: 100%; background: var(--bg-input); border: 1px solid var(--border-light); color: var(--text-main); border-radius: 4px; padding: 5px 8px 5px 28px; font-size: 16px; outline: none; transition: border-color 0.15s ease; }
-.sbar input:focus { border-color: var(--border-active); }
+/* Desktop search: wide + gold-tinted border so the single most important
+   control on the page is findable at a glance instead of blending into the
+   toolbar chrome. (Mobile blocks below override width with flex.) */
+.sbar { position: relative; width: clamp(220px, 28vw, 420px); }
+.sbar input { width: 100%; background: var(--bg-input); border: 1px solid rgba(201,166,77,0.45); color: var(--text-main); border-radius: 4px; padding: 5px 8px 5px 28px; font-size: 16px; outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease; }
+.sbar input:hover { border-color: rgba(201,166,77,0.7); }
+.sbar input:focus { border-color: var(--border-active); box-shadow: 0 0 0 2px rgba(201,166,77,0.18); }
 #itemIcon { position: absolute; left: 6px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; image-rendering: pixelated; }
 /* Combined search+item+wiki overlay — off by default, enabled in landscape
    (see the landscape media query) where the standalone search is too narrow
@@ -716,6 +720,12 @@ button, input { touch-action: manipulation; }
   transition: background 0.12s ease, border-color 0.12s ease;
 }
 .category-title:hover .cat-chevron { background: rgba(255,255,255,0.14); border-color: rgba(255,255,255,0.25); }
+/* ONE chevron idiom everywhere something expands/collapses (category
+   headers, Potential Profit, flip-card): the same SVG chevron-down that
+   rotates -90° when closed. No more mixed ▼ / ▶ / ▾ glyph styles. */
+.cat-chevron .ui-ic, .calc-caret .ui-ic { width: 13px; height: 13px; transition: transform 0.15s ease; }
+.cat-chevron.closed .ui-ic, .calc-caret.closed .ui-ic { transform: rotate(-90deg); }
+.fc-collapse .ui-ic { width: 14px; height: 14px; display: block; }
 .category-list { display: block; }
 .category-list.collapsed { display: none; }
 .scan-row { padding: 10px 14px; font-size: 11px; color: var(--border-active); cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; background: rgba(201,166,77,0.07); }
@@ -1662,6 +1672,10 @@ const LANDING_ID = '1617'; // fallback if random pick fails to resolve in mappin
 
 let mapping = [], latest = null, past24h = null, volumes = null, selected = null;
 let currentSeries = null, view = "1d", zoom = 1.0, offset = 0;
+/* The timeframe the USER last clicked. `view` can get bumped wider per-item
+   when the preferred view is too sparse to draw (see setItem); switching to
+   a liquid item snaps back to this. */
+let preferredView = "1d";
 let hoverIdx = null;
 let selectedAbsIdx = null;
 let membersOn = localStorage.getItem('ge_members') === 'true';
@@ -1711,6 +1725,8 @@ const UI_ICONS = {
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
   bellOff: '<path d="M8.7 3A6 6 0 0 1 18 8c0 4.5 1.2 7 2.3 8.5"/><path d="M17 17H3s3-2 3-9a4.7 4.7 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><line x1="2" x2="22" y1="2" y2="22"/>',
   search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  chev: '<path d="m6 9 6 6 6-6"/>',
+  crown: '<path d="M11.562 3.266a.5.5 0 0 1 .876 0L15.39 8.87a1 1 0 0 0 1.516.294L21.183 5.5a.5.5 0 0 1 .798.519l-2.834 10.246a1 1 0 0 1-.956.735H5.81a1 1 0 0 1-.957-.735L2.02 6.02a.5.5 0 0 1 .798-.519l4.276 3.664a1 1 0 0 0 1.516-.294z"/><path d="M5 21h14"/>',
   loader: '<line x1="12" x2="12" y1="2" y2="6"/><line x1="12" x2="12" y1="18" y2="22"/><line x1="4.93" x2="7.76" y1="4.93" y2="7.76"/><line x1="16.24" x2="19.07" y1="16.24" y2="19.07"/><line x1="2" x2="6" y1="12" y2="12"/><line x1="18" x2="22" y1="12" y2="12"/><line x1="4.93" x2="7.76" y1="19.07" y2="16.24"/><line x1="16.24" x2="19.07" y1="7.76" y2="4.93"/>'
 };
 function uiIcon(name, cls) {
@@ -1973,7 +1989,7 @@ function restoreCalculator(itemLimit, recBuy, recSell) {
       </div>
       <div class="calc-headline-right">
         <span class="res-profit" id="calcProfitValue">—</span>
-        <span id="calcToggleIcon" class="calc-caret">${isCalcOpen ? '▼' : '▶'}</span>
+        <span id="calcToggleIcon" class="calc-caret${isCalcOpen ? '' : ' closed'}">${uiIcon('chev')}</span>
       </div>
     </div>
     <div id="calcInputs" class="calc-body" style="display:${isCalcOpen ? 'block' : 'none'};">
@@ -1990,7 +2006,7 @@ function restoreCalculator(itemLimit, recBuy, recSell) {
   const toggleCalc = () => {
     isCalcOpen = !isCalcOpen;
     $('#calcInputs').style.display = isCalcOpen ? 'block' : 'none';
-    $('#calcToggleIcon').textContent = isCalcOpen ? '▼' : '▶';
+    $('#calcToggleIcon').classList.toggle('closed', !isCalcOpen);
     const hl = $('#calcToggle');
     if (hl) hl.setAttribute('aria-expanded', isCalcOpen);
     const sub = hl && hl.querySelector('.calc-headline-sub');
@@ -2840,12 +2856,12 @@ function renderWatchlist() {
     /* No Edit button anymore — the per-row × reveals on hover (desktop) /
        is always shown (touch), TradingView-style. Header is just the
        title + collapse chevron. */
-    titleDiv.innerHTML = `<span class="cat-title-label">${uiIcon(group.icon)}${group.name}</span><span class="cat-title-right"><span class="cat-chevron">${isGroupOpen ? "▼" : "▶"}</span></span>`;
+    titleDiv.innerHTML = `<span class="cat-title-label">${uiIcon(group.icon)}${group.name}</span><span class="cat-title-right"><span class="cat-chevron${isGroupOpen ? '' : ' closed'}">${uiIcon('chev')}</span></span>`;
     const listDiv = document.createElement("div");
     listDiv.className = `category-list ${isGroupOpen ? "" : "collapsed"}`;
     titleDiv.onclick = () => {
       const nowCollapsed = listDiv.classList.toggle("collapsed");
-      titleDiv.querySelector(".cat-chevron").textContent = nowCollapsed ? "▶" : "▼";
+      titleDiv.querySelector(".cat-chevron").classList.toggle('closed', nowCollapsed);
       groupOpenStates[group.name] = !nowCollapsed;
       if (!nowCollapsed && hasScan && scanStatus[group.scan] === 'idle') {
         if (group.scan === 'fived') runFiveDayScan();
@@ -4111,7 +4127,7 @@ function renderFlipCard(rec){
         <span class="fc-kicker">${uiIcon('zap')}<span class="fc-kicker-txt">Recommended flip</span></span>
         <div class="fc-head-ctrls">
           <button type="button" class="fc-next" id="btnNextFlip" title="Show another flip">↻ Next</button>
-          <button type="button" class="fc-collapse" id="btnFlipCollapse" aria-label="Collapse recommended flip" aria-expanded="${collapsed ? 'false' : 'true'}" title="Collapse / expand">▾</button>
+          <button type="button" class="fc-collapse" id="btnFlipCollapse" aria-label="Collapse recommended flip" aria-expanded="${collapsed ? 'false' : 'true'}" title="Collapse / expand">${uiIcon('chev')}</button>
         </div>
       </div>
       <div class="fc-mini">
@@ -5098,6 +5114,12 @@ function renderOverMax(m) {
     mock.lowVol.push(Math.floor(Math.random() * 5)); mock.highVol.push(Math.floor(Math.random() * 5));
   }
   overMaxFull = mock;
+  /* Synthetic over-max history is DAILY, so 1D/5D views render 1–5 lonely
+     points — bump to 1M for display (preferredView keeps the user's pick). */
+  if (view === '1d' || view === '5d') {
+    view = '1m';
+    document.querySelectorAll(".view-btn").forEach(b => b.classList.toggle('active', b.dataset.view === view));
+  }
   currentSeries = filterSeries(overMaxFull, getPeriod(view));
   $("#buyPrice").innerHTML = `<div class="price-label">Target WTB <span class="live-val">Aggregated</span></div><div class="price-val"><span>${abbreviateNumber(o.wtb)}</span></div>`;
   $("#sellPrice").innerHTML = `<div class="price-label">Target WTS <span class="live-val">Aggregated</span></div><div class="price-val"><span>${abbreviateNumber(o.wts)}</span></div>`;
@@ -5105,7 +5127,7 @@ function renderOverMax(m) {
   $("#tickerChange").innerHTML = `<span class="neutral">— Estimated Value</span>`;
   recommendedBuy = o.wtb; recommendedSell = o.wts;
   $("#sideModule").innerHTML = `
-    <div class="calc-headline-label" style="color: var(--fav-gold);">👑 Over-Max Consensus Engine</div>
+    <div class="calc-headline-label" style="color: var(--fav-gold);">${uiIcon('crown')} Over-Max Consensus Engine</div>
     <div style="font-size: 10px; color: var(--text-muted); margin: 6px 0; line-height: 1.4;">
       Aggregated from community sale telemetry. Outer 15% of quotes are rejected mathematically to filter spoof bids.
     </div>
@@ -5250,11 +5272,29 @@ async function setItem(m, opts = {}) {
   currentItemLowVol = isLowVolume(m.id);
 
   /* The view-timeframe (1D / 5D / 1M / ...) is treated as a USER preference
-     that persists across item changes. Previously, switching items
-     auto-jumped 1D for high-vol items and 1M for low-vol — which was
-     surprising every time you clicked a row. Whatever timeframe is active
-     stays active; the user explicitly clicks 1D / 5D / etc. when they want
-     to switch. */
+     that persists across item changes — EXCEPT when the preferred view has
+     almost no prints for this item (a 2-trades-a-day rare on 1D renders
+     three lonely dots and looks broken). In that case bump UP to the first
+     wider timeframe with enough data. Never bump down; liquid items keep
+     whatever the user picked. */
+  {
+    const VIEW_ORDER = ['1d', '5d', '1m', '6m', '1y', '5y'];
+    const dataPts = (v) => {
+      const s = filterSeries(seriesForView(v, currentItemSrc, currentItemLowVol), getPeriod(v));
+      let n = 0;
+      for (let i = 0; i < s.labels.length; i++) {
+        if ((s.low[i] != null && s.low[i] > 0) || (s.high[i] != null && s.high[i] > 0)) n++;
+      }
+      return n;
+    };
+    const MIN_PTS = 12;
+    view = preferredView;
+    if (dataPts(view) < MIN_PTS) {
+      for (let i = VIEW_ORDER.indexOf(view) + 1; i < VIEW_ORDER.length; i++) {
+        if (dataPts(VIEW_ORDER[i]) >= MIN_PTS) { view = VIEW_ORDER[i]; break; }
+      }
+    }
+  }
   document.querySelectorAll(".view-btn").forEach(b => b.classList.toggle('active', b.dataset.view === view));
 
   const changes = computeAllChanges(currentItemSrc, currentItemLowVol);
@@ -5354,7 +5394,7 @@ setItem._userPicked = false;
     document.querySelectorAll(".view-btn").forEach(b => {
       b.onclick = () => {
         document.querySelectorAll(".view-btn").forEach(x => x.classList.remove("active"));
-        b.classList.add("active"); view = b.dataset.view; zoom = 1.0;
+        b.classList.add("active"); view = preferredView = b.dataset.view; zoom = 1.0;
         setItem._userPicked = true;
         refreshChart();
       };
