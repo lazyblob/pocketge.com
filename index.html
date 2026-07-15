@@ -805,16 +805,16 @@ button, input { touch-action: manipulation; }
    trash is absolutely positioned over that same spot at the row's right
    edge). Solid background so the digit underneath can't ghost through. */
 .wl-fav-remove {
-  position: absolute; right: 11px; top: 50%; transform: translateY(-50%);
-  background: var(--bg-input); border: 1px solid rgba(239,83,80,0.55); color: var(--negative);
-  border-radius: 3px; width: 18px; height: 17px; cursor: pointer; line-height: 1;
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  background: transparent; border: none; color: var(--text-muted);
+  width: 16px; height: 16px; cursor: pointer; line-height: 1;
   padding: 0; display: flex; align-items: center; justify-content: center;
   opacity: 0; pointer-events: none;
-  transition: opacity 0.12s ease, background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  transition: opacity 0.12s ease, color 0.12s ease;
   z-index: 5;
 }
-.wl-fav-remove svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.wl-fav-remove:hover { color: #fff; background: var(--negative); border-color: var(--negative); }
+.wl-fav-remove svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.wl-fav-remove:hover { color: var(--negative); }
 @media (hover: hover) {
   .wl-item[data-fav-row="1"]:hover .wl-fav-remove { opacity: 1; pointer-events: auto; }
   .wl-item[data-fav-row="1"]:hover .meta-vol .mv-sfx { visibility: hidden; }
@@ -979,29 +979,27 @@ button, input { touch-action: manipulation; }
   .chart-container { flex: none; height: 52vh; min-height: 320px; min-width: 0; margin-bottom: 0; }
   .watchlist-container { width: 100%; flex: 1; min-height: 400px; }
   .status-text { display: none; }
-  /* Stack price boxes vertically on portrait mobile — explicit column layout
-     so we don't depend on flex-basis wrap math (which was leaving the boxes
-     narrower than full width and still clipping the verdict chip). Buy on
-     top, Sell below; each box gets the full strip width with room for the
-     verdict chip ("STRONG ENTRY" / "TOP SELL"). */
-  .price-strip { flex-direction: column; gap: 3px; }
-  .price-strip .price-box { width: 100%; flex: 0 0 auto; min-width: 0; }
-  .price-box { display: flex; align-items: center; gap: 8px; padding: 3px 10px; min-width: 0; overflow: hidden; }
-  .price-label { flex-direction: column; align-items: flex-start; gap: 0; flex-shrink: 0; font-size: 9px; }
-  .live-val { font-size: 9px; }
-  .price-val { font-size: 18px; margin-top: 0; flex-shrink: 0; white-space: nowrap; line-height: 1.1; letter-spacing: -0.4px; }
+  /* Target Buy + Target Sell SIDE BY SIDE on one line (was two stacked
+     full-width rows — double the height for the same two numbers). Each box:
+     tiny label stack on the left, big value, grade number on the right.
+     The verdict words ("WAIT FOR DIP") don't fit half a phone's width, so
+     the colored grade number carries the verdict — its color already maps
+     to buy/sell strength, and the desktop/landscape views keep the words. */
+  .price-strip { flex-direction: row; gap: 4px; }
+  .price-strip .price-box { flex: 1 1 0; width: auto; min-width: 0; }
+  .price-box { display: flex; align-items: center; gap: 6px; padding: 3px 8px; min-width: 0; overflow: hidden; }
+  .price-label { flex-direction: column; align-items: flex-start; gap: 0; flex-shrink: 0; font-size: 8px; }
+  .live-val { font-size: 8px; }
+  .price-val { font-size: 17px; margin-top: 0; flex-shrink: 1; white-space: nowrap; line-height: 1.1; letter-spacing: -0.4px; overflow: hidden; text-overflow: ellipsis; }
   .price-grade, .price-box.selected .price-grade {
-    display: flex; align-items: center; gap: 4px;
+    display: flex; align-items: center; gap: 3px;
     margin-top: 0; padding-top: 0; border-top: none;
-    margin-left: auto; font-size: 9px; flex-shrink: 1; min-width: 0;
+    margin-left: auto; font-size: 9px; flex-shrink: 0; min-width: 0;
   }
-  .price-grade .pg-num { font-size: 13px; }
-  .price-grade .pg-verdict { font-size: 9px; letter-spacing: 0.3px; white-space: nowrap; }
-  /* Hide the "1D" timeframe chip and the "?" help button on narrow phones —
-     they were pushing the verdict text into a two-line wrap ("TOP / SELL")
-     and clipping the "?" past the right edge of the box. The timeframe is
-     already visible in the toolbar above, and the in-app "?" Help button
-     in the top panel reaches the glossary. */
+  .price-grade .pg-num { font-size: 14px; }
+  /* Verdict words, "1D" chip and "?" help don't fit a half-width box; the
+     colored score number carries the signal on portrait. */
+  .price-grade .pg-verdict { display: none; }
   .price-grade .pg-ctx { display: none; }
   .price-grade .pg-help { display: none; }
   .calc-container input { font-size: 16px; }
@@ -1010,12 +1008,11 @@ button, input { touch-action: manipulation; }
   /* Mobile landscape: vertical space is the scarce axis (~390px tall) while
      width is abundant (~844px). So DON'T stack — put the top panel (search +
      icons) and the ticker (name + timeframe) side by side on ONE row, and
-     drop the onboarding banner. Reclaims ~80px straight into the chart,
+     Reclaims ~80px straight into the chart,
      which was being squeezed to ~100px. */
   .wrap { padding: 3px; gap: 3px; }
   .main-column { gap: 3px; }
   .content-area { flex-direction: row; gap: 4px; }
-  .onboard-banner { display: none !important; }
   .top-row-wrapper { flex-direction: row; gap: 6px; height: auto; align-items: stretch; }
   .top-panel { flex: 1 1 44%; min-width: 0; padding: 3px 6px; }
   .panel-left { flex-wrap: nowrap; gap: 4px; }
@@ -1094,26 +1091,6 @@ button, input { touch-action: manipulation; }
      "landscape flip-card compaction") — placing them here would lose to the
      later base rules, since media queries don't add specificity. */
 }
-
-/* First-visit onboarding banner — orients an organic searcher in one line,
-   then dismisses to localStorage forever. */
-.onboard-banner {
-  display: flex; align-items: center; gap: 10px;
-  background: linear-gradient(90deg, rgba(41,98,255,0.16), rgba(41,98,255,0.04));
-  border: 1px solid rgba(41,98,255,0.4); border-radius: 6px;
-  padding: 8px 12px; margin-bottom: 6px; flex-shrink: 0;
-  font-size: 12.5px; line-height: 1.4; color: var(--text-main);
-}
-.onboard-banner .ob-icon { font-size: 17px; flex-shrink: 0; }
-.onboard-banner .ob-text { flex: 1; min-width: 0; }
-.onboard-banner .ob-text strong { color: #fff; }
-.onboard-banner .ob-close {
-  flex-shrink: 0; background: transparent; border: 1px solid var(--border-light);
-  color: var(--text-muted); border-radius: 4px; width: 24px; height: 24px;
-  cursor: pointer; font-size: 15px; line-height: 1; display: flex;
-  align-items: center; justify-content: center; transition: all 0.15s ease;
-}
-.onboard-banner .ob-close:hover { color: #fff; border-color: var(--border-active); }
 
 /* Tiny "?" affordance on the grade chips → opens the glossary. */
 .pg-help {
@@ -1475,11 +1452,6 @@ button, input { touch-action: manipulation; }
         </div>
       </div>
 
-      <div class="onboard-banner" id="onboardBanner" style="display:none">
-        <span class="ob-icon">📊</span>
-        <span class="ob-text"><strong>Live OSRS Grand Exchange prices.</strong> The two boxes below are what you should <strong>buy</strong> and <strong>sell</strong> this item for right now — 2% GE tax already included. Every recommended flip clears that tax and has recently traded on both sides — we don't show money-losers. Pick any item on the right to switch.</span>
-        <button class="ob-close" id="onboardClose" type="button" aria-label="Dismiss">×</button>
-      </div>
 
       <div class="price-strip">
         <div id="buyPrice" class="price-box low">
@@ -5380,15 +5352,6 @@ setItem._userPicked = false;
       if (moreMenu.classList.contains('open') && !moreMenu.contains(ev.target) && ev.target !== moreBtn && !moreBtn.contains(ev.target)) closeMore();
     });
 
-    /* First-visit onboarding banner — show once, dismiss forever. The grade
-       "?" chips and the banner CTA both route into the same glossary modal. */
-    if (localStorage.getItem('ge_onboardDismissed') !== '1') {
-      $('#onboardBanner').style.display = 'flex';
-    }
-    $('#onboardClose').onclick = () => {
-      $('#onboardBanner').style.display = 'none';
-      try { localStorage.setItem('ge_onboardDismissed', '1'); } catch (e) {}
-    };
     /* Tapping a grade "?" chip opens the glossary (mobile can't hover the
        title tooltip). stopPropagation so it doesn't also toggle the buy/sell
        price-box selection it lives inside. */
@@ -5516,11 +5479,21 @@ setItem._userPicked = false;
     const landingEl = document.getElementById('landingPage');
     const launchBtn = document.getElementById('landingLaunch');
     const hasVisited = (() => { try { return localStorage.getItem('ge_visited') === '1'; } catch (e) { return false; } })();
-    const showLanding = !eligible(urlItem) && !hasVisited;
+    /* ANY ?q= in the URL means the visitor came for an item (Google SERP
+       click, shared link) — never block them with the brand/education page,
+       even if the name failed to resolve (typo, renamed item): they still
+       land on the app with a fallback item, which is closer to what they
+       wanted than a marketing page. The landing is ONLY for bare "/" first
+       visits. Bouncing a "steel bar price" searcher into an explainer they
+       didn't ask for is how you earn a high bounce rate. */
+    const showLanding = !urlQ && !hasVisited;
     if (showLanding && landingEl) {
       landingEl.style.display = 'block';
       document.body.style.overflow = 'hidden';
     }
+    /* A deep-link visitor has already "used" the app — never show them the
+       landing page later if they return via plain "/". */
+    if (urlQ && !hasVisited) { try { localStorage.setItem('ge_visited', '1'); } catch (e) {} }
     if (launchBtn) {
       launchBtn.onclick = () => {
         if (landingEl) landingEl.style.display = 'none';
