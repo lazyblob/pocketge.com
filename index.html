@@ -399,7 +399,7 @@ button, input { touch-action: manipulation; }
 .nc-test-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 .nc-toggle { position: relative; display: inline-block; width: 44px; height: 24px; flex-shrink: 0; }
 .nc-toggle input { opacity: 0; width: 0; height: 0; }
-.nc-toggle-slider { position: absolute; cursor: pointer; inset: 0; background: #2a2e39; border: 1px solid var(--border-main); transition: 0.2s; border-radius: 24px; }
+.nc-toggle-slider { position: absolute; cursor: pointer; inset: 0; background: var(--bg-input); border: 1px solid var(--border-main); transition: 0.2s; border-radius: 24px; }
 .nc-toggle-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; top: 2px; background: var(--text-muted); transition: 0.2s; border-radius: 50%; }
 .nc-toggle input:checked + .nc-toggle-slider { background: rgba(0, 200, 100, 0.25); border-color: var(--positive); }
 .nc-toggle input:checked + .nc-toggle-slider:before { transform: translateX(20px); background: var(--positive); }
@@ -415,7 +415,7 @@ button, input { touch-action: manipulation; }
 .nc-pct-suffix { font-size: 11px; color: var(--text-muted); }
 .nc-empty { padding: 12px; font-size: 12px; color: var(--text-muted); text-align: center; background: var(--bg-input); border: 1px dashed var(--border-main); border-radius: 4px; }
 .bk-holdings { border: 1px solid var(--border-main); border-radius: 4px; overflow: hidden; }
-.bk-row { display: grid; grid-template-columns: 24px 1fr auto auto auto; gap: 8px; padding: 8px 10px; font-size: 12px; border-bottom: 1px solid rgba(42,46,57,0.4); align-items: center; cursor: pointer; }
+.bk-row { display: grid; grid-template-columns: 24px 1fr auto auto auto; gap: 8px; padding: 8px 10px; font-size: 12px; border-bottom: 1px solid rgba(60,53,43,0.5); align-items: center; cursor: pointer; }
 .bk-row:hover { background: var(--bg-input); }
 .bk-row:last-child { border-bottom: none; }
 .bk-row img { width: 20px; height: 20px; image-rendering: pixelated; }
@@ -681,10 +681,10 @@ button, input { touch-action: manipulation; }
   position: sticky; top: 0; z-index: 4;
   padding: 11px 12px 11px 13px;
   font-size: 11px; font-weight: 800; letter-spacing: 0.7px; text-transform: uppercase;
-  color: #F0F2F8;
-  background: #2A2E39;
+  color: #F0EBDF;
+  background: #2A251E;
   border-left: 3px solid var(--border-active);
-  border-bottom: 1px solid #15171F;
+  border-bottom: 1px solid #141210;
   cursor: pointer;
   display: flex; justify-content: space-between; align-items: center;
   box-shadow: 0 2px 6px -2px rgba(0,0,0,0.55);
@@ -696,18 +696,20 @@ button, input { touch-action: manipulation; }
 .category-title.fav-title { border-left-color: var(--fav-gold, #FFB300); }
 .category-title.lose-title { border-left-color: var(--negative); }
 .category-title.rec-title { border-left-color: #FF9800; }
-.category-title.margin-title { border-left-color: #2ECC71; }
-.category-title.marginlo-title { border-left-color: #7FE3A6; }
+/* Muted sage greens — the old #2ECC71/#7FE3A6 limes read neon-cool against
+   the warm obsidian panels. */
+.category-title.margin-title { border-left-color: #57B87B; }
+.category-title.marginlo-title { border-left-color: #9BD4AE; }
 .category-title.steady-title { border-left-color: var(--rs-parchment); }
 .category-title.fall-title { border-left-color: var(--negative); }
-.category-title:hover { background: #353A47; }
+.category-title:hover { background: #363028; }
 /* Chevron rendered as a clearly tappable button so users can find "close"
    without aiming at a tiny glyph. Inverts when the section is collapsed so
    it's even more obvious the title is interactive. */
 .cat-chevron {
   display: inline-flex; align-items: center; justify-content: center;
   width: 22px; height: 22px;
-  font-size: 11px; color: #F0F2F8;
+  font-size: 11px; color: #F0EBDF;
   background: rgba(255,255,255,0.07);
   border: 1px solid rgba(255,255,255,0.1);
   border-radius: 4px;
@@ -719,7 +721,7 @@ button, input { touch-action: manipulation; }
 .scan-row { padding: 10px 14px; font-size: 11px; color: var(--border-active); cursor: pointer; display: flex; justify-content: center; align-items: center; gap: 6px; background: rgba(201,166,77,0.07); }
 .scan-row:hover { background: var(--bg-input); }
 .scan-row.loading { color: var(--text-muted); cursor: default; }
-.wl-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; cursor: pointer; font-size: 13px; border-bottom: 1px solid rgba(42, 46, 57, 0.3); transition: background 0.2s, border 0.2s; }
+.wl-item { display: flex; align-items: center; justify-content: space-between; padding: 8px 14px; cursor: pointer; font-size: 13px; border-bottom: 1px solid rgba(60, 53, 43, 0.4); transition: background 0.2s, border 0.2s; }
 .wl-item:last-child { border-bottom: none; }
 .wl-item:hover { background: var(--bg-input); }
 /* Selected row uses a white OUTLINE (not a border) so it paints on top of the
@@ -1104,6 +1106,8 @@ button, input { touch-action: manipulation; }
 
 /* Inline UI icons (emoji replacements) — sized to sit on the text line. */
 .ui-ic { width: 14px; height: 14px; flex: 0 0 auto; vertical-align: -2px; }
+.ui-ic.ic-spin { animation: uiIcSpin 1.2s linear infinite; }
+@keyframes uiIcSpin { to { transform: rotate(360deg); } }
 .icon-btn .ui-ic { width: 15px; height: 15px; display: block; }
 .cat-title-label { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
 .fc-kicker { display: inline-flex; align-items: center; gap: 5px; }
@@ -1537,7 +1541,7 @@ button, input { touch-action: manipulation; }
       <div class="glossary-row"><span class="hl-badge low">▼ LOW</span><span>At or below its 24-hour low. Buy now to catch the dip. Row glows RuneScape-gold.</span></div>
 
       <div class="glossary-section">Browser notifications</div>
-      <div class="glossary-row"><span class="hl-badge high">📈 BREAK</span><span>Browser notifications only fire when a favorite's live price BREAKS PAST its tracked 24h or 5D extreme — a genuine new high/low, not a lingering "near the edge" state. Watermarks update automatically so the next alert needs an even bigger move. 5D breaks are flagged separately because they're rarer / bigger deal.</span></div>
+      <div class="glossary-row"><span class="hl-badge high">▲ BREAK</span><span>Browser notifications only fire when a favorite's live price BREAKS PAST its tracked 24h or 5D extreme — a genuine new high/low, not a lingering "near the edge" state. Watermarks update automatically so the next alert needs an even bigger move. 5D breaks are flagged separately because they're rarer / bigger deal.</span></div>
 
       <div class="glossary-section">Margin tags</div>
       <div class="glossary-row"><span class="wl-trend up">+1.2M ea</span><span>Estimated per-item margin from the live insta-buy / insta-sell spread, after the 2% GE tax.</span></div>
@@ -1705,7 +1709,9 @@ const UI_ICONS = {
   trendDown: '<polyline points="22 17 13.5 8.5 8.5 13.5 2 7"/><polyline points="16 17 22 17 22 11"/>',
   zap: '<polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>',
   bell: '<path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>',
-  bellOff: '<path d="M8.7 3A6 6 0 0 1 18 8c0 4.5 1.2 7 2.3 8.5"/><path d="M17 17H3s3-2 3-9a4.7 4.7 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><line x1="2" x2="22" y1="2" y2="22"/>'
+  bellOff: '<path d="M8.7 3A6 6 0 0 1 18 8c0 4.5 1.2 7 2.3 8.5"/><path d="M17 17H3s3-2 3-9a4.7 4.7 0 0 1 .3-1.7"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/><line x1="2" x2="22" y1="2" y2="22"/>',
+  search: '<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/>',
+  loader: '<line x1="12" x2="12" y1="2" y2="6"/><line x1="12" x2="12" y1="18" y2="22"/><line x1="4.93" x2="7.76" y1="4.93" y2="7.76"/><line x1="16.24" x2="19.07" y1="16.24" y2="19.07"/><line x1="2" x2="6" y1="12" y2="12"/><line x1="18" x2="22" y1="12" y2="12"/><line x1="4.93" x2="7.76" y1="19.07" y2="16.24"/><line x1="16.24" x2="19.07" y1="7.76" y2="4.93"/>'
 };
 function uiIcon(name, cls) {
   return `<svg class="ui-ic${cls ? ' ' + cls : ''}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${UI_ICONS[name] || ''}</svg>`;
@@ -2850,8 +2856,8 @@ function renderWatchlist() {
     if (hasScan && scanState !== 'done' && group.entries.length === 0) {
       const loadLabel = group.scan === 'steady' ? 'Scanning the last 14 days of margins…' : 'Scanning 5-day extremes…';
       const idleLabel = group.scan === 'steady' ? 'Tap to scan 14-day reliable margins' : 'Tap to scan 5-day extremes (top items)';
-      if (scanState === 'loading') inner = `<div class="scan-row loading">⏳ ${loadLabel}</div>`;
-      else inner = `<div class="scan-row" data-scan="${group.scan}">🔍 ${idleLabel}</div>`;
+      if (scanState === 'loading') inner = `<div class="scan-row loading">${uiIcon('loader', 'ic-spin')} ${loadLabel}</div>`;
+      else inner = `<div class="scan-row" data-scan="${group.scan}">${uiIcon('search')} ${idleLabel}</div>`;
     } else if (group.entries.length === 0) {
       const emptyMsg = group.scan === 'steady'
         ? 'No items met the consistency bar over the last 14 days'
@@ -4500,13 +4506,13 @@ function renderNotifCenter() {
     </div>
 
     <div class="nc-section">
-      <div class="nc-section-title">⭐ Favorites Alerts</div>
+      <div class="nc-section-title">Favorites Alerts</div>
       <p class="nc-section-desc">Every favorite below alerts you automatically when its live price breaks above its 24H high (or 5D high — flagged separately) or below its 24H/5D low. Favoriting an item is the opt-in; remove from favorites to stop alerting.</p>
       ${favHTML}
     </div>
 
     <div class="nc-section">
-      <div class="nc-section-title">🎒 Bank Stacks Alerts</div>
+      <div class="nc-section-title">Bank Stacks Alerts</div>
       <p class="nc-section-desc">Per-stack threshold against your cost basis. Edit the ± % inline — set to 0 to mute that stack. Stacks without a cost ea can't alert (nothing to compare against).</p>
       ${bankHTML}
     </div>
@@ -5623,10 +5629,10 @@ if ('serviceWorker' in navigator) {
   <p>Every item view shows the live insta-buy and insta-sell from the OSRS Wiki real-time prices API, alongside a target buy and target sell from a trade engine that anchors against competitive bids rather than the spread midpoint. The flip profit calculator applies the Grand Exchange's 2% sales tax (capped at 5,000,000 gp per trade) so the displayed profit is the gp you actually keep, not a pre-tax figure that overstates margins.</p>
 
   <h2>5-day breakout scanner: true extremes, not noise</h2>
-  <p>The sidebar's <strong>📈 At 5D Highs</strong> and <strong>📉 At 5D Lows</strong> lists are built from rolling 1-hour volume-weighted price buckets fetched from the OSRS Wiki API. An item only appears when its live competitive price is within 0.5% of (or breaching) its actual 5-day extreme, with a minimum 3% 5-day range required so flat items don't false-positive. The scan runs against a bounded ~100-item candidate pool (top volume + top price) so it never floods the API with per-item requests.</p>
+  <p>The sidebar's <strong>At 5D Highs</strong> and <strong>At 5D Lows</strong> lists are built from rolling 1-hour volume-weighted price buckets fetched from the OSRS Wiki API. An item only appears when its live competitive price is within 0.5% of (or breaching) its actual 5-day extreme, with a minimum 3% 5-day range required so flat items don't false-positive. The scan runs against a bounded ~100-item candidate pool (top volume + top price) so it never floods the API with per-item requests.</p>
 
   <h2>Margin lists split by daily volume</h2>
-  <p>Live 1-day margins are split into <strong>💰 High Vol Margins</strong> (items trading 100,000+ units a day — gems, ores, bars, arrows, runes, cannonballs) and <strong>💎 Low Vol Margins</strong> (slower-moving items with bigger absolute spreads — quest stuff, rare gear, niche commodities). Sort is absolute gp profit per flip, after GE tax. Volume tier comes from the OSRS Wiki bulk volumes endpoint, so the categorisation matches the real tape.</p>
+  <p>Live 1-day margins are split into <strong>High Vol Margins</strong> (items trading 100,000+ units a day — gems, ores, bars, arrows, runes, cannonballs) and <strong>Low Vol Margins</strong> (slower-moving items with bigger absolute spreads — quest stuff, rare gear, niche commodities). Sort is absolute gp profit per flip, after GE tax. Volume tier comes from the OSRS Wiki bulk volumes endpoint, so the categorisation matches the real tape.</p>
 
   <h2>Bank of Gielinor — portfolio tracker with per-stack alerts</h2>
   <p>The 🪙 Bank button opens a portfolio panel where you log stacks with their quantity and (optionally) average cost. Live valuations update on every 5-minute refresh, with running P&amp;L per stack and a total bank value at the top. Each stack can have a custom ±% alert threshold: when its value crosses the threshold versus your cost basis, a browser notification fires. Useful for long-term holds where you want to know if your sigil stack drops 10% without staring at the chart all day.</p>
