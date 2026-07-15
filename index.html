@@ -1551,11 +1551,11 @@ button, input { touch-action: manipulation; }
       <div class="glossary-section">Favorite reorder</div>
       <div class="glossary-row"><span style="font-size:11px;font-weight:700;color:var(--text-muted)">▲ / ▼</span><span>Move a favorite up or down inside the Favorites list (tap the small chevrons on hover-revealed reorder controls). Tap × on a row to remove it, or swipe-left on touch.</span></div>
 
-      <div class="glossary-section">Grade box (0–100 score for the active side &amp; timeframe)</div>
+      <div class="glossary-section">Grade box (0–100 score, always judged on the 1-day flip window — same score on every chart timeframe)</div>
       <div class="glossary-row"><span class="pg-num" style="color:#4FFF8E;font-size:14px;">85+</span><span><strong>Steal Buy / Top Sell</strong> — elite entry or exit. Price is at the very edge of the range in your favor.</span></div>
       <div class="glossary-row"><span class="pg-num" style="color:#1FB85C;font-size:14px;">70–84</span><span><strong>Strong Entry / Strong Exit</strong> — clearly in your favor; act.</span></div>
       <div class="glossary-row"><span class="pg-num" style="color:#FFD24D;font-size:14px;">50–69</span><span><strong>OK Buy / OK Sell</strong> — middling. Not bad, not great. Wait for better unless you need the flip now.</span></div>
-      <div class="glossary-row"><span class="pg-num" style="color:#FF9F43;font-size:14px;">30–49</span><span><strong>Weak Buy / Weak Sell</strong> — price sits closer to the wrong end of the timeframe's range for your side.</span></div>
+      <div class="glossary-row"><span class="pg-num" style="color:#FF9F43;font-size:14px;">30–49</span><span><strong>Weak Buy / Weak Sell</strong> — price sits closer to the wrong end of the day's range for your side.</span></div>
       <div class="glossary-row"><span class="pg-num" style="color:#EF5350;font-size:14px;">&lt;30</span><span><strong>Avoid Buying / Avoid Selling</strong> — the price is at the wrong end of the range for your active side.</span></div>
 
       <div class="glossary-section">Target prices</div>
@@ -3707,20 +3707,28 @@ function runTradeEngine(rawLow, rawHigh, series, node, id) {
   return computeTargets(n, series, isTaxExempt(id));
 }
 
-/* Composite 0–100 grade for the currently-selected item on the current
-   timeframe, scored from the perspective of the active price box (buy or
-   sell). The whole point: a sell-side grade goes UP as you approach the
-   timeframe's high, and a buy-side grade goes UP as you approach its low —
-   so the same item reads "Steal Buy" on 5Y if it's near a multi-year floor
-   and "Top Sell" on 1D if it just spiked. Four weighted components:
-     - 45 pts: position within the visible timeframe's price range
+/* Composite 0–100 grade for the currently-selected item, scored from the
+   perspective of the active price box (buy or sell). ALWAYS judged against
+   the 1-DAY window, no matter which chart timeframe is displayed: a GE flip
+   resolves in hours, and grading the same live price against 5D/1Y ranges
+   gave contradictory advice when switching views ("100 Strong Entry" on 1D
+   vs "67 Wait for Dip" on 5D). The chart timeframe is a lens; the advice
+   holds still. Weighted components:
+     - 45 pts: position within the 1-day price range
      - 25 pts: trend direction (price moving into the desired extreme)
      - 20 pts: liquidity (log-scale 24h GP volume — can you actually trade it)
-     - 10 pts: distance from the 1-year low (buy-side only; we don't bulk-track
-               1Y highs, so the sell-side defaults to neutral here) */
+     - 25 pts (weighted): margin health over the same window */
+function gradeWindowSeries() {
+  if (view === '1d' || !currentItemSrc) return currentSeries;
+  try {
+    const s = filterSeries(seriesForView('1d', currentItemSrc, currentItemLowVol), getPeriod('1d'));
+    return (s && s.labels && s.labels.length) ? s : currentSeries;
+  } catch (e) { return currentSeries; }
+}
 function computeGrade(item, side) {
-  if (!item || !currentSeries || !currentSeries.labels || !currentSeries.labels.length) return null;
-  if (overMaxData[String(item.id)]) return null;
+  if (!item || overMaxData[String(item.id)]) return null;
+  const gs = gradeWindowSeries();
+  if (!gs || !gs.labels || !gs.labels.length) return null;
   const id = String(item.id);
   const node = latest?.data?.[id];
   if (!node) return null;
@@ -3731,8 +3739,8 @@ function computeGrade(item, side) {
 
   // 1) Range position
   let minV = Infinity, maxV = -Infinity;
-  for (let i = 0; i < currentSeries.labels.length; i++) {
-    const L = currentSeries.low[i], H = currentSeries.high[i];
+  for (let i = 0; i < gs.labels.length; i++) {
+    const L = gs.low[i], H = gs.high[i];
     if (L != null && L > 0) { if (L < minV) minV = L; if (L > maxV) maxV = L; }
     if (H != null && H > 0) { if (H < minV) minV = H; if (H > maxV) maxV = H; }
   }
@@ -3742,8 +3750,8 @@ function computeGrade(item, side) {
 
   // 2) Trend
   const valid = [];
-  for (let i = 0; i < currentSeries.labels.length; i++) {
-    const L = currentSeries.low[i], H = currentSeries.high[i];
+  for (let i = 0; i < gs.labels.length; i++) {
+    const L = gs.low[i], H = gs.high[i];
     if (L != null && H != null) valid.push((L + H) / 2);
     else if (L || H) valid.push(L || H);
   }
@@ -3777,20 +3785,20 @@ function computeGrade(item, side) {
 
   /* 5) Margin health — use the BETTER of two signals:
        a. The right-now engine spread (recommendedSell - recommendedBuy - tax).
-       b. The visible-window potential margin (timeframe's max - min - tax) —
+       b. The 1-day window's potential margin (its max - min - tax) —
           captures the day's realised range, so a chart like Ruby that shows
           850→920 daily prints scores as a good flip even when the right-now
           tight spread is unprofitable.
      The grade only gets hard-pinned to "No Margin" when BOTH signals are
-     unprofitable (i.e. the timeframe genuinely doesn't have a flip in it). */
+     unprofitable (i.e. the day genuinely doesn't have a flip in it). */
   let currentMarginPct = null, dayMarginPct = null;
   if (recommendedBuy > 0 && recommendedSell > 0) {
     const tax = calculateTax(recommendedSell, item.id);
     currentMarginPct = (recommendedSell - recommendedBuy - tax) / recommendedBuy;
   }
   let dayHi = -Infinity, dayLo = Infinity;
-  for (let i = 0; i < currentSeries.high.length; i++) {
-    const H = currentSeries.high[i], L = currentSeries.low[i];
+  for (let i = 0; i < gs.high.length; i++) {
+    const H = gs.high[i], L = gs.low[i];
     if (H != null && H > 0 && H > dayHi) dayHi = H;
     if (L != null && L > 0 && L < dayLo) dayLo = L;
   }
@@ -3859,8 +3867,8 @@ function updateGradeBadge() {
     const sideWord = side === 'buy' ? 'buying' : 'selling';
     const tip85 = side === 'buy' ? 'Steal Buy' : 'Top Sell';
     const tip50 = side === 'buy' ? 'OK Buy' : 'OK Sell';
-    const gradeTip = `How good is ${sideWord} this item RIGHT NOW, judged against its ${view.toUpperCase()} price range. 0–100, higher is better. 85+ = ${tip85}, 70+ = Strong, 50+ = ${tip50}, under 30 = avoid. Tap for the full glossary.`;
-    div.innerHTML = `<span class="pg-num" style="color:${g.color}">${g.grade}</span><span class="pg-verdict" style="color:${g.color}">${g.verdict}</span><span class="pg-ctx">${view.toUpperCase()}</span><span class="pg-help" title="${gradeTip}" role="button" aria-label="What does this grade mean?">?</span>`;
+    const gradeTip = `How good is ${sideWord} this item RIGHT NOW, judged against its 1-day flip window — the same score on every chart timeframe. 0–100, higher is better. 85+ = ${tip85}, 70+ = Strong, 50+ = ${tip50}, under 30 = avoid. Tap for the full glossary.`;
+    div.innerHTML = `<span class="pg-num" style="color:${g.color}">${g.grade}</span><span class="pg-verdict" style="color:${g.color}">${g.verdict}</span><span class="pg-ctx">1D</span><span class="pg-help" title="${gradeTip}" role="button" aria-label="What does this grade mean?">?</span>`;
   }
   fill(buyDiv, 'buy');
   fill(sellDiv, 'sell');
@@ -3881,7 +3889,9 @@ function renderRatingGauge(item, mountEl, opts = {}) {
     if (!isSel) { mountEl.hidden = true; mountEl.innerHTML = ''; return; }
     gBuy = computeGrade(item, 'buy'); gSell = computeGrade(item, 'sell');
   }
-  const tf = (opts.timeframe || view || '').toUpperCase();
+  /* Grades are pinned to the 1-day flip window (see computeGrade), so the
+     gauge context is always 1D — it no longer tracks the chart timeframe. */
+  const tf = (opts.timeframe || '1d').toUpperCase();
   let label, hue = 'var(--text-muted)', sub = '', signed = 0, liveIdx = -1, muted = false, strong = false;
 
   if (item && overMaxData[String(item.id)]) { muted = true; label = 'No live gauge'; sub = 'Rare item — off the live market'; }
@@ -3912,10 +3922,10 @@ function renderRatingGauge(item, mountEl, opts = {}) {
   }
   const needleX = (signed + 1) / 2 * 100, aria = Math.round(signed * 100);
   const segCls = i => 'rg-seg ' + ['rg-ss', 'rg-s', 'rg-n', 'rg-b', 'rg-sb'][i] + (i === liveIdx ? ' is-live' : '');
-  const tip = ('Analyst Rating condenses the same 0–100 buy and sell grade — scored against the ' + tf +
-    ' price range — into one call, Strong Sell to Strong Buy. It points to whichever side (entry or exit) ' +
-    'is better graded right now. Advisory only: the Target Buy / Target Sell prices are the actual trade. ' +
-    'Tap for the full glossary.').replace(/"/g, '&quot;');
+  const tip = ('Analyst Rating condenses the same 0–100 buy and sell grade — scored against the 1-day flip ' +
+    'window, identical on every chart timeframe — into one call, Strong Sell to Strong Buy. It points to ' +
+    'whichever side (entry or exit) is better graded right now. Advisory only: the Target Buy / Target Sell ' +
+    'prices are the actual trade. Tap for the full glossary.').replace(/"/g, '&quot;');
   mountEl.hidden = false;
   mountEl.innerHTML =
     '<div class="rg-top"><span class="rg-eyebrow">Analyst Rating</span>' +
