@@ -807,19 +807,22 @@ button, input { touch-action: manipulation; }
    right. It therefore still never covers a visible value. On touch we rely
    on swipe-to-remove instead (no static × covering data). */
 /* TradingView-style delete: on hover the trash swaps in for JUST the K/M
-   suffix of the VOL value — "1.53M" reads "1.53[🗑]". The number stays
-   visible, nothing moves (the hidden suffix keeps its layout space, the
-   trash is absolutely positioned over that same spot at the row's right
-   edge). Solid background so the digit underneath can't ghost through. */
+   suffix of the VOL value — "1.53M" reads "1.53[🗑]". The button sits
+   INSIDE the vol cell, absolutely centered over the suffix character
+   (.mv-swap wraps both), so it lands on the "M" pixel-exactly at every
+   breakpoint. The hidden suffix keeps its layout space so nothing moves. */
+.mv-swap { position: relative; display: inline-block; }
 .wl-fav-remove {
-  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
-  background: transparent; border: none; color: var(--text-muted);
+  position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%);
+  background: transparent; border: none; color: var(--text-main);
   width: 16px; height: 16px; cursor: pointer; line-height: 1;
   padding: 0; display: flex; align-items: center; justify-content: center;
   opacity: 0; pointer-events: none;
   transition: opacity 0.12s ease, color 0.12s ease;
   z-index: 5;
 }
+/* Fallback placement when the VOL column is toggled off: right gutter. */
+.wl-fav-remove-row { left: auto; right: 12px; transform: translateY(-50%); }
 .wl-fav-remove svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .wl-fav-remove:hover { color: var(--negative); }
 @media (hover: hover) {
@@ -2739,16 +2742,26 @@ function renderWatchlist() {
     }
     if (columnPrefs.volume) {
       const vol = (overrides.vol != null) ? overrides.vol : dailyVolume(item.id);
+      /* Favorites rows: the delete button lives INSIDE the vol cell, wrapped
+         with the K/M suffix in a positioned .mv-swap span, so on hover the
+         trash paints exactly where the suffix character is — "1.53M" reads
+         "1.53[🗑]" with zero layout shift (TradingView-style). Anchoring it
+         to the row edge (the old approach) drifted off the suffix because
+         row padding varies by breakpoint. */
+      const favBtn = overrides.favRemove
+        ? `<button type="button" class="wl-fav-remove" data-fav-id="${item.id}" title="Remove from favorites" aria-label="Remove ${item.name} from favorites"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>`
+        : '';
       if (vol > 0) {
-        /* Split "1.53M" into number + suffix spans: on favorites rows the
-           delete button swaps in for JUST the K/M suffix on hover
-           (TradingView-style "1.53[🗑]") so nothing shifts. */
         const ab = String(abbreviateNumber(vol));
         const sm = ab.match(/^(.*?)([KMB])$/);
-        const volHtml = sm ? `${sm[1]}<span class="mv-sfx">${sm[2]}</span>` : ab;
+        const volHtml = sm
+          ? (favBtn ? `${sm[1]}<span class="mv-swap"><span class="mv-sfx">${sm[2]}</span>${favBtn}</span>` : `${sm[1]}<span class="mv-sfx">${sm[2]}</span>`)
+          /* No suffix (raw number like "850"): swap in over the whole value. */
+          : (favBtn ? `<span class="mv-swap"><span class="mv-sfx">${ab}</span>${favBtn}</span>` : ab);
         parts.push(`<span class="meta-piece meta-vol" title="Daily traded volume">${volHtml}</span>`);
       } else {
-        parts.push(`<span class="meta-piece meta-vol" title="Daily traded volume">—</span>`);
+        const dashHtml = favBtn ? `<span class="mv-swap"><span class="mv-sfx">—</span>${favBtn}</span>` : '—';
+        parts.push(`<span class="meta-piece meta-vol" title="Daily traded volume">${dashHtml}</span>`);
       }
     }
     return parts.length ? `<span class="wl-meta">${parts.join('')}</span>` : '';
@@ -2759,7 +2772,7 @@ function renderWatchlist() {
      value the category specifically tracks (mover %, average margin, etc.)
      so we don't recompute it from latest data when we already have it. */
   const plainEntries = (items) => items.map(item => ({ item, price: priceOf(item), sub: buildMeta(item) }));
-  const favEntries = (items) => items.map(item => ({ item, price: priceOf(item), sub: buildMeta(item) }));
+  const favEntries = (items) => items.map(item => ({ item, price: priceOf(item), sub: buildMeta(item, { favRemove: true }) }));
   const marginEntries = (rows, tag) => rows.slice(0, 30).map(r => ({
     item: r.item, price: priceOf(r.item),
     sub: buildMeta(r.item, { margin: r.margin, marginLabel: tag === 'ea avg' ? '14-day average margin per item, after 2% GE tax' : 'Live margin per item, after 2% GE tax' })
@@ -2817,7 +2830,7 @@ function renderWatchlist() {
     const isGroupOpen = groupOpenStates[group.name] !== false;
     const titleDiv = document.createElement("div");
     titleDiv.className = `category-title ${group.className}`;
-    const isFavTitle = group.name === "Favorites";
+    const isFavTitle = group.className === "fav-title";
     /* No Edit button anymore — the per-row × reveals on hover (desktop) /
        is always shown (touch), TradingView-style. Header is just the
        title + collapse chevron. */
@@ -2845,7 +2858,9 @@ function renderWatchlist() {
         : 'Nothing at a 5-day extreme right now';
       inner = `<div class="wl-item" style="color:var(--text-muted); justify-content:center;">${emptyMsg}</div>`;
     } else {
-      const isFavGroup = group.name === "⭐ Favorites";
+      /* Keyed on className, not the display name — the name already got
+         reworded once (emoji purge) and silently broke this check. */
+      const isFavGroup = group.className === "fav-title";
       group.entries.forEach(e => {
         const item = e.item, id = String(item.id);
         const node = latest?.data?.[id];
@@ -2864,12 +2879,12 @@ function renderWatchlist() {
           : hlClass === 'at-low5d'  ? `<span class="hl-badge low5d"  title="At or near the 5-DAY LOW — notable trough across the last 5 days.">▼ 5D</span>`
           : hlClass === 'at-high'   ? `<span class="hl-badge high" title="Currently at or above its 24-hour high. Sell now to catch the peak.">▲</span>`
           : hlClass === 'at-low'    ? `<span class="hl-badge low" title="Currently at or below its 24-hour low. Buy now to catch the dip.">▼</span>` : '';
-        /* Favorites rows get a × quick-remove button — absolutely positioned
-           in the right gutter, hover-revealed on desktop / faint on touch —
-           plus a swipe-left gesture (red "REMOVE" backdrop). Reorder arrows
-           were dropped; ordering is done via the clickable column-sort
-           header. */
-        const removeBtn = isFavGroup ? `<button type="button" class="wl-fav-remove" data-fav-id="${item.id}" title="Remove from favorites" aria-label="Remove ${item.name} from favorites"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>` : '';
+        /* Favorites delete now rides inside the vol cell (see buildMeta) so
+           it lands exactly on the K/M suffix. Fallback: if the VOL column is
+           toggled off there's no cell to ride in, so fall back to a
+           row-level button in the right gutter. Swipe-left ("REMOVE"
+           backdrop) still handles touch. */
+        const removeBtn = (isFavGroup && !e.sub.includes('mv-swap')) ? `<button type="button" class="wl-fav-remove wl-fav-remove-row" data-fav-id="${item.id}" title="Remove from favorites" aria-label="Remove ${item.name} from favorites"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>` : '';
         const swipeBg = isFavGroup ? `<span class="wl-swipe-bg">REMOVE</span>` : '';
         inner += `
           <div class="wl-item ${activeClass} ${hlClass}" data-id="${item.id}" ${isFavGroup ? 'data-fav-row="1"' : ''}>
