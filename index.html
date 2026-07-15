@@ -436,9 +436,23 @@ button, input { touch-action: manipulation; }
 .suggest img { width: 16px; height: 16px; image-rendering: pixelated; }
 .suggest .suggest-header { padding: 4px 10px; font-size: 9px; font-weight: 700; letter-spacing: 0.5px; color: var(--text-muted); text-transform: uppercase; background: rgba(0,0,0,0.25); cursor: default; }
 .suggest .suggest-header:hover { background: rgba(0,0,0,0.25); color: var(--text-muted); }
-.mode-pill { display: flex; background: var(--bg-input); border-radius: 4px; padding: 2px; height: 28px; flex-shrink: 0; }
-.mode-pill button { background: transparent; border: none; color: var(--text-muted); padding: 0 7px; cursor: pointer; font-weight: 700; font-size: 11px; border-radius: 3px; height: 100%; letter-spacing: 0.3px; }
-.mode-pill button.active { background: var(--border-active); color: #fff; }
+/* Compact mode pill (mobile top panel — desktop hides this and uses the
+   sidebar version). Same green/gold active identity as .mode-pill-side so
+   the control reads identically on every screen size: F2P = green tint,
+   P2P/Members = gold tint, with the same underline + press feedback. */
+.mode-pill { display: flex; background: var(--bg-input); border: 1px solid var(--border-light); border-radius: 6px; padding: 2px; height: 28px; flex-shrink: 0; gap: 2px; }
+.mode-pill button { background: transparent; border: none; color: var(--text-muted); padding: 0 8px; cursor: pointer; font-weight: 800; font-size: 11px; border-radius: 4px; height: 100%; letter-spacing: 0.4px; text-transform: uppercase; transition: color 0.15s ease, background 0.15s ease, box-shadow 0.15s ease; }
+.mode-pill button:active { transform: translateY(1px); }
+.mode-pill .mp-f2p.active {
+  background: linear-gradient(180deg, rgba(31,184,92,0.16) 0%, rgba(31,184,92,0.06) 100%);
+  color: #7EE8A6;
+  box-shadow: inset 0 -2px 0 var(--rs-green-deep);
+}
+.mode-pill .mp-p2p.active {
+  background: linear-gradient(180deg, rgba(255,179,0,0.16) 0%, rgba(255,179,0,0.06) 100%);
+  color: #FFD97A;
+  box-shadow: inset 0 -2px 0 var(--fav-gold);
+}
 
 /* Sidebar item-list filter — the primary control on desktop. Hidden by
    default; the desktop media query below shows it (and hides the small
@@ -785,25 +799,25 @@ button, input { touch-action: manipulation; }
    the row's data slides left ~22px to open space and the × fades in at the
    right. It therefore still never covers a visible value. On touch we rely
    on swipe-to-remove instead (no static × covering data). */
-/* TradingView-style delete: the trash button OVERLAYS the VOL cell on the
-   right edge of the row. Nothing shifts on hover — the VOL number goes
-   transparent underneath, the trash button fades in over the same 46px
-   patch (matching the .meta-vol column width). Cell can't be missed and
-   the row layout stays stable. */
+/* TradingView-style delete: on hover the trash swaps in for JUST the K/M
+   suffix of the VOL value — "1.53M" reads "1.53[🗑]". The number stays
+   visible, nothing moves (the hidden suffix keeps its layout space, the
+   trash is absolutely positioned over that same spot at the row's right
+   edge). Solid background so the digit underneath can't ghost through. */
 .wl-fav-remove {
-  position: absolute; right: 14px; top: 50%; transform: translateY(-50%);
-  background: rgba(239,83,80,0.10); border: 1px solid rgba(239,83,80,0.35); color: var(--negative);
-  border-radius: 4px; width: 46px; height: 22px; cursor: pointer; line-height: 1;
+  position: absolute; right: 11px; top: 50%; transform: translateY(-50%);
+  background: var(--bg-input); border: 1px solid rgba(239,83,80,0.55); color: var(--negative);
+  border-radius: 3px; width: 18px; height: 17px; cursor: pointer; line-height: 1;
   padding: 0; display: flex; align-items: center; justify-content: center;
   opacity: 0; pointer-events: none;
   transition: opacity 0.12s ease, background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
   z-index: 5;
 }
-.wl-fav-remove svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.wl-fav-remove svg { width: 11px; height: 11px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .wl-fav-remove:hover { color: #fff; background: var(--negative); border-color: var(--negative); }
 @media (hover: hover) {
   .wl-item[data-fav-row="1"]:hover .wl-fav-remove { opacity: 1; pointer-events: auto; }
-  .wl-item[data-fav-row="1"]:hover .meta-vol { visibility: hidden; }
+  .wl-item[data-fav-row="1"]:hover .meta-vol .mv-sfx { visibility: hidden; }
 }
 @media (hover: none) {
   .wl-fav-remove { display: none; }
@@ -2718,8 +2732,17 @@ function renderWatchlist() {
     }
     if (columnPrefs.volume) {
       const vol = (overrides.vol != null) ? overrides.vol : dailyVolume(item.id);
-      if (vol > 0) parts.push(`<span class="meta-piece meta-vol" title="Daily traded volume">${abbreviateNumber(vol)}</span>`);
-      else parts.push(`<span class="meta-piece meta-vol" title="Daily traded volume">—</span>`);
+      if (vol > 0) {
+        /* Split "1.53M" into number + suffix spans: on favorites rows the
+           delete button swaps in for JUST the K/M suffix on hover
+           (TradingView-style "1.53[🗑]") so nothing shifts. */
+        const ab = String(abbreviateNumber(vol));
+        const sm = ab.match(/^(.*?)([KMB])$/);
+        const volHtml = sm ? `${sm[1]}<span class="mv-sfx">${sm[2]}</span>` : ab;
+        parts.push(`<span class="meta-piece meta-vol" title="Daily traded volume">${volHtml}</span>`);
+      } else {
+        parts.push(`<span class="meta-piece meta-vol" title="Daily traded volume">—</span>`);
+      }
     }
     return parts.length ? `<span class="wl-meta">${parts.join('')}</span>` : '';
   }
