@@ -600,30 +600,19 @@ button, input { touch-action: manipulation; }
 .legend .high .legend-dash, .legend .high .legend-dot { background: var(--sell-color); }
 .legend .rlow .legend-ring { border-color: var(--buy-color); }
 .legend .rhigh .legend-ring { border-color: var(--sell-color); }
-/* Grade lives INSIDE the active price box now (not as a third overlay tile)
-   so it doesn't cover chart data. Both boxes carry a grade element; CSS only
-   shows the one whose parent is .selected. */
-.price-grade { display: none; }
-.price-box.selected .price-grade { display: flex; align-items: baseline; gap: 6px; margin-top: 4px; padding-top: 4px; border-top: 1px dashed rgba(255,255,255,0.18); font-size: 10px; }
+/* pg-* type styles are kept for the GLOSSARY rows and the Analyst gauge
+   (.pg-help "?" chip); the per-box grade badges themselves were removed. */
 .pg-num { font-size: 17px; font-weight: 900; letter-spacing: -0.5px; line-height: 1; }
 .pg-verdict { font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; line-height: 1; }
-.pg-ctx { font-size: 8px; color: var(--text-muted); margin-left: auto; line-height: 1; letter-spacing: 0.4px; }
+.pg-ctx { font-size: 8px; color: var(--text-muted); line-height: 1; letter-spacing: 0.4px; }
 /* Desktop (≥1024px): lay each price box out horizontally so Target Buy / Sell
-   read as compact quote bars that use the full width, and show BOTH grades
-   inline at the right edge — fills the empty middle the two tall boxes had.
+   read as compact quote bars that use the full width.
    Mobile (<1024px) keeps the original stacked layout, untouched. */
 @media screen and (min-width: 1024px) {
   .price-strip { gap: 10px; }
   .price-box { display: flex; align-items: center; gap: 18px; padding: 10px 18px 10px 20px; }
   .price-label { flex-direction: column; align-items: flex-start; justify-content: center; gap: 2px; flex-shrink: 0; }
-  .price-val { font-size: 28px; margin-top: 0; flex-shrink: 0; white-space: nowrap; letter-spacing: -0.7px; }
-  .price-grade, .price-box.selected .price-grade {
-    display: flex; align-items: center; gap: 8px;
-    margin: 0 0 0 auto; padding: 2px 0 2px 16px;
-    border-top: none; border-left: 1px dashed rgba(255,255,255,0.18); font-size: 11px;
-  }
-  .price-grade .pg-ctx { margin-left: 2px; }
-  .price-grade .pg-num { font-size: 20px; }
+  .price-val { font-size: 28px; margin-top: 0; flex-shrink: 0; white-space: nowrap; letter-spacing: -0.7px; margin-left: auto; }
 }
 /* Medium-desktop band: viewports between the mobile breakpoint (1024px)
    and a comfortable wide-desktop width were overflowing for items with
@@ -634,9 +623,6 @@ button, input { touch-action: manipulation; }
 @media screen and (min-width: 1024px) and (max-width: 1279px) {
   .price-box { gap: 12px; padding: 8px 14px 8px 16px; }
   .price-val { font-size: 22px; letter-spacing: -0.4px; }
-  .price-grade, .price-box.selected .price-grade { gap: 6px; padding: 2px 0 2px 10px; font-size: 10px; }
-  .price-grade .pg-num { font-size: 16px; }
-  .price-grade .pg-verdict { font-size: 9px; }
   /* Same squeeze applies to the time toolbar: compact buttons so title +
      toolbar share one ticker-header row instead of clipping or wrapping. */
   .ticker-header .toolbar { padding: 3px; gap: 3px; }
@@ -1021,18 +1007,7 @@ button, input { touch-action: manipulation; }
   .price-box { display: flex; align-items: center; gap: 6px; padding: 3px 8px; min-width: 0; overflow: hidden; }
   .price-label { flex-direction: column; align-items: flex-start; gap: 0; flex-shrink: 0; font-size: 8px; }
   .live-val { font-size: 8px; }
-  .price-val { font-size: 17px; margin-top: 0; flex-shrink: 1; white-space: nowrap; line-height: 1.1; letter-spacing: -0.4px; overflow: hidden; text-overflow: ellipsis; }
-  .price-grade, .price-box.selected .price-grade {
-    display: flex; align-items: center; gap: 3px;
-    margin-top: 0; padding-top: 0; border-top: none;
-    margin-left: auto; font-size: 9px; flex-shrink: 0; min-width: 0;
-  }
-  .price-grade .pg-num { font-size: 14px; }
-  /* Verdict words, "1D" chip and "?" help don't fit a half-width box; the
-     colored score number carries the signal on portrait. */
-  .price-grade .pg-verdict { display: none; }
-  .price-grade .pg-ctx { display: none; }
-  .price-grade .pg-help { display: none; }
+  .price-val { font-size: 17px; margin-top: 0; margin-left: auto; flex-shrink: 1; white-space: nowrap; line-height: 1.1; letter-spacing: -0.4px; overflow: hidden; text-overflow: ellipsis; }
   .calc-container input { font-size: 16px; }
 }
 @media screen and (max-width: 1023px) and (orientation: landscape), screen and (max-height: 600px) and (orientation: landscape) {
@@ -1107,15 +1082,7 @@ button, input { touch-action: manipulation; }
   .price-box { display: flex; align-items: center; gap: 8px; padding: 2px 8px; min-width: 0; overflow: hidden; }
   .price-label { flex-direction: column; align-items: flex-start; gap: 0; flex-shrink: 0; font-size: 9px; }
   .live-val { font-size: 9px; }
-  .price-val { font-size: 15px; margin-top: 0; flex-shrink: 0; white-space: nowrap; line-height: 1.1; letter-spacing: -0.3px; }
-  .price-grade, .price-box.selected .price-grade {
-    display: flex; align-items: center; gap: 4px; margin: 0 0 0 auto;
-    padding: 0; border-top: none; border-left: none; font-size: 8px; flex-shrink: 1; min-width: 0;
-  }
-  .price-grade .pg-num { font-size: 12px; }
-  .price-grade .pg-verdict { font-size: 8px; letter-spacing: 0.2px; white-space: nowrap; }
-  .price-grade .pg-ctx { display: none; }
-  .price-grade .pg-help { display: none; }
+  .price-val { font-size: 15px; margin-top: 0; margin-left: auto; flex-shrink: 0; white-space: nowrap; line-height: 1.1; letter-spacing: -0.3px; }
   .status-text { display: none; }
   /* NOTE: the compact recommended-flip-card overrides for landscape live in
      their own media block AFTER the .flip-card base styles (search
@@ -1504,12 +1471,10 @@ button, input { touch-action: manipulation; }
         <div id="buyPrice" class="price-box low">
           <div class="price-label">Target Buy <span id="lblLiveBuy" class="live-val">Live: —</span></div>
           <div class="price-val"><span>—</span></div>
-          <div class="price-grade" id="buyGrade"></div>
         </div>
         <div id="sellPrice" class="price-box high selected">
           <div class="price-label">Target Sell <span id="lblLiveSell" class="live-val">Live: —</span></div>
           <div class="price-val"><span>—</span></div>
-          <div class="price-grade" id="sellGrade"></div>
         </div>
       </div>
 
@@ -1574,13 +1539,8 @@ button, input { touch-action: manipulation; }
       <div class="glossary-section">Favorite reorder</div>
       <div class="glossary-row"><span style="font-size:11px;font-weight:700;color:var(--text-muted)">▲ / ▼</span><span>Move a favorite up or down inside the Favorites list (tap the small chevrons on hover-revealed reorder controls). Tap × on a row to remove it, or swipe-left on touch.</span></div>
 
-      <div class="glossary-section">Order badge (next to Target / Swing prices — will this order fill, and when?)</div>
-      <div class="glossary-row"><span class="pg-verdict" style="color:#1FB85C;font-size:10px;">FILLS NOW</span><span>The live market is at (or past) your level — place the order and it fills right away. Number is 90–100 (100 = the market is exactly on it).</span></div>
-      <div class="glossary-row"><span class="pg-verdict" style="color:#9BD4AE;font-size:10px;">FILLS SOON</span><span>The market printed at your level within the <strong>last 24 hours</strong> (real hours — same rule on every chart timeframe). The order fills on the dips/spikes that keep visiting it. Number is 70–89 by how close the current price sits.</span></div>
-      <div class="glossary-row"><span class="pg-verdict" style="color:#D6CCB2;font-size:10px;">WAIT FOR DIP / PEAK</span><span>The market hasn't been at your level in the last day — your bid sits below (or your ask above) and waits for the price to come back. Always under 70; the number shows how close the moment is.</span></div>
-      <div class="glossary-row"><span class="pg-verdict" style="color:#EF5350;font-size:10px;">NO MARGIN</span><span>The recommended buy/sell pair doesn't beat the 2% GE tax on this timeframe — there's no flip to place.</span></div>
-      <div class="glossary-row"><span class="pg-verdict" style="color:#FF9F43;font-size:10px;">THIN — HOLD</span><span>The pair clears the tax by under 0.5% — technically profitable, practically not worth the slot.</span></div>
-      <div class="glossary-row"><span class="pg-ctx" style="font-size:10px;">1D / 5D / 1M…</span><span>The chip shows which timeframe's targets the badge is judging. The badge only answers "will it fill" — whether you should be buying or selling this item at all is the <strong>Analyst Rating</strong> gauge's job.</span></div>
+      <div class="glossary-section">Analyst Rating (sidebar gauge — the one opinion on the page)</div>
+      <div class="glossary-row"><span class="pg-verdict" style="color:var(--buy-color);font-size:10px;">STRONG BUY … STRONG SELL</span><span>One call, scored against the selected chart timeframe's price range: near the window's floor with a real margin reads Buy; near its ceiling reads Sell; mid-range reads Neutral. "Buy the Dip" / "Sell the Rip" mean the setup is forming but the price hasn't reached the target level yet. Advisory only — the Target / Swing prices are the actual trade.</span></div>
 
       <div class="glossary-section">Target prices</div>
       <div class="glossary-row"><span class="pg-verdict" style="color:var(--buy-color)">Target Buy</span><span>Shown on the 1D timeframe — the day-flip bid. 15th-percentile of insta-sell prints in the last ~90 minutes (wall-clock), nudged toward the very-recent realised low. For high-volatility items (24h range &gt;4%) the anchor blends toward 0.5% above the 24h low, so a patient bid can catch multi-hour dips.</span></div>
@@ -2048,8 +2008,8 @@ function restoreCalculator(itemLimit, recBuy, recSell) {
   renderRatingGauge(selected, $('#ratingGauge'));
 }
 
-$('#buyPrice').onclick = () => { activePriceBox = 'buy'; updateSelection(); updateGradeBadge(); queueDraw(); };
-$('#sellPrice').onclick = () => { activePriceBox = 'sell'; updateSelection(); updateGradeBadge(); queueDraw(); };
+$('#buyPrice').onclick = () => { activePriceBox = 'buy'; updateSelection(); queueDraw(); };
+$('#sellPrice').onclick = () => { activePriceBox = 'sell'; updateSelection(); queueDraw(); };
 function updateSelection() {
   $('#buyPrice').classList.toggle('selected', activePriceBox === 'buy');
   $('#sellPrice').classList.toggle('selected', activePriceBox === 'sell');
@@ -3843,8 +3803,8 @@ function renderTargetBoxes() {
   const tf = view.toUpperCase();
   const buyLbl = swing ? `Swing Buy · ${tf}` : 'Target Buy';
   const sellLbl = swing ? `Swing Sell · ${tf}` : 'Target Sell';
-  $("#buyPrice").innerHTML = `<div class="price-label">${buyLbl} <span class="live-val">Live: ${fmtGp(liveBuyRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedBuy)}</span></div><div class="price-grade" id="buyGrade"></div>`;
-  $("#sellPrice").innerHTML = `<div class="price-label">${sellLbl} <span class="live-val">Live: ${fmtGp(liveSellRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedSell)}</span></div><div class="price-grade" id="sellGrade"></div>`;
+  $("#buyPrice").innerHTML = `<div class="price-label">${buyLbl} <span class="live-val">Live: ${fmtGp(liveBuyRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedBuy)}</span></div>`;
+  $("#sellPrice").innerHTML = `<div class="price-label">${sellLbl} <span class="live-val">Live: ${fmtGp(liveSellRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedSell)}</span></div>`;
 }
 
 /* Composite 0–100 grade for the currently-selected item on the SELECTED
@@ -3996,64 +3956,10 @@ function computeGrade(item, side) {
   return { grade, verdict, color };
 }
 
-/* ── Order badge: will the RECOMMENDED ORDER fill, and when? ─────────────
-   The number beside each target answers exactly ONE question: how close
-   is this order to filling. 100 = fills immediately at current prices.
-     "Fills Now"  — live market is at (or past) your level (within 2%).
-     "Fills Soon" — the level printed within the last 24 HOURS (fixed
-                    wall-clock horizon on every timeframe — "recent" must
-                    mean recent, not 'six weeks ago' on a 6M chart); the
-                    order fills on the dips/spikes that keep visiting it.
-     "Wait for Dip / Peak" — the market hasn't been at your level lately.
-   Margin gates override: if the recommended pair can't beat the 2% tax
-   there's no flip to grade. Level QUALITY isn't re-graded here — the
-   targets are built to be good levels; the Analyst Rating gauge is the
-   separate opinion on the ITEM (buy vs sell vs the window's range). */
-function computeOrderBadge(side) {
-  if (!selected || !currentSeries || !currentSeries.labels || !currentSeries.labels.length) return null;
-  const node = latest?.data?.[String(selected.id)];
-  if (!node) return null;
-  const current = side === 'buy' ? (node.low ?? node.avgLowPrice ?? 0) : (node.high ?? node.avgHighPrice ?? 0);
-  const level = side === 'buy' ? recommendedBuy : recommendedSell;
-  if (!(current > 0) || !(level > 0)) return null;
-  if (recommendedBuy > 0 && recommendedSell > 0) {
-    const tax = calculateTax(recommendedSell, selected.id);
-    const m = (recommendedSell - recommendedBuy - tax) / recommendedBuy;
-    if (m <= 0) return { grade: 15, verdict: 'No Margin', color: '#EF5350' };
-    if (m < 0.005) return { grade: 40, verdict: 'Thin — Hold', color: '#FF9F43' };
-  }
-  /* Proximity ramp: how close the market side that fills you is to the
-     level. 0.8 -> 0, 1.0 -> 100. */
-  const p = side === 'buy' ? level / current : current / level;
-  const ramp = Math.round(100 * Math.max(0, Math.min(1, (p - 0.8) / 0.2)));
-  /* Did the market print at/past the level within the last 24h? */
-  const S = currentSeries, L = S.labels;
-  const tCut = L[L.length - 1] - 86400;
-  let touched = false;
-  for (let i = L.length - 1; i >= 0 && L[i] >= tCut; i--) {
-    if (side === 'sell') { if (S.high[i] != null && S.high[i] >= level) { touched = true; break; } }
-    else { if (S.low[i] != null && S.low[i] <= level) { touched = true; break; } }
-  }
-  if (p >= 0.98) return { grade: Math.max(90, ramp), verdict: 'Fills Now', color: '#1FB85C' };
-  if (touched)   return { grade: Math.max(70, Math.min(89, ramp)), verdict: 'Fills Soon', color: '#9BD4AE' };
-  return { grade: Math.min(ramp, 69), verdict: side === 'buy' ? 'Wait for Dip' : 'Wait for Peak', color: '#D6CCB2' };
-}
-
-function updateGradeBadge() {
-  const buyDiv = $('#buyGrade'), sellDiv = $('#sellGrade');
-  const clear = () => { if (buyDiv) buyDiv.innerHTML = ''; if (sellDiv) sellDiv.innerHTML = ''; };
-  if (!selected || !currentSeries || overMaxData[String(selected.id)]) { clear(); return; }
-  function fill(div, side) {
-    if (!div) return;
-    const g = computeOrderBadge(side);
-    if (!g) { div.innerHTML = ''; return; }
-    const ordWord = side === 'buy' ? 'bid' : 'ask';
-    const gradeTip = `How close this ${ordWord} is to filling — 100 = fills immediately at current prices. "Fills Now" = the market is at your level. "Fills Soon" = the level printed within the last 24 hours, so the order fills on the swings that keep visiting it. "Wait" = the market hasn't been at your level lately; the order sits until it comes back. The Analyst Rating (sidebar) is the separate call on whether to be buying or selling this item at all. Tap for the full glossary.`;
-    div.innerHTML = `<span class="pg-num" style="color:${g.color}">${g.grade}</span><span class="pg-verdict" style="color:${g.color}">${g.verdict}</span><span class="pg-ctx">${view.toUpperCase()}</span><span class="pg-help" title="${gradeTip}" role="button" aria-label="What does this order badge mean?">?</span>`;
-  }
-  fill(buyDiv, 'buy');
-  fill(sellDiv, 'sell');
-}
+/* The per-box grade/fill badges were removed: they duplicated the Analyst
+   Rating's job and every wording of them read as a second opinion fighting
+   the targets. The boxes now show just the level + live quote; the gauge
+   is the single opinion on the page. */
 
 /* ════════════════════════════════════════════════════════════════════════
    ANALYST RATING GAUGE — reframes computeGrade(buy)+(sell) into ONE
@@ -5312,7 +5218,7 @@ function renderOverMax(m) {
     </div>`;
   selectedAbsIdx = null;
   offset = Math.max(0, currentSeries.labels.length - Math.floor(currentSeries.labels.length / zoom));
-  updateGradeBadge();
+  
   refreshItemInsights(m, null);
   resizeCanvas();
   $("#status").textContent = "Live"; $("#status").classList.add("live");
@@ -5340,7 +5246,7 @@ function refreshChart() {
   recommendedBuy = targets.buy; recommendedSell = targets.sell;
   renderTargetBoxes();
   restoreCalculator(selected.limit, recommendedBuy, recommendedSell);
-  updateGradeBadge();
+  
   refreshItemInsights(selected, latest?.data?.[String(selected.id)]);
   resizeCanvas();
 }
@@ -5502,7 +5408,7 @@ async function setItem(m, opts = {}) {
 
   restoreCalculator(m.limit, recommendedBuy, recommendedSell);
   offset = Math.max(0, currentSeries.labels.length - Math.floor(currentSeries.labels.length / zoom));
-  updateGradeBadge();
+  
   refreshItemInsights(m, node);
   resizeCanvas();
   $("#status").textContent = "Live"; $("#status").classList.add("live");
@@ -5692,7 +5598,7 @@ setItem._userPicked = false;
           const targets = computeViewTargets(node, selected.id);
           recommendedBuy = targets.buy; recommendedSell = targets.sell;
           renderTargetBoxes();
-          updateGradeBadge();
+          
           refreshItemInsights(selected, node);
           queueDraw();
         }
