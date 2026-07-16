@@ -1580,7 +1580,7 @@ button, input { touch-action: manipulation; }
       <div class="glossary-row"><span class="pg-num" style="color:#D6CCB2;font-size:14px;">50–69</span><span><strong>OK Buy / OK Sell</strong> — middling. Not bad, not great. Wait for better unless you need the flip now.</span></div>
       <div class="glossary-row"><span class="pg-num" style="color:#FF9F43;font-size:14px;">30–49</span><span><strong>Weak Buy / Weak Sell</strong> — price sits closer to the wrong end of the day's range for your side.</span></div>
       <div class="glossary-row"><span class="pg-num" style="color:#EF5350;font-size:14px;">&lt;30</span><span><strong>Avoid Buying / Avoid Selling</strong> — the price is at the wrong end of the range for your active side.</span></div>
-      <div class="glossary-row"><span class="pg-verdict" style="color:#D6CCB2;font-size:10px;">WAIT FOR DIP / PEAK</span><span>The live spread doesn't beat the 2% tax right now, but this timeframe's range shows a real flip — place a patient bid/ask instead of trading instantly. Wait verdicts always score under 70 (they're "don't act yet" by definition).</span></div>
+      <div class="glossary-row"><span class="pg-verdict" style="color:#D6CCB2;font-size:10px;">WAIT FOR DIP / PEAK</span><span>The moment hasn't arrived: on 1D it means the live spread doesn't beat the 2% tax yet; on swing timeframes it means the live price hasn't reached your Swing Buy / Swing Sell level (your bid sits below, or your ask sits above — the order waits). Wait verdicts always score under 70: they're "don't act yet" by definition, and the number shows how close the moment is.</span></div>
 
       <div class="glossary-section">Target prices</div>
       <div class="glossary-row"><span class="pg-verdict" style="color:var(--buy-color)">Target Buy</span><span>Shown on the 1D timeframe — the day-flip bid. 15th-percentile of insta-sell prints in the last ~90 minutes (wall-clock), nudged toward the very-recent realised low. For high-volatility items (24h range &gt;4%) the anchor blends toward 0.5% above the 24h low, so a patient bid can catch multi-hour dips.</span></div>
@@ -3923,6 +3923,25 @@ function computeGrade(item, side) {
     verdict = 'Thin — Hold'; color = '#FF9F43';
     return { grade, verdict, color };
   }
+  /* SWING views: the badge sits next to a RECOMMENDED ORDER LEVEL (Swing
+     Buy / Swing Sell), so it must describe THAT order, not market-dumping
+     at the live quote — "36 Weak Sell" beside a good 1,783 ask read as
+     "1,783 is a weak sell". If the live price hasn't reached the level
+     yet, the honest verdict is a wait: your ask sits above (Wait for
+     Peak) or your bid sits below (Wait for Dip). Within 2% of the level
+     the order is effectively live and the normal action ladder applies.
+     The 0–100 number keeps measuring how ripe the moment is, and waits
+     stay capped below the 70+ act tier. */
+  if (view !== '1d') {
+    if (side === 'sell' && recommendedSell > 0 && current < recommendedSell * 0.98) {
+      grade = Math.min(grade, 69);
+      return { grade, verdict: 'Wait for Peak', color: '#D6CCB2' };
+    }
+    if (side === 'buy' && recommendedBuy > 0 && current > recommendedBuy * 1.02) {
+      grade = Math.min(grade, 69);
+      return { grade, verdict: 'Wait for Dip', color: '#D6CCB2' };
+    }
+  }
   /* Right-now is tight but the timeframe shows a real range — tell the user
      the opportunity is there if they're patient (don't hide it behind "Fair"). */
   if ((currentMarginPct ?? 1) <= 0 && (dayMarginPct ?? 0) > 0.01) {
@@ -3994,7 +4013,10 @@ function renderRatingGauge(item, mountEl, opts = {}) {
     else {
       const b = gBuy.grade, s = gSell.grade;
       const dir = (b >= s) ? 1 : -1, dom = Math.max(b, s), mag = Math.max(0, Math.min(1, (dom - 40) / 60));
-      const patient = /^Wait/.test(vB) || /^Wait/.test(vS);
+      /* Patient only when the DOMINANT side is itself a wait — a ripe
+         "100 Steal Buy" paired with the other side's "Wait for Peak" is an
+         act-now Strong Buy, not "not yet". */
+      const patient = /^Wait/.test((b >= s) ? vB : vS);
       if (patient) {
         signed = dir * Math.min(mag, 0.55); strong = false;
         if (dir > 0) { label = 'Buy the Dip'; hue = 'var(--buy-color)'; liveIdx = 3; }
