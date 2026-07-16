@@ -3935,7 +3935,10 @@ function renderRatingGauge(item, mountEl, opts = {}) {
       }
     }
   }
-  const needleX = (signed + 1) / 2 * 100, aria = Math.round(signed * 100);
+  /* Track runs BUY (left) → SELL (right) to mirror the page layout: Target
+     Buy is the left price box, Target Sell the right. signed=+1 (strong
+     buy) therefore lands at 0%, signed=-1 at 100%. */
+  const needleX = (1 - signed) / 2 * 100, aria = Math.round(signed * 100);
   const segCls = i => 'rg-seg ' + ['rg-ss', 'rg-s', 'rg-n', 'rg-b', 'rg-sb'][i] + (i === liveIdx ? ' is-live' : '');
   const tip = ('Analyst Rating condenses the same 0–100 buy and sell grade — scored against the 1-day flip ' +
     'window, identical on every chart timeframe — into one call, Strong Sell to Strong Buy. It points to ' +
@@ -3948,11 +3951,11 @@ function renderRatingGauge(item, mountEl, opts = {}) {
     '<div class="rg-label' + (strong ? ' is-strong' : '') + '" style="color:' + hue + '">' + label + '</div>' +
     '<div class="rg-meter' + (muted ? ' is-muted' : '') + '" role="meter" aria-valuemin="-100" aria-valuemax="100" ' +
       'aria-valuenow="' + aria + '" aria-valuetext="' + label + '" aria-label="Analyst rating: ' + label + (sub ? ', ' + sub : '') + '">' +
-      '<div class="rg-track">' + [0, 1, 2, 3, 4].map(i => '<span class="' + segCls(i) + '"></span>').join('') + '</div>' +
+      '<div class="rg-track">' + [4, 3, 2, 1, 0].map(i => '<span class="' + segCls(i) + '"></span>').join('') + '</div>' +
       '<span class="rg-needle" style="left:' + needleX + '%;--rg-hue:' + hue + '"></span>' +
     '</div>' +
-    '<div class="rg-scale"><span class="rg-end rg-end-sell">Sell</span>' +
-      '<span class="rg-sub">' + sub + '</span><span class="rg-end rg-end-buy">Buy</span></div>';
+    '<div class="rg-scale"><span class="rg-end rg-end-buy">Buy</span>' +
+      '<span class="rg-sub">' + sub + '</span><span class="rg-end rg-end-sell">Sell</span></div>';
 }
 
 /* Quick-facts strip below the chart: live insta-buy/insta-sell with "…ago"
