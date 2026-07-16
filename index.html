@@ -1584,7 +1584,7 @@ button, input { touch-action: manipulation; }
 
       <div class="glossary-section">Target prices</div>
       <div class="glossary-row"><span class="pg-verdict" style="color:var(--buy-color)">Target Buy</span><span>Shown on the 1D timeframe — the day-flip bid. 15th-percentile of insta-sell prints in the last ~90 minutes (wall-clock), nudged toward the very-recent realised low. For high-volatility items (24h range &gt;4%) the anchor blends toward 0.5% above the 24h low, so a patient bid can catch multi-hour dips.</span></div>
-      <div class="glossary-row"><span class="pg-verdict" style="color:var(--sell-color)">Target Sell</span><span>Shown on the 1D timeframe — the day-flip ask. -1 below the 85th-percentile of insta-buy prints in the last ~90 minutes, floored at live insta-buy so we never recommend selling below where buyers are paying right now. For high-volatility items the anchor blends toward 0.5% below the 24h high.</span></div>
+      <div class="glossary-row"><span class="pg-verdict" style="color:var(--sell-color)">Target Sell</span><span>Shown on the 1D timeframe — the day-flip ask. -1 below the 85th-percentile of insta-buy prints in the last ~90 minutes, floored at live insta-buy so we never recommend selling below where buyers are paying right now. For high-volatility items the anchor blends toward 0.5% below the 24h high. If the live spread can't beat the 2% tax, both 1D boxes switch to the day's realized dip/peak (recency-weighted percentiles of the day's prints) — the levels worth placing patient orders at.</span></div>
       <div class="glossary-row"><span class="pg-verdict" style="color:var(--buy-color)">Swing Buy / Sell</span><span>On 5D and longer timeframes the boxes switch to swing anchors for THAT window — day trade vs swing trade. Swing Buy sits near the window's realised floor, Swing Sell near its ceiling, using recency-weighted percentiles: a high printed last week counts in full, one from months ago barely counts — so a downtrending item won't quote you a sell level the market left behind. Never the absolute min/max, so one freak spike can't set your target. The grade beside each number judges the same window.</span></div>
 
       <div class="glossary-section">Bank of Gielinor</div>
@@ -3786,7 +3786,21 @@ function computeSwingTargets(series) {
    sparse to trust percentiles). */
 function computeViewTargets(node, id) {
   const engine = runTradeEngine(liveBuyRaw, liveSellRaw, pickEngineSeries(currentItemSrc) || currentSeries, node, id);
-  if (view === '1d') return engine;
+  if (view === '1d') {
+    /* Dead live spread: the engine converges both targets on the live
+       quote ("buy 1,640 / sell 1,640") — useless. If the DAY's prints
+       still show a real range (insta-buys spiking 1,690 all day while
+       live sits 1,640), anchor the boxes to the day's recency-weighted
+       dip/peak instead, so they show the levels worth waiting for. Only
+       when that day-pair actually beats the tax; else keep the engine's
+       honest no-margin pair. */
+    const tax = calculateTax(engine.sell, id);
+    if (engine.sell - engine.buy - tax <= 0) {
+      const day = computeSwingTargets(currentSeries);
+      if (day && day.sell - day.buy - calculateTax(day.sell, id) > 0) return day;
+    }
+    return engine;
+  }
   return computeSwingTargets(currentSeries) || engine;
 }
 /* Shared renderer for the two target boxes — labels say what the number
@@ -3923,24 +3937,23 @@ function computeGrade(item, side) {
     verdict = 'Thin — Hold'; color = '#FF9F43';
     return { grade, verdict, color };
   }
-  /* SWING views: the badge sits next to a RECOMMENDED ORDER LEVEL (Swing
-     Buy / Swing Sell), so it must describe THAT order, not market-dumping
-     at the live quote — "36 Weak Sell" beside a good 1,783 ask read as
-     "1,783 is a weak sell". If the live price hasn't reached the level
-     yet, the honest verdict is a wait: your ask sits above (Wait for
-     Peak) or your bid sits below (Wait for Dip). Within 2% of the level
-     the order is effectively live and the normal action ladder applies.
-     The 0–100 number keeps measuring how ripe the moment is, and waits
-     stay capped below the 70+ act tier. */
-  if (view !== '1d') {
-    if (side === 'sell' && recommendedSell > 0 && current < recommendedSell * 0.98) {
-      grade = Math.min(grade, 69);
-      return { grade, verdict: 'Wait for Peak', color: '#D6CCB2' };
-    }
-    if (side === 'buy' && recommendedBuy > 0 && current > recommendedBuy * 1.02) {
-      grade = Math.min(grade, 69);
-      return { grade, verdict: 'Wait for Dip', color: '#D6CCB2' };
-    }
+  /* The badge sits next to a RECOMMENDED ORDER LEVEL, so it must describe
+     THAT order, not market-dumping at the live quote — "36 Weak Sell"
+     beside a good 1,783 ask read as "1,783 is a weak sell". If the live
+     price hasn't reached the level yet, the honest verdict is a wait:
+     your ask sits above (Wait for Peak) or your bid sits below (Wait for
+     Dip). Within 2% of the level the order is effectively live and the
+     normal action ladder applies. Applies on every timeframe — 1D targets
+     diverge from live too when the dead-spread day-anchor fallback kicks
+     in. The 0–100 number keeps measuring how ripe the moment is, and
+     waits stay capped below the 70+ act tier. */
+  if (side === 'sell' && recommendedSell > 0 && current < recommendedSell * 0.98) {
+    grade = Math.min(grade, 69);
+    return { grade, verdict: 'Wait for Peak', color: '#D6CCB2' };
+  }
+  if (side === 'buy' && recommendedBuy > 0 && current > recommendedBuy * 1.02) {
+    grade = Math.min(grade, 69);
+    return { grade, verdict: 'Wait for Dip', color: '#D6CCB2' };
   }
   /* Right-now is tight but the timeframe shows a real range — tell the user
      the opportunity is there if they're patient (don't hide it behind "Fair"). */
