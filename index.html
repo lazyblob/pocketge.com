@@ -4714,7 +4714,6 @@ function drawChart(series) {
 
   const buyColor = getComputedStyle(document.documentElement).getPropertyValue('--buy-color').trim();
   const sellColor = getComputedStyle(document.documentElement).getPropertyValue('--sell-color').trim();
-  const priceColor = "#C2CBDC"; // neutral, used when there's no buy/sell spread (historical)
 
   /* Long-range historical data (1Y / 5Y) is a single daily price — insta-buy
      and insta-sell are equal — so the two-tone buy/sell scheme is meaningless
@@ -4792,22 +4791,21 @@ function drawChart(series) {
       }
     }
   }
-  /* Single-price historical (1Y/5Y where buy === sell daily) → render as a
-     proper area line chart instead of pale dot-scatter. Daily aggregated
-     prices read as a continuous series, not a cloud of independent prints,
-     so a connected line + soft gradient fill is the conventional viz AND
-     fits the dark theme far better than the washed-out grey dots did. The
-     period-high / period-low halos still anchor the extremes. Two-tone
-     intraday scatter takes the regular branch. */
+  /* Single-price historical (1Y/5Y where buy === sell daily) → SAME visual
+     language as the intraday scatter, so switching timeframes doesn't feel
+     like landing on a different product: teal dots at the regular dot size
+     (sampled to the same on-screen cadence — daily points at 0.5 px apart
+     would smear into a rope), a faint teal thread underneath carrying every
+     spike between sampled dots, the usual soft band-tone underfill, and the
+     shared white EMA trend on top. Period high/low halos anchor extremes. */
   if (singlePrice) {
-    /* Build the smoothed series — daily 1Y has 365 points; 5Y has ~1800.
-       Use HI (which equals LO here) as the canonical price track. */
     const xs = (k) => x0 + k * stepX;
-    /* Soft area fill from the line down to the chart baseline. */
     ctx.save();
+    /* Underfill at the SAME tone as the spread band on intraday views
+       (0.13 → fade), not the heavy 0.28 area fill that read off-brand. */
     const grad = ctx.createLinearGradient(0, y0, 0, y0 + h_price);
-    grad.addColorStop(0, 'rgba(38, 166, 154, 0.28)');
-    grad.addColorStop(1, 'rgba(38, 166, 154, 0.02)');
+    grad.addColorStop(0, 'rgba(38, 166, 154, 0.13)');
+    grad.addColorStop(1, 'rgba(38, 166, 154, 0.01)');
     ctx.fillStyle = grad;
     ctx.beginPath();
     let started = false, firstX = 0, lastX = 0;
@@ -4824,8 +4822,9 @@ function drawChart(series) {
       ctx.closePath();
       ctx.fill();
     }
-    /* Crisp line on top. */
-    ctx.strokeStyle = '#5DD5C5'; ctx.lineWidth = 1.5; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
+    /* Faint thread through every print — keeps spikes honest between the
+       sampled dots without reading as a bold "line chart" line. */
+    ctx.strokeStyle = 'rgba(38, 166, 154, 0.35)'; ctx.lineWidth = 1; ctx.lineJoin = 'round'; ctx.lineCap = 'round';
     ctx.beginPath();
     started = false;
     for (let i = 0; i < HI.length; i++) {
@@ -4834,6 +4833,13 @@ function drawChart(series) {
       if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
     }
     ctx.stroke();
+    /* Dots at the familiar size/color, one per ~4.5 px of track. */
+    const idxStep = Math.max(1, Math.round(4.5 / Math.max(0.1, stepX)));
+    ctx.fillStyle = sellColor;
+    for (let i = 0; i < HI.length; i += idxStep) {
+      if (HI[i] == null) continue;
+      ctx.beginPath(); ctx.arc(xs(i), ypx(HI[i], vmin, vmax, y0, h_price), 2.2, 0, Math.PI * 2); ctx.fill();
+    }
     ctx.restore();
     /* Period high / low halos — drawn as standalone marks instead of
        riding on the (now-absent) dot scatter, so the extremes still stand
