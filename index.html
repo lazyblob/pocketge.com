@@ -3975,16 +3975,27 @@ function computeGrade(item, side) {
      beside a good 1,783 ask read as "1,783 is a weak sell". If the live
      price hasn't reached the level yet, the honest verdict is a wait:
      your ask sits above (Wait for Peak) or your bid sits below (Wait for
-     Dip). Within 2% of the level the order is effectively live and the
-     normal action ladder applies. Applies on every timeframe — 1D targets
-     diverge from live too when the dead-spread day-anchor fallback kicks
-     in. The 0–100 number keeps measuring how ripe the moment is, and
-     waits stay capped below the 70+ act tier. */
-  if (side === 'sell' && recommendedSell > 0 && current < recommendedSell * 0.98) {
+     Dip). The order counts as LIVE — normal action ladder — when either
+     (a) the live quote is within 2% of the level, or (b) the market has
+     actually printed at/past the level in the recent quarter of the
+     window ("Wait for Peak" while the chart shows prints AT the ask was
+     nonsense — the ask fills on those spikes). Applies on every
+     timeframe. Waits stay capped below the 70+ act tier. */
+  const recentTouch = (sellSide) => {
+    const L = gs.labels;
+    if (!L.length) return false;
+    const tCut = L[L.length - 1] - (L[L.length - 1] - L[0]) * 0.25;
+    for (let i = L.length - 1; i >= 0 && L[i] >= tCut; i--) {
+      if (sellSide) { if (gs.high[i] != null && gs.high[i] >= recommendedSell) return true; }
+      else { if (gs.low[i] != null && gs.low[i] <= recommendedBuy) return true; }
+    }
+    return false;
+  };
+  if (side === 'sell' && recommendedSell > 0 && current < recommendedSell * 0.98 && !recentTouch(true)) {
     grade = Math.min(grade, 69);
     return { grade, verdict: 'Wait for Peak', color: '#D6CCB2' };
   }
-  if (side === 'buy' && recommendedBuy > 0 && current > recommendedBuy * 1.02) {
+  if (side === 'buy' && recommendedBuy > 0 && current > recommendedBuy * 1.02 && !recentTouch(false)) {
     grade = Math.min(grade, 69);
     return { grade, verdict: 'Wait for Dip', color: '#D6CCB2' };
   }
