@@ -1574,13 +1574,13 @@ button, input { touch-action: manipulation; }
       <div class="glossary-section">Favorite reorder</div>
       <div class="glossary-row"><span style="font-size:11px;font-weight:700;color:var(--text-muted)">▲ / ▼</span><span>Move a favorite up or down inside the Favorites list (tap the small chevrons on hover-revealed reorder controls). Tap × on a row to remove it, or swipe-left on touch.</span></div>
 
-      <div class="glossary-section">Grade box (0–100 for the active side, judged against the SELECTED chart timeframe — the small 1D/5D/1M chip shows which)</div>
-      <div class="glossary-row"><span class="pg-num" style="color:#4FFF8E;font-size:14px;">85+</span><span><strong>Steal Buy / Top Sell</strong> — elite entry or exit. Price is at the very edge of the range in your favor.</span></div>
-      <div class="glossary-row"><span class="pg-num" style="color:#1FB85C;font-size:14px;">70–84</span><span><strong>Strong Entry / Strong Exit</strong> — clearly in your favor; act.</span></div>
-      <div class="glossary-row"><span class="pg-num" style="color:#D6CCB2;font-size:14px;">50–69</span><span><strong>OK Buy / OK Sell</strong> — middling. Not bad, not great. Wait for better unless you need the flip now.</span></div>
-      <div class="glossary-row"><span class="pg-num" style="color:#FF9F43;font-size:14px;">30–49</span><span><strong>Weak Buy / Weak Sell</strong> — price sits closer to the wrong end of the day's range for your side.</span></div>
-      <div class="glossary-row"><span class="pg-num" style="color:#EF5350;font-size:14px;">&lt;30</span><span><strong>Avoid Buying / Avoid Selling</strong> — the price is at the wrong end of the range for your active side.</span></div>
-      <div class="glossary-row"><span class="pg-verdict" style="color:#D6CCB2;font-size:10px;">WAIT FOR DIP / PEAK</span><span>The moment hasn't arrived: on 1D it means the live spread doesn't beat the 2% tax yet; on swing timeframes it means the live price hasn't reached your Swing Buy / Swing Sell level (your bid sits below, or your ask sits above — the order waits). Wait verdicts always score under 70: they're "don't act yet" by definition, and the number shows how close the moment is.</span></div>
+      <div class="glossary-section">Order badge (next to Target / Swing prices — will this order fill, and when?)</div>
+      <div class="glossary-row"><span class="pg-verdict" style="color:#1FB85C;font-size:10px;">FILLS NOW</span><span>The live market is at (or past) your level — place the order and it fills right away. Number is 90–100 (100 = the market is exactly on it).</span></div>
+      <div class="glossary-row"><span class="pg-verdict" style="color:#9BD4AE;font-size:10px;">FILLS SOON</span><span>The market printed at your level within the <strong>last 24 hours</strong> (real hours — same rule on every chart timeframe). The order fills on the dips/spikes that keep visiting it. Number is 70–89 by how close the current price sits.</span></div>
+      <div class="glossary-row"><span class="pg-verdict" style="color:#D6CCB2;font-size:10px;">WAIT FOR DIP / PEAK</span><span>The market hasn't been at your level in the last day — your bid sits below (or your ask above) and waits for the price to come back. Always under 70; the number shows how close the moment is.</span></div>
+      <div class="glossary-row"><span class="pg-verdict" style="color:#EF5350;font-size:10px;">NO MARGIN</span><span>The recommended buy/sell pair doesn't beat the 2% GE tax on this timeframe — there's no flip to place.</span></div>
+      <div class="glossary-row"><span class="pg-verdict" style="color:#FF9F43;font-size:10px;">THIN — HOLD</span><span>The pair clears the tax by under 0.5% — technically profitable, practically not worth the slot.</span></div>
+      <div class="glossary-row"><span class="pg-ctx" style="font-size:10px;">1D / 5D / 1M…</span><span>The chip shows which timeframe's targets the badge is judging. The badge only answers "will it fill" — whether you should be buying or selling this item at all is the <strong>Analyst Rating</strong> gauge's job.</span></div>
 
       <div class="glossary-section">Target prices</div>
       <div class="glossary-row"><span class="pg-verdict" style="color:var(--buy-color)">Target Buy</span><span>Shown on the 1D timeframe — the day-flip bid. 15th-percentile of insta-sell prints in the last ~90 minutes (wall-clock), nudged toward the very-recent realised low. For high-volatility items (24h range &gt;4%) the anchor blends toward 0.5% above the 24h low, so a patient bid can catch multi-hour dips.</span></div>
@@ -3970,35 +3970,6 @@ function computeGrade(item, side) {
     verdict = 'Thin — Hold'; color = '#FF9F43';
     return { grade, verdict, color };
   }
-  /* The badge sits next to a RECOMMENDED ORDER LEVEL, so it must describe
-     THAT order, not market-dumping at the live quote — "36 Weak Sell"
-     beside a good 1,783 ask read as "1,783 is a weak sell". If the live
-     price hasn't reached the level yet, the honest verdict is a wait:
-     your ask sits above (Wait for Peak) or your bid sits below (Wait for
-     Dip). The order counts as LIVE — normal action ladder — when either
-     (a) the live quote is within 2% of the level, or (b) the market has
-     actually printed at/past the level in the recent quarter of the
-     window ("Wait for Peak" while the chart shows prints AT the ask was
-     nonsense — the ask fills on those spikes). Applies on every
-     timeframe. Waits stay capped below the 70+ act tier. */
-  const recentTouch = (sellSide) => {
-    const L = gs.labels;
-    if (!L.length) return false;
-    const tCut = L[L.length - 1] - (L[L.length - 1] - L[0]) * 0.25;
-    for (let i = L.length - 1; i >= 0 && L[i] >= tCut; i--) {
-      if (sellSide) { if (gs.high[i] != null && gs.high[i] >= recommendedSell) return true; }
-      else { if (gs.low[i] != null && gs.low[i] <= recommendedBuy) return true; }
-    }
-    return false;
-  };
-  if (side === 'sell' && recommendedSell > 0 && current < recommendedSell * 0.98 && !recentTouch(true)) {
-    grade = Math.min(grade, 69);
-    return { grade, verdict: 'Wait for Peak', color: '#D6CCB2' };
-  }
-  if (side === 'buy' && recommendedBuy > 0 && current > recommendedBuy * 1.02 && !recentTouch(false)) {
-    grade = Math.min(grade, 69);
-    return { grade, verdict: 'Wait for Dip', color: '#D6CCB2' };
-  }
   /* Right-now is tight but the timeframe shows a real range — tell the user
      the opportunity is there if they're patient (don't hide it behind "Fair"). */
   if ((currentMarginPct ?? 1) <= 0 && (dayMarginPct ?? 0) > 0.01) {
@@ -4025,19 +3996,60 @@ function computeGrade(item, side) {
   return { grade, verdict, color };
 }
 
+/* ── Order badge: will the RECOMMENDED ORDER fill, and when? ─────────────
+   The number beside each target answers exactly ONE question: how close
+   is this order to filling. 100 = fills immediately at current prices.
+     "Fills Now"  — live market is at (or past) your level (within 2%).
+     "Fills Soon" — the level printed within the last 24 HOURS (fixed
+                    wall-clock horizon on every timeframe — "recent" must
+                    mean recent, not 'six weeks ago' on a 6M chart); the
+                    order fills on the dips/spikes that keep visiting it.
+     "Wait for Dip / Peak" — the market hasn't been at your level lately.
+   Margin gates override: if the recommended pair can't beat the 2% tax
+   there's no flip to grade. Level QUALITY isn't re-graded here — the
+   targets are built to be good levels; the Analyst Rating gauge is the
+   separate opinion on the ITEM (buy vs sell vs the window's range). */
+function computeOrderBadge(side) {
+  if (!selected || !currentSeries || !currentSeries.labels || !currentSeries.labels.length) return null;
+  const node = latest?.data?.[String(selected.id)];
+  if (!node) return null;
+  const current = side === 'buy' ? (node.low ?? node.avgLowPrice ?? 0) : (node.high ?? node.avgHighPrice ?? 0);
+  const level = side === 'buy' ? recommendedBuy : recommendedSell;
+  if (!(current > 0) || !(level > 0)) return null;
+  if (recommendedBuy > 0 && recommendedSell > 0) {
+    const tax = calculateTax(recommendedSell, selected.id);
+    const m = (recommendedSell - recommendedBuy - tax) / recommendedBuy;
+    if (m <= 0) return { grade: 15, verdict: 'No Margin', color: '#EF5350' };
+    if (m < 0.005) return { grade: 40, verdict: 'Thin — Hold', color: '#FF9F43' };
+  }
+  /* Proximity ramp: how close the market side that fills you is to the
+     level. 0.8 -> 0, 1.0 -> 100. */
+  const p = side === 'buy' ? level / current : current / level;
+  const ramp = Math.round(100 * Math.max(0, Math.min(1, (p - 0.8) / 0.2)));
+  /* Did the market print at/past the level within the last 24h? */
+  const S = currentSeries, L = S.labels;
+  const tCut = L[L.length - 1] - 86400;
+  let touched = false;
+  for (let i = L.length - 1; i >= 0 && L[i] >= tCut; i--) {
+    if (side === 'sell') { if (S.high[i] != null && S.high[i] >= level) { touched = true; break; } }
+    else { if (S.low[i] != null && S.low[i] <= level) { touched = true; break; } }
+  }
+  if (p >= 0.98) return { grade: Math.max(90, ramp), verdict: 'Fills Now', color: '#1FB85C' };
+  if (touched)   return { grade: Math.max(70, Math.min(89, ramp)), verdict: 'Fills Soon', color: '#9BD4AE' };
+  return { grade: Math.min(ramp, 69), verdict: side === 'buy' ? 'Wait for Dip' : 'Wait for Peak', color: '#D6CCB2' };
+}
+
 function updateGradeBadge() {
   const buyDiv = $('#buyGrade'), sellDiv = $('#sellGrade');
   const clear = () => { if (buyDiv) buyDiv.innerHTML = ''; if (sellDiv) sellDiv.innerHTML = ''; };
   if (!selected || !currentSeries || overMaxData[String(selected.id)]) { clear(); return; }
   function fill(div, side) {
     if (!div) return;
-    const g = computeGrade(selected, side);
+    const g = computeOrderBadge(side);
     if (!g) { div.innerHTML = ''; return; }
-    const sideWord = side === 'buy' ? 'buying' : 'selling';
-    const tip85 = side === 'buy' ? 'Steal Buy' : 'Top Sell';
-    const tip50 = side === 'buy' ? 'OK Buy' : 'OK Sell';
-    const gradeTip = `How good is ${sideWord} this item RIGHT NOW, judged against its ${view.toUpperCase()} price range — switch the chart timeframe and the score re-judges against that window. 0–100, higher is better. 85+ = ${tip85}, 70+ = Strong, 50+ = ${tip50}, under 30 = avoid. A "Wait" verdict always scores under 70: the setup is forming but the live spread doesn't pay yet. Tap for the full glossary.`;
-    div.innerHTML = `<span class="pg-num" style="color:${g.color}">${g.grade}</span><span class="pg-verdict" style="color:${g.color}">${g.verdict}</span><span class="pg-ctx">${view.toUpperCase()}</span><span class="pg-help" title="${gradeTip}" role="button" aria-label="What does this grade mean?">?</span>`;
+    const ordWord = side === 'buy' ? 'bid' : 'ask';
+    const gradeTip = `How close this ${ordWord} is to filling — 100 = fills immediately at current prices. "Fills Now" = the market is at your level. "Fills Soon" = the level printed within the last 24 hours, so the order fills on the swings that keep visiting it. "Wait" = the market hasn't been at your level lately; the order sits until it comes back. The Analyst Rating (sidebar) is the separate call on whether to be buying or selling this item at all. Tap for the full glossary.`;
+    div.innerHTML = `<span class="pg-num" style="color:${g.color}">${g.grade}</span><span class="pg-verdict" style="color:${g.color}">${g.verdict}</span><span class="pg-ctx">${view.toUpperCase()}</span><span class="pg-help" title="${gradeTip}" role="button" aria-label="What does this order badge mean?">?</span>`;
   }
   fill(buyDiv, 'buy');
   fill(sellDiv, 'sell');
