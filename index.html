@@ -501,6 +501,15 @@ button, input { touch-action: manipulation; }
 .ticker-header { background: var(--bg-panel); border: 1px solid var(--border-main); border-radius: 6px; padding: 6px 14px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px 12px; flex-shrink: 0; }
 .ticker-title-group { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .ticker-header .toolbar { flex-shrink: 0; }
+/* Desktop: space-between was centering the Save button in the empty middle
+   ("floating in no man's land"). Pack name + Save together on the left —
+   right under the search bar, TradingView-style symbol+star — and push
+   only the timeframe toolbar to the right edge. Mobile blocks below keep
+   their own arrangement (title group hidden, Save leads the row). */
+@media (min-width: 1024px) {
+  .ticker-header { justify-content: flex-start; }
+  .ticker-header .toolbar { margin-left: auto; }
+}
 .ticker-title-group img { width: 34px; height: 34px; image-rendering: pixelated; }
 .ticker-wiki-link { display: inline-flex; color: inherit; text-decoration: none; line-height: 0; cursor: pointer; }
 .ticker-name-link { line-height: normal; min-width: 0; max-width: 100%; }
