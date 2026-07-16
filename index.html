@@ -1583,8 +1583,9 @@ button, input { touch-action: manipulation; }
       <div class="glossary-row"><span class="pg-verdict" style="color:#D6CCB2;font-size:10px;">WAIT FOR DIP / PEAK</span><span>The live spread doesn't beat the 2% tax right now, but this timeframe's range shows a real flip — place a patient bid/ask instead of trading instantly. Wait verdicts always score under 70 (they're "don't act yet" by definition).</span></div>
 
       <div class="glossary-section">Target prices</div>
-      <div class="glossary-row"><span class="pg-verdict" style="color:var(--buy-color)">Target Buy</span><span>15th-percentile of insta-sell prints in the last ~90 minutes (wall-clock), nudged toward the very-recent realised low. For high-volatility items (24h range &gt;4%) the anchor blends toward 0.5% above the 24h low, so a patient bid can catch multi-hour dips. Same number on every chart timeframe.</span></div>
-      <div class="glossary-row"><span class="pg-verdict" style="color:var(--sell-color)">Target Sell</span><span>-1 below the 85th-percentile of insta-buy prints in the last ~90 minutes, floored at live insta-buy so we never recommend selling below where buyers are paying right now. For high-volatility items (24h range &gt;4%) the anchor blends toward 0.5% below the 24h high, so a patient ask can catch multi-hour peaks. Same number on every chart timeframe.</span></div>
+      <div class="glossary-row"><span class="pg-verdict" style="color:var(--buy-color)">Target Buy</span><span>Shown on the 1D timeframe — the day-flip bid. 15th-percentile of insta-sell prints in the last ~90 minutes (wall-clock), nudged toward the very-recent realised low. For high-volatility items (24h range &gt;4%) the anchor blends toward 0.5% above the 24h low, so a patient bid can catch multi-hour dips.</span></div>
+      <div class="glossary-row"><span class="pg-verdict" style="color:var(--sell-color)">Target Sell</span><span>Shown on the 1D timeframe — the day-flip ask. -1 below the 85th-percentile of insta-buy prints in the last ~90 minutes, floored at live insta-buy so we never recommend selling below where buyers are paying right now. For high-volatility items the anchor blends toward 0.5% below the 24h high.</span></div>
+      <div class="glossary-row"><span class="pg-verdict" style="color:var(--buy-color)">Swing Buy / Sell</span><span>On 5D and longer timeframes the boxes switch to swing anchors for THAT window — day trade vs swing trade. Swing Buy is the 10th percentile of the window's realised lows (a patient bid near the swing floor); Swing Sell is the 90th percentile of its highs (an ask near the ceiling). Percentiles, not the absolute min/max, so one freak spike can't set your target. The grade beside each number judges the same window.</span></div>
 
       <div class="glossary-section">Bank of Gielinor</div>
       <div class="glossary-row"><svg class="bk-icon" viewBox="0 0 24 24" width="18" height="18"><ellipse cx="12" cy="20" rx="8" ry="2.2" fill="#8B5A00"></ellipse><ellipse cx="12" cy="16" rx="8" ry="2.2" fill="#C8841C"></ellipse><ellipse cx="12" cy="12" rx="8" ry="2.2" fill="#FFB300"></ellipse><ellipse cx="12" cy="8" rx="8" ry="2.2" fill="#FFD24D"></ellipse><ellipse cx="12" cy="4.2" rx="8" ry="2.2" fill="#FFE680" stroke="#C8841C" stroke-width="0.9"></ellipse></svg><span>Stash whatever you're holding — just qty is required, cost is optional. Total Wealth headline shows the live insta-sell value of every stack net of the 2% GE tax. Add a cost basis to track growth; set ±% for swing notifications.</span></div>
@@ -3739,6 +3740,49 @@ function runTradeEngine(rawLow, rawHigh, series, node, id) {
   return computeTargets(n, series, isTaxExempt(id));
 }
 
+/* ── Timeframe-aware targets: day trade vs swing trade ───────────────────
+   1D = the live day-flip engine (fill prices for a same-day flip; when the
+   spread is dead both targets legitimately converge on the live quote).
+   5D and longer chart timeframes switch to SWING anchors from THAT window's
+   realized prints: a patient bid near the window's floor (10th percentile
+   of lows) and an ask near its ceiling (90th percentile of highs) —
+   percentiles, not min/max, so one freak spike can't set the target. The
+   chart timeframe IS the trade horizon: targets, grades, and the profit
+   calc all answer for the horizon on screen. */
+function computeSwingTargets(series) {
+  if (!series || !series.labels || !series.labels.length) return null;
+  const lows = [], highs = [];
+  for (let i = 0; i < series.labels.length; i++) {
+    const L = series.low[i], H = series.high[i];
+    if (L != null && L > 0) lows.push(L);
+    if (H != null && H > 0) highs.push(H);
+  }
+  if (lows.length < 8 || highs.length < 8) return null;
+  lows.sort((a, b) => a - b); highs.sort((a, b) => a - b);
+  const pct = (arr, p) => arr[Math.max(0, Math.min(arr.length - 1, Math.round(p * (arr.length - 1))))];
+  const buy = Math.round(pct(lows, 0.10));
+  const sell = Math.round(pct(highs, 0.90));
+  return sell > buy ? { buy, sell } : null;
+}
+/* One entry point every target-render site uses: engine on 1D, swing
+   anchors on longer views (engine as fallback when the window is too
+   sparse to trust percentiles). */
+function computeViewTargets(node, id) {
+  const engine = runTradeEngine(liveBuyRaw, liveSellRaw, pickEngineSeries(currentItemSrc) || currentSeries, node, id);
+  if (view === '1d') return engine;
+  return computeSwingTargets(currentSeries) || engine;
+}
+/* Shared renderer for the two target boxes — labels say what the number
+   IS for the active horizon ("Target Buy" on 1D, "Swing Buy · 1M" beyond). */
+function renderTargetBoxes() {
+  const swing = view !== '1d';
+  const tf = view.toUpperCase();
+  const buyLbl = swing ? `Swing Buy · ${tf}` : 'Target Buy';
+  const sellLbl = swing ? `Swing Sell · ${tf}` : 'Target Sell';
+  $("#buyPrice").innerHTML = `<div class="price-label">${buyLbl} <span class="live-val">Live: ${fmtGp(liveBuyRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedBuy)}</span></div><div class="price-grade" id="buyGrade"></div>`;
+  $("#sellPrice").innerHTML = `<div class="price-label">${sellLbl} <span class="live-val">Live: ${fmtGp(liveSellRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedSell)}</span></div><div class="price-grade" id="sellGrade"></div>`;
+}
+
 /* Composite 0–100 grade for the currently-selected item on the SELECTED
    chart timeframe, scored from the perspective of the active price box
    (buy or sell). Switching timeframes re-asks the question against that
@@ -5184,10 +5228,9 @@ function refreshChart() {
   currentSeries = filterSeries(seriesForView(view, currentItemSrc, currentItemLowVol), getPeriod(view));
   selectedAbsIdx = null;
   offset = Math.max(0, currentSeries.labels.length - Math.floor(currentSeries.labels.length / zoom));
-  const targets = runTradeEngine(liveBuyRaw, liveSellRaw, pickEngineSeries(currentItemSrc) || currentSeries, latest?.data?.[String(selected.id)], selected.id);
+  const targets = computeViewTargets(latest?.data?.[String(selected.id)], selected.id);
   recommendedBuy = targets.buy; recommendedSell = targets.sell;
-  $("#buyPrice").innerHTML = `<div class="price-label">Target Buy <span class="live-val">Live: ${fmtGp(liveBuyRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedBuy)}</span></div><div class="price-grade" id="buyGrade"></div>`;
-  $("#sellPrice").innerHTML = `<div class="price-label">Target Sell <span class="live-val">Live: ${fmtGp(liveSellRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedSell)}</span></div><div class="price-grade" id="sellGrade"></div>`;
+  renderTargetBoxes();
   restoreCalculator(selected.limit, recommendedBuy, recommendedSell);
   updateGradeBadge();
   refreshItemInsights(selected, latest?.data?.[String(selected.id)]);
@@ -5345,10 +5388,9 @@ async function setItem(m, opts = {}) {
      was too lossy to be useful as the headline number. */
   $("#tickerLivePrice").innerHTML = `${fmtGp(liveSellRaw)} <span class="tlp-gp">gp</span>`;
 
-  const targets = runTradeEngine(liveBuyRaw, liveSellRaw, pickEngineSeries(currentItemSrc) || currentSeries, node, m.id);
+  const targets = computeViewTargets(node, m.id);
   recommendedBuy = targets.buy; recommendedSell = targets.sell;
-  $("#buyPrice").innerHTML = `<div class="price-label">Target Buy <span class="live-val">Live: ${fmtGp(liveBuyRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedBuy)}</span></div><div class="price-grade" id="buyGrade"></div>`;
-  $("#sellPrice").innerHTML = `<div class="price-label">Target Sell <span class="live-val">Live: ${fmtGp(liveSellRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedSell)}</span></div><div class="price-grade" id="sellGrade"></div>`;
+  renderTargetBoxes();
 
   restoreCalculator(m.limit, recommendedBuy, recommendedSell);
   offset = Math.max(0, currentSeries.labels.length - Math.floor(currentSeries.labels.length / zoom));
@@ -5539,10 +5581,9 @@ setItem._userPicked = false;
           liveBuyRaw = node?.low ?? node?.avgLowPrice ?? 0;
           liveSellRaw = node?.high ?? node?.avgHighPrice ?? 0;
           $("#tickerLivePrice").innerHTML = `${fmtGp(liveSellRaw)} <span class="tlp-gp">gp</span>`;
-          const targets = runTradeEngine(liveBuyRaw, liveSellRaw, pickEngineSeries(currentItemSrc) || currentSeries, node, selected.id);
+          const targets = computeViewTargets(node, selected.id);
           recommendedBuy = targets.buy; recommendedSell = targets.sell;
-          $("#buyPrice").innerHTML = `<div class="price-label">Target Buy <span class="live-val">Live: ${fmtGp(liveBuyRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedBuy)}</span></div><div class="price-grade" id="buyGrade"></div>`;
-          $("#sellPrice").innerHTML = `<div class="price-label">Target Sell <span class="live-val">Live: ${fmtGp(liveSellRaw)}</span></div><div class="price-val"><span>${fmtGp(recommendedSell)}</span></div><div class="price-grade" id="sellGrade"></div>`;
+          renderTargetBoxes();
           updateGradeBadge();
           refreshItemInsights(selected, node);
           queueDraw();
