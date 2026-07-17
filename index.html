@@ -1694,6 +1694,15 @@ let currentSeries = null, view = "1d", zoom = 1.0, offset = 0;
    when the preferred view is too sparse to draw (see setItem); switching to
    a liquid item snaps back to this. */
 let preferredView = "1d";
+/* TradingView-style manual y-axis scale. 1 = auto-fit. Dragging the price
+   axis multiplies the visible range around its midpoint: >1 widens the
+   range (chart flattens), <1 narrows it (swings amplify). Reset on item /
+   timeframe change and by double-tapping the axis. */
+let yScale = 1;
+/* Portrait phones get the y-axis on the RIGHT edge (thumb side). */
+function yAxisOnRight() {
+  return window.matchMedia('(max-width: 1023px) and (orientation: portrait)').matches;
+}
 let hoverIdx = null;
 let selectedAbsIdx = null;
 let membersOn = localStorage.getItem('ge_members') === 'true';
@@ -4692,8 +4701,13 @@ function drawChart(series) {
      top are gone, so anything more is dead space. The Target pill is 16px
      tall and can flip below its line when cramped, so 14-22px is plenty. */
   const y0 = Math.max(14, Math.min(22, Math.round(H * 0.035)));
-  const x0 = W < 480 ? 38 : 45;
-  const w = W - x0 - 15, h = H - y0 - 20;
+  /* Axis column width; on portrait phones it moves to the RIGHT edge so the
+     labels (and the drag-to-scale strip) sit under the thumb. */
+  const axisW = W < 480 ? 38 : 45;
+  const yRight = yAxisOnRight();
+  const x0 = yRight ? 8 : axisW;
+  const w = yRight ? (W - 8 - axisW) : (W - axisW - 15);
+  const h = H - y0 - 20;
   ctx.clearRect(0, 0, W, H);
 
   if (!series || !series.labels.length) {
@@ -4721,6 +4735,12 @@ function drawChart(series) {
   let vmin = Math.min(...vals), vmax = Math.max(...vals);
   if (vmin === vmax) { vmin -= 1; vmax += 1; }
   const buffer = (vmax - vmin) * 0.05; vmin -= buffer; vmax += buffer;
+  /* Manual axis scale (drag the price axis): stretch/squash the visible
+     range around its midpoint. yScale > 1 flattens, < 1 amplifies. */
+  if (yScale !== 1) {
+    const midV = (vmin + vmax) / 2, halfV = (vmax - vmin) / 2 * yScale;
+    vmin = midV - halfV; vmax = midV + halfV;
+  }
 
   /* Fixed 12px of breathing room after the last point (enough for its 7px
      orb + ring) — a percentage margin turned into a ~70px dead gutter on
@@ -4736,7 +4756,7 @@ function drawChart(series) {
      prices are actually plotted. */
   const h_price = h * 0.84, h_vol = h * 0.16, y0_vol = y0 + h_price;
 
-  chartData = { L, LO, HI, VO, vmin, vmax, stepX, dataW, x0, y0, h, H, win, n, h_price };
+  chartData = { L, LO, HI, VO, vmin, vmax, stepX, dataW, x0, y0, h, H, W, win, n, h_price, axisW, yRight };
 
   let viewMaxHigh = -Infinity, viewMinLow = Infinity, viewMaxIdx = -1, viewMinIdx = -1;
   for (let i = 0; i < L.length; i++) {
@@ -4764,7 +4784,7 @@ function drawChart(series) {
   /* Round y-axis ticks (2,600 / 2,700 …) instead of raw data-derived values
      so prices anchor on human numbers. */
   const axisFontPx = W >= 800 ? 12 : 10;
-  ctx.font = `${axisFontPx}px BlinkMacSystemFont, sans-serif`; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  ctx.font = `${axisFontPx}px BlinkMacSystemFont, sans-serif`; ctx.textAlign = yRight ? "left" : "right"; ctx.textBaseline = "middle";
   const mutedTickCol = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
   /* Tick density follows the plot's pixel height (one label per ~60px) so a
      tall desktop chart gets more price levels instead of 5 labels floating
@@ -4777,7 +4797,7 @@ function drawChart(series) {
     const y = ypx(v, vmin, vmax, y0, h_price);
     ctx.strokeStyle = "rgba(255,255,255,0.05)"; ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + w, y); ctx.stroke();
     ctx.fillStyle = mutedTickCol;
-    ctx.fillText(fmtYAxis(v), Math.round(x0 - 6), Math.round(y));
+    ctx.fillText(fmtYAxis(v), Math.round(yRight ? x0 + w + 6 : x0 - 6), Math.round(y));
   }
 
   /* x-axis label granularity adapts to the visible time span: intraday → time,
@@ -4827,6 +4847,11 @@ function drawChart(series) {
   }
   const singlePrice = bothCount > 0 && eqCount / bothCount > 0.9;
 
+  /* With a manual y-scale < 1 the data range exceeds the plot — clip every
+     price layer to the price area so amplified swings can't paint over the
+     volume strip or the axis labels. */
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x0 - 1, y0 - 9, w + 2, h_price + 12); ctx.clip();
   /* Spread band — a soft translucent fill between the buy-low envelope and
      the sell-high envelope, giving the chart a modern "channel" feel without
      adding noise. Each consecutive pair of points contributes a slim
@@ -5005,6 +5030,7 @@ function drawChart(series) {
        teal/gold — which read as three random colors.) */
     ring(recHiIdx, HI, sellColor);
     ring(recLoIdx, LO, buyColor);
+    ctx.restore(); // end price-area clip
 
     /* Aggregated two-tone volume bars. Painting one thin bar per data point
        turned the strip into a dense noise band on 5D/1M/6M; grouping into
@@ -5179,32 +5205,77 @@ const handleTooltip = (clientX, clientY) => {
   showTipFor(newIdx, clientX, clientY);
 };
 
+/* ── TradingView-style price-axis drag-to-scale ──────────────────────────
+   Grabbing the y-axis label column and dragging vertically stretches or
+   squashes the price scale: drag DOWN widens the range (chart flattens),
+   drag UP narrows it (swings amplify). Double-tap / double-click the axis
+   resets to auto-fit. Works on the right-edge axis (portrait phones) and
+   the left axis (desktop). */
+function inYAxisZone(clientX) {
+  if (!chartData.W) return false;
+  const x = clientX - canvas.getBoundingClientRect().left;
+  return chartData.yRight ? x >= chartData.W - chartData.axisW : x <= chartData.x0;
+}
+function applyYScaleDrag(dy) {
+  yScale = Math.max(0.15, Math.min(12, yScale * Math.exp(dy / 150)));
+  queueDraw();
+}
 let isDragging = false, startXMouse = 0, mouseMoved = false;
-canvas.addEventListener('mousedown', ev => { isDragging = true; mouseMoved = false; startXMouse = ev.clientX; });
-canvas.addEventListener('mouseup', ev => { if (!mouseMoved) selectAt(ev.clientX, ev.clientY); isDragging = false; });
-canvas.addEventListener('mouseleave', () => { isDragging = false; tip.style.display = "none"; hoverIdx = null; queueDraw(); });
+let axisDragging = false, axisLastY = 0;
+canvas.addEventListener('mousedown', ev => {
+  if (inYAxisZone(ev.clientX)) { axisDragging = true; axisLastY = ev.clientY; return; }
+  isDragging = true; mouseMoved = false; startXMouse = ev.clientX;
+});
+canvas.addEventListener('mouseup', ev => {
+  if (axisDragging) { axisDragging = false; return; }
+  if (!mouseMoved) selectAt(ev.clientX, ev.clientY);
+  isDragging = false;
+});
+canvas.addEventListener('mouseleave', () => { isDragging = false; axisDragging = false; tip.style.display = "none"; hoverIdx = null; queueDraw(); });
+canvas.addEventListener('dblclick', ev => { if (inYAxisZone(ev.clientX)) { yScale = 1; queueDraw(); } });
 canvas.addEventListener('mousemove', ev => {
   if (!chartData.L) return;
+  if (axisDragging) {
+    applyYScaleDrag(ev.clientY - axisLastY); axisLastY = ev.clientY; return;
+  }
   if (isDragging) {
     const dx = ev.clientX - startXMouse; if (Math.abs(dx) > 3) mouseMoved = true; startXMouse = ev.clientX;
     const { dataW, win, n } = chartData;
     offset -= dx / (dataW / win); offset = Math.max(0, Math.min(n - win, offset)); queueDraw(); return;
   }
+  canvas.style.cursor = inYAxisZone(ev.clientX) ? 'ns-resize' : '';
   handleTooltip(ev.clientX, ev.clientY);
 });
 canvas.addEventListener('wheel', ev => { ev.preventDefault(); zoom = Math.max(1, Math.min(20, zoom * (ev.deltaY < 0 ? 1.2 : 0.8))); queueDraw(); }, { passive: false });
 
-/* touch: 1 finger = tap-to-select / drag-to-pan, 2 fingers = pinch zoom */
-let touchMode = null, lastTouchX = 0, touchMoved = false, tStartX = 0, tStartY = 0, pinchStart = 0, pinchZoom = 1;
+/* touch: 1 finger = tap-to-select / drag-to-pan (or, when it starts on the
+   price axis, drag-to-scale the y-axis), 2 fingers = pinch zoom */
+let touchMode = null, lastTouchX = 0, lastTouchY = 0, touchMoved = false, tStartX = 0, tStartY = 0, pinchStart = 0, pinchZoom = 1;
+let lastAxisTapT = 0;
 function dist(t) { const dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY; return Math.hypot(dx, dy); }
 canvas.addEventListener('touchstart', ev => {
-  if (ev.touches.length === 1) { touchMode = 'pan'; lastTouchX = ev.touches[0].clientX; tStartX = lastTouchX; tStartY = ev.touches[0].clientY; touchMoved = false; }
+  if (ev.touches.length === 1) {
+    const t = ev.touches[0];
+    tStartX = t.clientX; tStartY = t.clientY; touchMoved = false;
+    if (inYAxisZone(t.clientX)) {
+      touchMode = 'yscale'; lastTouchY = t.clientY;
+      /* double-tap the axis = reset to auto-fit */
+      const nowT = Date.now();
+      if (nowT - lastAxisTapT < 320) { yScale = 1; queueDraw(); }
+      lastAxisTapT = nowT;
+    } else {
+      touchMode = 'pan'; lastTouchX = t.clientX;
+    }
+  }
   else if (ev.touches.length === 2) { touchMode = 'pinch'; pinchStart = dist(ev.touches); pinchZoom = zoom; }
 }, { passive: true });
 canvas.addEventListener('touchmove', ev => {
   if (!chartData.L) return;
   ev.preventDefault();
-  if (touchMode === 'pan' && ev.touches.length === 1) {
+  if (touchMode === 'yscale' && ev.touches.length === 1) {
+    const cy = ev.touches[0].clientY;
+    applyYScaleDrag(cy - lastTouchY); lastTouchY = cy;
+  } else if (touchMode === 'pan' && ev.touches.length === 1) {
     const cx = ev.touches[0].clientX, cy = ev.touches[0].clientY;
     if (Math.abs(cx - tStartX) > 6 || Math.abs(cy - tStartY) > 6) touchMoved = true;
     const dx = cx - lastTouchX; lastTouchX = cx;
@@ -5296,6 +5367,8 @@ function refreshChart() {
 
 async function setItem(m, opts = {}) {
   selected = m;
+  yScale = 1; // manual axis scale is per-item — fresh item, auto-fit
+
   /* keepHomepage = true when we're showing the default boot item (no ?q=
      in the URL) — restore the brand-level title / meta / canonical so a
      Googlebot crawl of "/" indexes the BRAND page, not a stale "(1) Gilded
@@ -5516,7 +5589,7 @@ setItem._userPicked = false;
     document.querySelectorAll(".view-btn").forEach(b => {
       b.onclick = () => {
         document.querySelectorAll(".view-btn").forEach(x => x.classList.remove("active"));
-        b.classList.add("active"); view = preferredView = b.dataset.view; zoom = 1.0;
+        b.classList.add("active"); view = preferredView = b.dataset.view; zoom = 1.0; yScale = 1;
         setItem._userPicked = true;
         refreshChart();
       };
