@@ -103,7 +103,13 @@
 }
 </script>
 
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-43YM2RCX1R"></script>
+<!-- Warm up the API/CDN origins the app hits on boot — the mobile network
+     dependency tree showed serial DNS+TLS setup delaying first data. -->
+<link rel="preconnect" href="https://prices.runescape.wiki" crossorigin>
+<link rel="preconnect" href="https://static.runelite.net">
+<link rel="preconnect" href="https://oldschool.runescape.wiki">
+<link rel="dns-prefetch" href="https://api.weirdgloop.org">
+
 <script>
   window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
@@ -113,6 +119,18 @@
      (including deep links like /?q=Cake) reports the actual item title/path
      instead of collapsing into a single "home /" pageview. */
   gtag('config', 'G-43YM2RCX1R', { send_page_view: false });
+  /* Load the GA library OFF the critical path: it was the biggest chunk of
+     "unused JS" on mobile and competes with first paint. gtag() calls made
+     before it arrives just queue in dataLayer, so nothing is lost. */
+  (function () {
+    var load = function () {
+      var s = document.createElement('script');
+      s.async = true; s.src = 'https://www.googletagmanager.com/gtag/js?id=G-43YM2RCX1R';
+      document.head.appendChild(s);
+    };
+    if ('requestIdleCallback' in window) requestIdleCallback(load, { timeout: 4000 });
+    else setTimeout(load, 2500);
+  })();
 </script>
 <style>
 :root {
@@ -275,6 +293,10 @@ button, input { touch-action: manipulation; }
 /* About-PocketGE section — sits below the app viewport. Visible to anyone who
    scrolls past the dashboard, and crawler-indexable for organic search. */
 .about-section { max-width: 880px; margin: 32px auto 64px; padding: 0 20px; color: var(--text-muted); font-size: 13px; line-height: 1.65; }
+/* The SEO/about content is thousands of laid-out nodes below the fold —
+   skip its render work until scrolled near (crawlers still see it all).
+   Big intrinsic-size placeholder keeps the scrollbar honest. */
+.about-section, .site-footer { content-visibility: auto; contain-intrinsic-size: auto 3000px; }
 .about-section h2 { color: var(--text-main); font-size: 18px; margin: 28px 0 8px; font-weight: 700; }
 .about-section h2:first-of-type { margin-top: 0; }
 .about-section p { margin: 0 0 12px; }
@@ -995,6 +1017,12 @@ button, input { touch-action: manipulation; }
   .pct-chg { display: none !important; }
   .chart-container { flex: none; height: 52vh; min-height: 320px; min-width: 0; margin-bottom: 0; }
   .watchlist-container { width: 100%; flex: 1; min-height: 400px; }
+  /* Portrait: decision info first — Analyst Rating + Potential Profit (both
+     live inside #sideModule) render ABOVE the Recommended Flip card. Flex
+     order only; DOM order (desktop layout) is unchanged. */
+  .watchlist-container .mode-pill-side { order: -3; }
+  .watchlist-container #sideModule { order: -2; }
+  .watchlist-container #flipFinder { order: -1; }
   .status-text { display: none; }
   /* Target Buy + Target Sell SIDE BY SIDE on one line (was two stacked
      full-width rows — double the height for the same two numbers). Each box:
@@ -1329,20 +1357,19 @@ button, input { touch-action: manipulation; }
             <span class="ld-cnum">1</span>
             <div class="ld-pl">Target Buy <span class="ld-pll">Live 2,749</span></div>
             <div class="ld-pv">2,735</div>
-            <div class="ld-pg"><span class="ld-pgnum">87</span><span class="ld-pgv">Steal Buy</span></div>
           </div>
           <div class="ld-pbox sell">
             <span class="ld-cnum">2</span>
             <div class="ld-pl">Target Sell <span class="ld-pll">Live 2,784</span></div>
             <div class="ld-pv">2,831</div>
-            <div class="ld-pg"><span class="ld-pgnum">81</span><span class="ld-pgv">Strong Exit</span></div>
+            <div class="ld-pg"><span class="ld-pgnum">3</span><span class="ld-pgv">Strong Buy</span></div>
           </div>
         </div>
       </div>
       <ol class="landing-demo-callouts">
-        <li><span class="ld-num">1</span> <strong>Target Buy</strong> — the price to bid at right now. Anchored to recent trades, not the spread mid.</li>
+        <li><span class="ld-num">1</span> <strong>Target Buy</strong> — the price to bid at right now. Anchored to recent trades, not the spread mid. On 5D+ timeframes it becomes a swing bid at that window's floor.</li>
         <li><span class="ld-num">2</span> <strong>Target Sell</strong> — already after the 2% GE tax. The profit you see is the profit you keep.</li>
-        <li><span class="ld-num gn">87</span> <strong>Confidence grade</strong> — 0–100 score for buying or selling now at the current timeframe. 85+ is elite, &lt;30 is "avoid".</li>
+        <li><span class="ld-num">3</span> <strong>Analyst Rating</strong> — one Strong Buy → Strong Sell call per item, judged against the chart timeframe you're viewing.</li>
       </ol>
     </div>
 
@@ -1379,6 +1406,22 @@ button, input { touch-action: manipulation; }
     </p>
   </div>
 </section>
+<script>
+  /* Paint the landing hero IMMEDIATELY for first-time "/" visitors, before
+     the main app script parses — the mobile LCP was waiting ~4s for the
+     whole bundle just to flip one display:none. Boot re-runs the exact same
+     gate later (idempotent), and deep-link / returning visitors skip it. */
+  (function () {
+    try {
+      var q = new URLSearchParams(location.search).get('q');
+      var visited = localStorage.getItem('ge_visited') === '1';
+      if (!q && !visited) {
+        document.getElementById('landingPage').style.display = 'block';
+        document.body.style.overflow = 'hidden';
+      }
+    } catch (e) {}
+  })();
+</script>
 
 <div class="wrap">
   <div class="content-area">
@@ -1651,6 +1694,15 @@ let currentSeries = null, view = "1d", zoom = 1.0, offset = 0;
    when the preferred view is too sparse to draw (see setItem); switching to
    a liquid item snaps back to this. */
 let preferredView = "1d";
+/* TradingView-style manual y-axis scale. 1 = auto-fit. Dragging the price
+   axis multiplies the visible range around its midpoint: >1 widens the
+   range (chart flattens), <1 narrows it (swings amplify). Reset on item /
+   timeframe change and by double-tapping the axis. */
+let yScale = 1;
+/* Portrait phones get the y-axis on the RIGHT edge (thumb side). */
+function yAxisOnRight() {
+  return window.matchMedia('(max-width: 1023px) and (orientation: portrait)').matches;
+}
 let hoverIdx = null;
 let selectedAbsIdx = null;
 let membersOn = localStorage.getItem('ge_members') === 'true';
@@ -4649,8 +4701,13 @@ function drawChart(series) {
      top are gone, so anything more is dead space. The Target pill is 16px
      tall and can flip below its line when cramped, so 14-22px is plenty. */
   const y0 = Math.max(14, Math.min(22, Math.round(H * 0.035)));
-  const x0 = W < 480 ? 38 : 45;
-  const w = W - x0 - 15, h = H - y0 - 20;
+  /* Axis column width; on portrait phones it moves to the RIGHT edge so the
+     labels (and the drag-to-scale strip) sit under the thumb. */
+  const axisW = W < 480 ? 38 : 45;
+  const yRight = yAxisOnRight();
+  const x0 = yRight ? 8 : axisW;
+  const w = yRight ? (W - 8 - axisW) : (W - axisW - 15);
+  const h = H - y0 - 20;
   ctx.clearRect(0, 0, W, H);
 
   if (!series || !series.labels.length) {
@@ -4678,6 +4735,12 @@ function drawChart(series) {
   let vmin = Math.min(...vals), vmax = Math.max(...vals);
   if (vmin === vmax) { vmin -= 1; vmax += 1; }
   const buffer = (vmax - vmin) * 0.05; vmin -= buffer; vmax += buffer;
+  /* Manual axis scale (drag the price axis): stretch/squash the visible
+     range around its midpoint. yScale > 1 flattens, < 1 amplifies. */
+  if (yScale !== 1) {
+    const midV = (vmin + vmax) / 2, halfV = (vmax - vmin) / 2 * yScale;
+    vmin = midV - halfV; vmax = midV + halfV;
+  }
 
   /* Fixed 12px of breathing room after the last point (enough for its 7px
      orb + ring) — a percentage margin turned into a ~70px dead gutter on
@@ -4693,7 +4756,7 @@ function drawChart(series) {
      prices are actually plotted. */
   const h_price = h * 0.84, h_vol = h * 0.16, y0_vol = y0 + h_price;
 
-  chartData = { L, LO, HI, VO, vmin, vmax, stepX, dataW, x0, y0, h, H, win, n, h_price };
+  chartData = { L, LO, HI, VO, vmin, vmax, stepX, dataW, x0, y0, h, H, W, win, n, h_price, axisW, yRight };
 
   let viewMaxHigh = -Infinity, viewMinLow = Infinity, viewMaxIdx = -1, viewMinIdx = -1;
   for (let i = 0; i < L.length; i++) {
@@ -4721,7 +4784,7 @@ function drawChart(series) {
   /* Round y-axis ticks (2,600 / 2,700 …) instead of raw data-derived values
      so prices anchor on human numbers. */
   const axisFontPx = W >= 800 ? 12 : 10;
-  ctx.font = `${axisFontPx}px BlinkMacSystemFont, sans-serif`; ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  ctx.font = `${axisFontPx}px BlinkMacSystemFont, sans-serif`; ctx.textAlign = yRight ? "left" : "right"; ctx.textBaseline = "middle";
   const mutedTickCol = getComputedStyle(document.documentElement).getPropertyValue('--text-muted').trim();
   /* Tick density follows the plot's pixel height (one label per ~60px) so a
      tall desktop chart gets more price levels instead of 5 labels floating
@@ -4734,7 +4797,7 @@ function drawChart(series) {
     const y = ypx(v, vmin, vmax, y0, h_price);
     ctx.strokeStyle = "rgba(255,255,255,0.05)"; ctx.beginPath(); ctx.moveTo(x0, y); ctx.lineTo(x0 + w, y); ctx.stroke();
     ctx.fillStyle = mutedTickCol;
-    ctx.fillText(fmtYAxis(v), Math.round(x0 - 6), Math.round(y));
+    ctx.fillText(fmtYAxis(v), Math.round(yRight ? x0 + w + 6 : x0 - 6), Math.round(y));
   }
 
   /* x-axis label granularity adapts to the visible time span: intraday → time,
@@ -4784,6 +4847,11 @@ function drawChart(series) {
   }
   const singlePrice = bothCount > 0 && eqCount / bothCount > 0.9;
 
+  /* With a manual y-scale < 1 the data range exceeds the plot — clip every
+     price layer to the price area so amplified swings can't paint over the
+     volume strip or the axis labels. */
+  ctx.save();
+  ctx.beginPath(); ctx.rect(x0 - 1, y0 - 9, w + 2, h_price + 12); ctx.clip();
   /* Spread band — a soft translucent fill between the buy-low envelope and
      the sell-high envelope, giving the chart a modern "channel" feel without
      adding noise. Each consecutive pair of points contributes a slim
@@ -4962,6 +5030,7 @@ function drawChart(series) {
        teal/gold — which read as three random colors.) */
     ring(recHiIdx, HI, sellColor);
     ring(recLoIdx, LO, buyColor);
+    ctx.restore(); // end price-area clip
 
     /* Aggregated two-tone volume bars. Painting one thin bar per data point
        turned the strip into a dense noise band on 5D/1M/6M; grouping into
@@ -5136,32 +5205,77 @@ const handleTooltip = (clientX, clientY) => {
   showTipFor(newIdx, clientX, clientY);
 };
 
+/* ── TradingView-style price-axis drag-to-scale ──────────────────────────
+   Grabbing the y-axis label column and dragging vertically stretches or
+   squashes the price scale: drag DOWN widens the range (chart flattens),
+   drag UP narrows it (swings amplify). Double-tap / double-click the axis
+   resets to auto-fit. Works on the right-edge axis (portrait phones) and
+   the left axis (desktop). */
+function inYAxisZone(clientX) {
+  if (!chartData.W) return false;
+  const x = clientX - canvas.getBoundingClientRect().left;
+  return chartData.yRight ? x >= chartData.W - chartData.axisW : x <= chartData.x0;
+}
+function applyYScaleDrag(dy) {
+  yScale = Math.max(0.15, Math.min(12, yScale * Math.exp(dy / 150)));
+  queueDraw();
+}
 let isDragging = false, startXMouse = 0, mouseMoved = false;
-canvas.addEventListener('mousedown', ev => { isDragging = true; mouseMoved = false; startXMouse = ev.clientX; });
-canvas.addEventListener('mouseup', ev => { if (!mouseMoved) selectAt(ev.clientX, ev.clientY); isDragging = false; });
-canvas.addEventListener('mouseleave', () => { isDragging = false; tip.style.display = "none"; hoverIdx = null; queueDraw(); });
+let axisDragging = false, axisLastY = 0;
+canvas.addEventListener('mousedown', ev => {
+  if (inYAxisZone(ev.clientX)) { axisDragging = true; axisLastY = ev.clientY; return; }
+  isDragging = true; mouseMoved = false; startXMouse = ev.clientX;
+});
+canvas.addEventListener('mouseup', ev => {
+  if (axisDragging) { axisDragging = false; return; }
+  if (!mouseMoved) selectAt(ev.clientX, ev.clientY);
+  isDragging = false;
+});
+canvas.addEventListener('mouseleave', () => { isDragging = false; axisDragging = false; tip.style.display = "none"; hoverIdx = null; queueDraw(); });
+canvas.addEventListener('dblclick', ev => { if (inYAxisZone(ev.clientX)) { yScale = 1; queueDraw(); } });
 canvas.addEventListener('mousemove', ev => {
   if (!chartData.L) return;
+  if (axisDragging) {
+    applyYScaleDrag(ev.clientY - axisLastY); axisLastY = ev.clientY; return;
+  }
   if (isDragging) {
     const dx = ev.clientX - startXMouse; if (Math.abs(dx) > 3) mouseMoved = true; startXMouse = ev.clientX;
     const { dataW, win, n } = chartData;
     offset -= dx / (dataW / win); offset = Math.max(0, Math.min(n - win, offset)); queueDraw(); return;
   }
+  canvas.style.cursor = inYAxisZone(ev.clientX) ? 'ns-resize' : '';
   handleTooltip(ev.clientX, ev.clientY);
 });
 canvas.addEventListener('wheel', ev => { ev.preventDefault(); zoom = Math.max(1, Math.min(20, zoom * (ev.deltaY < 0 ? 1.2 : 0.8))); queueDraw(); }, { passive: false });
 
-/* touch: 1 finger = tap-to-select / drag-to-pan, 2 fingers = pinch zoom */
-let touchMode = null, lastTouchX = 0, touchMoved = false, tStartX = 0, tStartY = 0, pinchStart = 0, pinchZoom = 1;
+/* touch: 1 finger = tap-to-select / drag-to-pan (or, when it starts on the
+   price axis, drag-to-scale the y-axis), 2 fingers = pinch zoom */
+let touchMode = null, lastTouchX = 0, lastTouchY = 0, touchMoved = false, tStartX = 0, tStartY = 0, pinchStart = 0, pinchZoom = 1;
+let lastAxisTapT = 0;
 function dist(t) { const dx = t[0].clientX - t[1].clientX, dy = t[0].clientY - t[1].clientY; return Math.hypot(dx, dy); }
 canvas.addEventListener('touchstart', ev => {
-  if (ev.touches.length === 1) { touchMode = 'pan'; lastTouchX = ev.touches[0].clientX; tStartX = lastTouchX; tStartY = ev.touches[0].clientY; touchMoved = false; }
+  if (ev.touches.length === 1) {
+    const t = ev.touches[0];
+    tStartX = t.clientX; tStartY = t.clientY; touchMoved = false;
+    if (inYAxisZone(t.clientX)) {
+      touchMode = 'yscale'; lastTouchY = t.clientY;
+      /* double-tap the axis = reset to auto-fit */
+      const nowT = Date.now();
+      if (nowT - lastAxisTapT < 320) { yScale = 1; queueDraw(); }
+      lastAxisTapT = nowT;
+    } else {
+      touchMode = 'pan'; lastTouchX = t.clientX;
+    }
+  }
   else if (ev.touches.length === 2) { touchMode = 'pinch'; pinchStart = dist(ev.touches); pinchZoom = zoom; }
 }, { passive: true });
 canvas.addEventListener('touchmove', ev => {
   if (!chartData.L) return;
   ev.preventDefault();
-  if (touchMode === 'pan' && ev.touches.length === 1) {
+  if (touchMode === 'yscale' && ev.touches.length === 1) {
+    const cy = ev.touches[0].clientY;
+    applyYScaleDrag(cy - lastTouchY); lastTouchY = cy;
+  } else if (touchMode === 'pan' && ev.touches.length === 1) {
     const cx = ev.touches[0].clientX, cy = ev.touches[0].clientY;
     if (Math.abs(cx - tStartX) > 6 || Math.abs(cy - tStartY) > 6) touchMoved = true;
     const dx = cx - lastTouchX; lastTouchX = cx;
@@ -5253,6 +5367,8 @@ function refreshChart() {
 
 async function setItem(m, opts = {}) {
   selected = m;
+  yScale = 1; // manual axis scale is per-item — fresh item, auto-fit
+
   /* keepHomepage = true when we're showing the default boot item (no ?q=
      in the URL) — restore the brand-level title / meta / canonical so a
      Googlebot crawl of "/" indexes the BRAND page, not a stale "(1) Gilded
@@ -5473,7 +5589,7 @@ setItem._userPicked = false;
     document.querySelectorAll(".view-btn").forEach(b => {
       b.onclick = () => {
         document.querySelectorAll(".view-btn").forEach(x => x.classList.remove("active"));
-        b.classList.add("active"); view = preferredView = b.dataset.view; zoom = 1.0;
+        b.classList.add("active"); view = preferredView = b.dataset.view; zoom = 1.0; yScale = 1;
         setItem._userPicked = true;
         refreshChart();
       };
@@ -5806,6 +5922,68 @@ if ('serviceWorker' in navigator) {
   <div class="popular" aria-label="Popular OSRS item prices">
     <h2 id="popular-items">Popular OSRS item prices</h2>
     <p>Jump straight to any of these — live insta-buy / insta-sell, target flip prices with GE tax baked in, support &amp; resistance walls, and 5-day breakout markers for each.</p>
+
+    <h3 id="new-items">New &amp; recent items (2025–2026 updates)</h3>
+    <p>Fresh drops settle fast and swing hard — track the newest gear from The Blood Moon Rises (Maggot King), Doom of Mokhaiotl, Yama and the Royal Titans while the market finds its price.</p>
+    <div class="item-grid">
+      <a href="/?q=Crimson%20kisten">Crimson kisten price</a>
+      <a href="/?q=Necklace%20of%20rupture">Necklace of rupture price</a>
+      <a href="/?q=Etched%20elder%20venator%20fang">Etched elder venator fang price</a>
+      <a href="/?q=Etched%20alpha%20venator%20tooth">Etched alpha venator tooth price</a>
+      <a href="/?q=Venator%20tooth">Venator tooth price</a>
+      <a href="/?q=Avernic%20treads">Avernic treads price</a>
+      <a href="/?q=Eye%20of%20ayak">Eye of ayak price</a>
+      <a href="/?q=Confliction%20gauntlets">Confliction gauntlets price</a>
+      <a href="/?q=Mokhaiotl%20cloth">Mokhaiotl cloth price</a>
+      <a href="/?q=Oathplate%20helm">Oathplate helm price</a>
+      <a href="/?q=Oathplate%20chest">Oathplate chest price</a>
+      <a href="/?q=Oathplate%20legs">Oathplate legs price</a>
+      <a href="/?q=Soulflame%20horn">Soulflame horn price</a>
+      <a href="/?q=Twinflame%20staff">Twinflame staff price</a>
+      <a href="/?q=Giantsoul%20amulet">Giantsoul amulet price</a>
+      <a href="/?q=Deadeye%20prayer%20scroll">Deadeye prayer scroll price</a>
+      <a href="/?q=Mystic%20vigour%20prayer%20scroll">Mystic vigour prayer scroll price</a>
+      <a href="/?q=Amulet%20of%20rancour">Amulet of rancour price</a>
+      <a href="/?q=Noxious%20halberd">Noxious halberd price</a>
+      <a href="/?q=Araxyte%20fang">Araxyte fang price</a>
+      <a href="/?q=Tonalztics%20of%20ralos">Tonalztics of ralos price</a>
+      <a href="/?q=Sunfire%20fanatic%20cuirass">Sunfire fanatic cuirass price</a>
+      <a href="/?q=Emberlight">Emberlight price</a>
+      <a href="/?q=Scorching%20bow">Scorching bow price</a>
+      <a href="/?q=Purging%20staff">Purging staff price</a>
+      <a href="/?q=Burning%20claws">Burning claws price</a>
+      <a href="/?q=Tormented%20synapse">Tormented synapse price</a>
+      <a href="/?q=Hueycoatl%20hide">Hueycoatl hide price</a>
+      <a href="/?q=Dragon%20hunter%20wand">Dragon hunter wand price</a>
+    </div>
+
+    <h3 id="third-age">3rd age items — soon tradeable beyond max cash</h3>
+    <p>Jagex is raising the Grand Exchange gold cap (mixed gold + platinum token payments, planned for late 2026), which finally puts over-max rares like the 3rd age axe and 3rd age bow on the open market. Every 3rd age piece, tracked live:</p>
+    <div class="item-grid">
+      <a href="/?q=3rd%20age%20amulet">3rd age amulet price</a>
+      <a href="/?q=3rd%20age%20axe">3rd age axe price</a>
+      <a href="/?q=3rd%20age%20bow">3rd age bow price</a>
+      <a href="/?q=3rd%20age%20cloak">3rd age cloak price</a>
+      <a href="/?q=3rd%20age%20druidic%20cloak">3rd age druidic cloak price</a>
+      <a href="/?q=3rd%20age%20druidic%20robe%20bottoms">3rd age druidic robe bottoms price</a>
+      <a href="/?q=3rd%20age%20druidic%20robe%20top">3rd age druidic robe top price</a>
+      <a href="/?q=3rd%20age%20druidic%20staff">3rd age druidic staff price</a>
+      <a href="/?q=3rd%20age%20full%20helmet">3rd age full helmet price</a>
+      <a href="/?q=3rd%20age%20kiteshield">3rd age kiteshield price</a>
+      <a href="/?q=3rd%20age%20longsword">3rd age longsword price</a>
+      <a href="/?q=3rd%20age%20mage%20hat">3rd age mage hat price</a>
+      <a href="/?q=3rd%20age%20pickaxe">3rd age pickaxe price</a>
+      <a href="/?q=3rd%20age%20platebody">3rd age platebody price</a>
+      <a href="/?q=3rd%20age%20platelegs">3rd age platelegs price</a>
+      <a href="/?q=3rd%20age%20plateskirt">3rd age plateskirt price</a>
+      <a href="/?q=3rd%20age%20range%20coif">3rd age range coif price</a>
+      <a href="/?q=3rd%20age%20range%20legs">3rd age range legs price</a>
+      <a href="/?q=3rd%20age%20range%20top">3rd age range top price</a>
+      <a href="/?q=3rd%20age%20robe">3rd age robe price</a>
+      <a href="/?q=3rd%20age%20robe%20top">3rd age robe top price</a>
+      <a href="/?q=3rd%20age%20vambraces">3rd age vambraces price</a>
+      <a href="/?q=3rd%20age%20wand">3rd age wand price</a>
+    </div>
 
     <h3>Gems &amp; materials</h3>
     <div class="item-grid">
