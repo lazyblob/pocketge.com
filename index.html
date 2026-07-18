@@ -387,6 +387,21 @@ button, input { touch-action: manipulation; }
 .glossary-section:first-of-type { margin-top: 0; }
 .glossary-row { display: grid; grid-template-columns: 110px 1fr; gap: 12px; padding: 8px 4px; font-size: 12px; color: var(--text-main); align-items: center; line-height: 1.4; }
 .glossary-row > :first-child { justify-self: start; }
+/* RuneLite bridge section inside the Bank modal. */
+.bk-rl { margin: 10px 0 12px; }
+.bk-rl-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.rl-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--text-muted); margin-right: 7px; vertical-align: 1px; }
+.rl-dot.on { background: var(--rs-green-deep); box-shadow: 0 0 6px rgba(31,184,92,0.7); }
+.rl-body { margin-top: 8px; font-size: 12px; }
+.rl-hint { color: var(--text-muted); line-height: 1.5; }
+.rl-hint a { color: var(--border-active); }
+.rl-profit { font-weight: 800; font-size: 14px; margin-bottom: 6px; }
+.rl-flip { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; padding: 5px 6px; border-bottom: 1px solid rgba(60,53,43,0.4); cursor: pointer; border-radius: 3px; }
+.rl-flip:hover { background: var(--bg-input); }
+.rl-flip .rl-name { color: var(--text-main); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rl-flip .rl-nums { flex-shrink: 0; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.rl-flip .pos { color: var(--rs-green-deep); font-weight: 700; }
+.rl-flip .neg { color: var(--negative); font-weight: 700; }
 /* Bank of Gielinor — shared form / stats / row scaffolding (the `bk-` prefix
    is used across this whole feature; CSS reused by the modal header etc.). */
 .bk-stats { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 14px; }
@@ -1616,6 +1631,15 @@ button, input { touch-action: manipulation; }
     </div>
     <div class="modal-body">
       <div class="bk-stats" id="pfStats"></div>
+      <!-- RuneLite bridge: reads the PocketGE Flip Tracker plugin's opt-in
+           loopback server (127.0.0.1 only — nothing leaves the machine). -->
+      <div class="bk-rl" id="rlBridge">
+        <div class="bk-section-title bk-rl-head">
+          <span><span class="rl-dot" id="rlDot"></span>Live from RuneLite</span>
+          <button id="rlToggle" class="wl-sort-btn" type="button">Connect</button>
+        </div>
+        <div id="rlBody" class="rl-body"></div>
+      </div>
       <form class="bk-form" id="pfForm" autocomplete="off">
         <div class="bk-item-row">
           <img id="pfItemIcon" class="bk-item-icon" src="" alt="Selected item icon for Bank of Gielinor">
@@ -4491,8 +4515,82 @@ function openPortfolio() {
   $('#pfHint').classList.remove('error');
   renderPortfolio();
   $('#portfolioModal').style.display = 'flex';
+  rlSync();
 }
-function closePortfolio() { $('#portfolioModal').style.display = 'none'; }
+function closePortfolio() { $('#portfolioModal').style.display = 'none'; rlSync(); }
+
+/* ── RuneLite bridge (PocketGE Flip Tracker plugin) ──────────────────────
+   The plugin can serve this session's flips on 127.0.0.1 (opt-in, loopback
+   only — see runelite-plugin/). When the user taps Connect we poll it while
+   the Bank modal is open and render live in-game flips. Browsers exempt
+   loopback from mixed-content blocking (Safari being the holdout), and the
+   plugin answers the CORS + Private-Network-Access preflight. */
+const RL_BRIDGE_URL = 'http://127.0.0.1:8477';
+let rlTimer = null;
+let rlWanted = (() => { try { return localStorage.getItem('ge_rl_bridge') === '1'; } catch (e) { return false; } })();
+function rlRender(data) {
+  const dot = $('#rlDot'), body = $('#rlBody');
+  if (!dot || !body) return;
+  if (!rlWanted) {
+    dot.classList.remove('on');
+    body.innerHTML = `<div class="rl-hint">Flip in-game? Install the <strong>PocketGE Flip Tracker</strong> RuneLite plugin, enable its "Local website bridge", then tap Connect — your live flips appear here. Local-only: nothing leaves your computer.</div>`;
+    return;
+  }
+  if (!data) {
+    dot.classList.remove('on');
+    body.innerHTML = `<div class="rl-hint">Waiting for RuneLite on this computer… Make sure the PocketGE Flip Tracker plugin is on and its <strong>Local website bridge</strong> setting is enabled (port 8477).</div>`;
+    return;
+  }
+  dot.classList.add('on');
+  const flips = (data.flips || []).slice(-8).reverse();
+  const profit = Number(data.sessionProfit || 0);
+  let html = `<div class="rl-profit" style="color:${profit >= 0 ? 'var(--rs-green-deep)' : 'var(--negative)'}">Session flip profit: ${profit >= 0 ? '+' : ''}${abbreviateNumber(profit)} gp</div>`;
+  if (!flips.length) {
+    html += `<div class="rl-hint">Connected — waiting for your first completed flip.</div>`;
+  } else {
+    html += flips.map(f => `
+      <div class="rl-flip" data-rl-item="${(f.itemName || '').replace(/"/g, '&quot;')}" title="Open the live chart">
+        <span class="rl-name">${f.itemName} ×${Number(f.quantity).toLocaleString()}</span>
+        <span class="rl-nums">${abbreviateNumber(Math.round(f.buySpent / f.quantity))} → ${abbreviateNumber(Math.round(f.sellGross / f.quantity))}
+          <span class="${f.profit >= 0 ? 'pos' : 'neg'}">${f.profit >= 0 ? '+' : ''}${abbreviateNumber(f.profit)}</span></span>
+      </div>`).join('');
+  }
+  body.innerHTML = html;
+  body.querySelectorAll('[data-rl-item]').forEach(el => {
+    el.onclick = () => {
+      const name = el.getAttribute('data-rl-item');
+      const item = mapping.find(x => x.name && x.name.toLowerCase() === name.toLowerCase());
+      if (item) { closePortfolio(); setItem(item); }
+    };
+  });
+}
+async function rlPoll() {
+  try {
+    const res = await fetch(RL_BRIDGE_URL + '/flips', { cache: 'no-store', mode: 'cors' });
+    if (!res.ok) throw new Error('bridge ' + res.status);
+    rlRender(await res.json());
+  } catch (e) {
+    rlRender(null);
+  }
+}
+/* Poll ONLY while the Bank modal is open and the user opted in — no
+   background localhost noise for everyone else. */
+function rlSync() {
+  const btn = $('#rlToggle');
+  if (btn) btn.textContent = rlWanted ? 'Disconnect' : 'Connect';
+  const modalOpen = $('#portfolioModal').style.display === 'flex';
+  if (rlWanted && modalOpen) {
+    if (!rlTimer) { rlPoll(); rlTimer = setInterval(rlPoll, 5000); }
+  } else {
+    if (rlTimer) { clearInterval(rlTimer); rlTimer = null; }
+    rlRender(rlWanted ? null : undefined);
+  }
+}
+$('#rlToggle').onclick = () => {
+  rlWanted = !rlWanted;
+  try { localStorage.setItem('ge_rl_bridge', rlWanted ? '1' : '0'); } catch (e) {}
+  rlSync();
+};
 
 /* Fire notifications when a stack's value crosses its ±% threshold vs cost.
    Only meaningful when a cost basis was entered. One alert per direction
