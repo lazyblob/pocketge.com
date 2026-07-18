@@ -1032,12 +1032,6 @@ button, input { touch-action: manipulation; }
   .pct-chg { display: none !important; }
   .chart-container { flex: none; height: 52vh; min-height: 320px; min-width: 0; margin-bottom: 0; }
   .watchlist-container { width: 100%; flex: 1; min-height: 400px; }
-  /* Portrait: decision info first — Analyst Rating + Potential Profit (both
-     live inside #sideModule) render ABOVE the Recommended Flip card. Flex
-     order only; DOM order (desktop layout) is unchanged. */
-  .watchlist-container .mode-pill-side { order: -3; }
-  .watchlist-container #sideModule { order: -2; }
-  .watchlist-container #flipFinder { order: -1; }
   .status-text { display: none; }
   /* Target Buy + Target Sell SIDE BY SIDE on one line (was two stacked
      full-width rows — double the height for the same two numbers). Each box:
@@ -1565,8 +1559,11 @@ button, input { touch-action: manipulation; }
         <button class="mps-btn mp-f2p active" role="tab" aria-selected="true" data-mode="f2p">F2P</button>
         <button class="mps-btn mp-p2p" role="tab" aria-selected="false" data-mode="members">Members</button>
       </div>
-      <div class="flip-finder" id="flipFinder"></div>
+      <!-- Decision info first on EVERY layout: Potential Profit + Analyst
+           Rating (#sideModule) above the Recommended Flip card, then the
+           lists — same order the portrait view pioneered. -->
       <div class="calc-container" id="sideModule"></div>
+      <div class="flip-finder" id="flipFinder"></div>
       <div class="col-header" id="colHeader"></div>
       <div class="watchlist-content" id="watchlistContent"></div>
     </div>
