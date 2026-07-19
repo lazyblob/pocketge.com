@@ -4542,6 +4542,10 @@ function rlRender(data) {
   const flips = (data.flips || []).slice(-8).reverse();
   const profit = Number(data.sessionProfit || 0);
   let html = `<div class="rl-profit" style="color:${profit >= 0 ? 'var(--rs-green-deep)' : 'var(--negative)'}">Session flip profit: ${profit >= 0 ? '+' : ''}${abbreviateNumber(profit)} gp</div>`;
+  if (data.lifetimeProfit != null) {
+    const lt = Number(data.lifetimeProfit);
+    html += `<div class="rl-hint" style="margin:-4px 0 8px">Lifetime: ${lt >= 0 ? '+' : ''}${abbreviateNumber(lt)} gp</div>`;
+  }
   if (!flips.length) {
     html += `<div class="rl-hint">Connected — waiting for your first completed flip.</div>`;
   } else {
