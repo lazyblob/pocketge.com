@@ -1329,19 +1329,21 @@ button, input { touch-action: manipulation; }
 .qf-age { font-size:10px; font-weight:600; }
 .qf-fresh { color:var(--rs-green-deep); } .qf-ok { color:var(--text-muted); } .qf-stale { color:var(--rs-gold-deep); }
 .qf-sep { color:var(--border-light); flex:0 0 auto; }
-/* Per-item auto-summary: a 30-day position meter (gold floor → teal ceiling,
-   mirroring the app's buy/sell colors) + one crawlable sentence of live
-   market context. */
+/* Per-item auto-summary: a 30-day POSITION meter + one crawlable sentence of
+   live market context. Neutral single-hue track (warm obsidian → champagne)
+   deliberately NOT the gold/teal buy-sell language — it shows "where in the
+   range", not a recommendation, so it can't be confused with the Analyst
+   Rating gauge below it. The champagne marker is the only accent. */
 .item-insight { margin:6px 2px 0; padding-top:6px; border-top:1px solid var(--border-main); }
 .ins-meter { max-width:520px; }
 .ins-track { position:relative; height:6px; border-radius:4px;
-  background:linear-gradient(90deg, var(--buy-color) 0%, rgba(120,110,80,0.35) 50%, var(--sell-color) 100%); }
-.ins-marker { position:absolute; top:50%; width:3px; height:14px; border-radius:2px;
-  background:#fff; box-shadow:0 0 5px rgba(0,0,0,0.7); transform:translate(-50%,-50%); transition:left .3s ease; }
+  background:linear-gradient(90deg, #26221c 0%, #4a4336 55%, #6f6653 100%);
+  border:1px solid var(--border-main); }
+.ins-marker { position:absolute; top:50%; width:4px; height:15px; border-radius:2px;
+  background:var(--accent-bright); box-shadow:0 0 6px rgba(0,0,0,0.75); transform:translate(-50%,-50%); transition:left .3s ease; }
 .ins-ends { display:flex; justify-content:space-between; align-items:baseline; margin-top:4px;
   font-size:9.5px; font-variant-numeric:tabular-nums; }
-.ins-lo { color:var(--buy-color); font-weight:700; }
-.ins-hi { color:var(--sell-color); font-weight:700; }
+.ins-lo, .ins-hi { color:var(--text-main); font-weight:700; }
 .ins-mid { color:var(--text-muted); font-size:8.5px; text-transform:uppercase; letter-spacing:.4px; }
 .ins-text { margin:7px 0 2px; font-size:11.5px; line-height:1.55; color:var(--text-muted); max-width:640px; }
 </style>
