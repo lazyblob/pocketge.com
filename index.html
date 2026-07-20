@@ -865,8 +865,13 @@ button, input { touch-action: manipulation; }
   transition: opacity 0.12s ease, color 0.12s ease;
   z-index: 5;
 }
-/* Fallback placement when the VOL column is toggled off: right gutter. */
-.wl-fav-remove-row { left: auto; right: 12px; transform: translateY(-50%); }
+/* Row-gutter fallback trash. Primary trash rides in the VOL cell (over the
+   suffix), so the fallback is shown ONLY when the VOL column isn't available
+   — either toggled off (container lacks .has-vol) or auto-hidden on a narrow
+   sidebar (container query). It still fades in on hover like the in-cell one. */
+.wl-fav-remove-row { left: auto; right: 12px; transform: translateY(-50%); display: none; }
+#watchlistContent:not(.has-vol) .wl-fav-remove-row { display: flex; }
+@container wl (max-width: 264px) { .wl-fav-remove-row { display: flex; } }
 .wl-fav-remove svg { width: 13px; height: 13px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 .wl-fav-remove:hover { color: var(--negative); }
 @media (hover: hover) {
@@ -889,6 +894,16 @@ button, input { touch-action: manipulation; }
 .meta-chg, .ch-chg { width: 42px; text-align: right; flex-shrink: 0; }
 .meta-ea,  .ch-ea  { width: 30px; text-align: right; flex-shrink: 0; }
 .meta-vol, .ch-vol { width: 46px; text-align: right; flex-shrink: 0; }
+/* PRIORITY COLUMNS: the item NAME is the one thing that can't survive being
+   truncated to "Un…", so when the sidebar gets narrow, drop the low-value
+   metric columns before the name gets squeezed — VOL first, then EA, then
+   CHG%, keeping LAST price + NAME longest. Container queries key off the
+   sidebar's OWN width, so it works for the resizable desktop sidebar and the
+   fixed mobile one alike. */
+.watchlist-container { container-type: inline-size; container-name: wl; }
+@container wl (max-width: 264px) { .meta-vol, .ch-vol { display: none; } }
+@container wl (max-width: 226px) { .meta-ea,  .ch-ea  { display: none; } }
+@container wl (max-width: 198px) { .meta-chg, .ch-chg { display: none; } }
 .wl-item-price { font-weight: 700; font-size: 13px; color: var(--text-main); }
 .wl-trend { font-size: 10px; cursor: help; white-space: nowrap; }
 .wl-trend.up { color: var(--positive); }
@@ -2984,7 +2999,10 @@ function renderWatchlist() {
            toggled off there's no cell to ride in, so fall back to a
            row-level button in the right gutter. Swipe-left ("REMOVE"
            backdrop) still handles touch. */
-        const removeBtn = (isFavGroup && !e.sub.includes('mv-swap')) ? `<button type="button" class="wl-fav-remove wl-fav-remove-row" data-fav-id="${item.id}" title="Remove from favorites" aria-label="Remove ${item.name} from favorites"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>` : '';
+        /* Always render the row-gutter fallback for fav rows; CSS shows it
+           only when the VOL column (which hosts the primary in-cell trash)
+           is unavailable. */
+        const removeBtn = isFavGroup ? `<button type="button" class="wl-fav-remove wl-fav-remove-row" data-fav-id="${item.id}" title="Remove from favorites" aria-label="Remove ${item.name} from favorites"><svg viewBox="0 0 24 24" aria-hidden="true"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"></path></svg></button>` : '';
         const swipeBg = isFavGroup ? `<span class="wl-swipe-bg">REMOVE</span>` : '';
         inner += `
           <div class="wl-item ${activeClass} ${hlClass}" data-id="${item.id}" ${isFavGroup ? 'data-fav-row="1"' : ''}>
@@ -3010,6 +3028,9 @@ function renderWatchlist() {
   /* Persist edit-mode styling across re-renders (the 5-min refresh rebuilds
      the list). */
   container.classList.toggle('fav-editing', favEditMode);
+  /* Tell CSS whether the VOL column is present, so the fav-delete fallback
+     knows when the in-cell trash exists (see .wl-fav-remove-row rules). */
+  container.classList.toggle('has-vol', !!columnPrefs.volume);
 
   container.querySelectorAll('.scan-row[data-scan="fived"]').forEach(el => {
     el.onclick = () => runFiveDayScan();
