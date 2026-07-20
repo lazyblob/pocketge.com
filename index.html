@@ -560,10 +560,15 @@ button, input { touch-action: manipulation; }
    reaching for the timeframe buttons. The chip is hidden by default
    (desktop) and revealed by the mobile media queries below. */
 .wiki-hint { display: none; }
-.ticker-price-row { display: flex; align-items: center; gap: 10px; }
-.ticker-price-row .price { font-size: 14px; font-weight: 700; color: var(--text-main); }
-.ticker-price-row .price .tlp-gp { font-size: 10px; font-weight: 600; color: var(--text-muted); }
-.ticker-price-row .change { font-size: 12px; font-weight: 600; }
+/* Hero live price + timeframe change, left-aligned under the item name —
+   the familiar TradingView symbol-header treatment. Kept medium so it
+   frames the live quote without competing with the Target Buy/Sell boxes
+   (our actual hero). Desktop-only; mobile hides .ticker-title-group. */
+.ticker-price-row { display: flex; align-items: baseline; gap: 8px; margin-top: 1px; }
+.ticker-price-row .price { font-size: 22px; font-weight: 800; color: #fff; letter-spacing: -0.4px; line-height: 1; }
+.ticker-price-row .price .tlp-gp { font-size: 11px; font-weight: 600; color: var(--text-muted); letter-spacing: 0; }
+.ticker-price-row .change { font-size: 13px; font-weight: 700; }
+.ticker-price-row .change .tc-tf { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; margin-right: 3px; }
 .change.positive { color: var(--positive); }
 .change.negative { color: var(--negative); }
 .change.neutral { color: var(--text-muted); }
@@ -1763,6 +1768,18 @@ let preferredView = "1d";
    range (chart flattens), <1 narrows it (swings amplify). Reset on item /
    timeframe change and by double-tapping the axis. */
 let yScale = 1;
+/* Per-item % change for each timeframe (computed once on item load); the
+   header hero shows the entry for the active view. */
+let viewChanges = {};
+function updateHeaderChange() {
+  const el = document.getElementById('tickerChange');
+  if (!el) return;
+  const val = viewChanges[view];
+  if (val == null || !isFinite(val)) { el.innerHTML = ''; return; }
+  const cls = val > 0 ? 'positive' : val < 0 ? 'negative' : 'neutral';
+  el.className = 'change ' + cls;
+  el.innerHTML = `<span class="tc-tf">${view.toUpperCase()}</span>${val > 0 ? '+' : ''}${val.toFixed(2)}%`;
+}
 /* Portrait phones get the y-axis on the RIGHT edge (thumb side). */
 function yAxisOnRight() {
   return window.matchMedia('(max-width: 1023px) and (orientation: portrait)').matches;
@@ -5705,18 +5722,17 @@ async function setItem(m, opts = {}) {
   document.querySelectorAll(".view-btn").forEach(b => b.classList.toggle('active', b.dataset.view === view));
 
   const changes = computeAllChanges(currentItemSrc, currentItemLowVol);
+  viewChanges = changes;
   document.querySelectorAll(".view-btn").forEach(b => {
     const p = b.dataset.view; const val = changes[p];
     const cls = val > 0 ? 'positive' : val < 0 ? 'negative' : 'neutral';
     b.innerHTML = `${p.toUpperCase()}<br/><span class="pct-chg ${cls}">${val > 0 ? '+' : ''}${val.toFixed(2)}%</span>`;
   });
 
-  /* The headline % change used to live here (always the 1D change), but it
-     duplicated the 1D toolbar button exactly — and on other timeframes it
-     contradicted the chart by still showing 1D. The toolbar already shows
-     the % for every timeframe with the active one highlighted, so that's the
-     single source of truth. Header keeps just the item name + live price. */
-  $("#tickerChange").innerHTML = '';
+  /* Header hero: live price + the SELECTED timeframe's % change (TradingView
+     style). Keyed to the active view so it always matches the highlighted
+     toolbar button and the chart — no contradiction. */
+  updateHeaderChange();
 
   currentSeries = filterSeries(seriesForView(view, currentItemSrc, currentItemLowVol), getPeriod(view));
   selectedAbsIdx = null;
@@ -5802,6 +5818,7 @@ setItem._userPicked = false;
         document.querySelectorAll(".view-btn").forEach(x => x.classList.remove("active"));
         b.classList.add("active"); view = preferredView = b.dataset.view; zoom = 1.0; yScale = 1;
         setItem._userPicked = true;
+        updateHeaderChange();
         refreshChart();
       };
     });
