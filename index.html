@@ -1329,6 +1329,21 @@ button, input { touch-action: manipulation; }
 .qf-age { font-size:10px; font-weight:600; }
 .qf-fresh { color:var(--rs-green-deep); } .qf-ok { color:var(--text-muted); } .qf-stale { color:var(--rs-gold-deep); }
 .qf-sep { color:var(--border-light); flex:0 0 auto; }
+/* Per-item auto-summary: a 30-day position meter (gold floor → teal ceiling,
+   mirroring the app's buy/sell colors) + one crawlable sentence of live
+   market context. */
+.item-insight { margin:6px 2px 0; padding-top:6px; border-top:1px solid var(--border-main); }
+.ins-meter { max-width:520px; }
+.ins-track { position:relative; height:6px; border-radius:4px;
+  background:linear-gradient(90deg, var(--buy-color) 0%, rgba(120,110,80,0.35) 50%, var(--sell-color) 100%); }
+.ins-marker { position:absolute; top:50%; width:3px; height:14px; border-radius:2px;
+  background:#fff; box-shadow:0 0 5px rgba(0,0,0,0.7); transform:translate(-50%,-50%); transition:left .3s ease; }
+.ins-ends { display:flex; justify-content:space-between; align-items:baseline; margin-top:4px;
+  font-size:9.5px; font-variant-numeric:tabular-nums; }
+.ins-lo { color:var(--buy-color); font-weight:700; }
+.ins-hi { color:var(--sell-color); font-weight:700; }
+.ins-mid { color:var(--text-muted); font-size:8.5px; text-transform:uppercase; letter-spacing:.4px; }
+.ins-text { margin:7px 0 2px; font-size:11.5px; line-height:1.55; color:var(--text-muted); max-width:640px; }
 </style>
 </head>
 <body>
@@ -1546,6 +1561,17 @@ button, input { touch-action: manipulation; }
         </div>
       </div>
       <div class="quick-facts" id="quickFacts" aria-label="Last traded snapshot" style="display:none"></div>
+      <!-- Auto-generated per-item market summary — unique crawlable text on
+           every item page (SEO), plus a 30-day price-position meter so a
+           flipper sees at a glance whether the price sits near its floor
+           (buy zone) or ceiling (sell zone). -->
+      <div class="item-insight" id="itemInsight" style="display:none">
+        <div class="ins-meter" aria-hidden="true">
+          <div class="ins-track"><span class="ins-marker" id="insMarker"></span></div>
+          <div class="ins-ends"><span class="ins-lo" id="insLo">—</span><span class="ins-mid">30-day range</span><span class="ins-hi" id="insHi">—</span></div>
+        </div>
+        <p class="ins-text" id="insText"></p>
+      </div>
     </div>
 
     <div class="wl-resize" id="wlResize" title="Drag to resize · double-click to reset" aria-hidden="true"></div>
@@ -4126,9 +4152,72 @@ function renderQuickFacts(m, node) {
    item A can land after the user has switched to B (selected === B). Bail so
    the gauge (which reads the global selected/currentSeries) can't disagree
    with the quick-facts strip (which reads the passed m/node). */
+/* 30-day low/high/first/last from the best available source, independent of
+   the displayed chart timeframe so the summary is stable. */
+function thirtyDayStats(m) {
+  let src = null;
+  if (currentItemSrc) src = seriesForView('1m', currentItemSrc, currentItemLowVol);
+  else if (overMaxData[String(m.id)] && overMaxFull) src = overMaxFull;
+  if (!src || !src.labels || !src.labels.length) return null;
+  const win = filterSeries(src, getPeriod('1m'));
+  let lo = Infinity, hi = -Infinity, first = null, last = null;
+  for (let i = 0; i < win.labels.length; i++) {
+    const L = win.low[i], H = win.high[i];
+    if (L != null && L > 0) { if (L < lo) lo = L; if (first == null) first = L; last = L; }
+    if (H != null && H > 0) { if (H > hi) hi = H; if (first == null) first = H; last = H; }
+  }
+  if (!isFinite(lo) || !isFinite(hi) || hi <= lo) return null;
+  return { lo, hi, first, last };
+}
+
+/* Auto-generated per-item summary sentence + 30-day range meter. Pure text
+   (crawlable) with live numbers, refreshed on every price render. */
+function renderItemInsight(m, node) {
+  const box = document.getElementById('itemInsight');
+  if (!box) return;
+  if (!m || !node || overMaxData[String(m.id)]) { box.style.display = 'none'; return; }
+  const high = node.high ?? node.avgHighPrice ?? 0;   // insta-buy (headline price)
+  const low = node.low ?? node.avgLowPrice ?? 0;      // insta-sell
+  const stats = thirtyDayStats(m);
+  if (!(high > 0) || !stats) { box.style.display = 'none'; return; }
+
+  // position of the live price within its 30-day range (0 = floor, 1 = ceiling)
+  const price = high;
+  const pos = Math.max(0, Math.min(1, (price - stats.lo) / (stats.hi - stats.lo)));
+  document.getElementById('insMarker').style.left = (pos * 100).toFixed(1) + '%';
+  document.getElementById('insLo').textContent = fmtGp(stats.lo);
+  document.getElementById('insHi').textContent = fmtGp(stats.hi);
+
+  // 30-day change
+  const chgPct = (stats.first > 0) ? ((stats.last - stats.first) / stats.first) * 100 : 0;
+  const chgWord = chgPct >= 1.5 ? `up ${chgPct.toFixed(1)}%`
+    : chgPct <= -1.5 ? `down ${Math.abs(chgPct).toFixed(1)}%`
+    : 'roughly flat';
+  // where in the range, in words
+  const zone = pos <= 0.25 ? 'near its 30-day low — a potential buy zone'
+    : pos >= 0.75 ? 'near its 30-day high — a potential sell zone'
+    : 'in the middle of its 30-day range';
+  const vol = dailyVolume(m.id);
+  // flip margin after tax — prefer the app's recommended targets, else live spread
+  let margin = null;
+  if (recommendedSell > 0 && recommendedBuy > 0) margin = recommendedSell - recommendedBuy - calculateTax(recommendedSell, m.id);
+  else if (high > 0 && low > 0) margin = high - low - calculateTax(high, m.id);
+  const marginSentence = (margin != null && margin > 0)
+    ? ` The live flip margin after the 2% GE tax is about +${fmtGp(margin)} gp per item.`
+    : ` The spread is tight right now — no clean margin after the 2% GE tax.`;
+
+  const text = `${m.name} is trading around ${fmtGp(price)} gp, ${chgWord} over the past 30 days, `
+    + `within a 30-day range of ${fmtGp(stats.lo)}–${fmtGp(stats.hi)} gp`
+    + (vol > 0 ? ` on about ${abbreviateNumber(vol)} traded a day` : '')
+    + `. It's currently ${zone}.` + marginSentence;
+  document.getElementById('insText').textContent = text;
+  box.style.display = '';
+}
+
 function refreshItemInsights(m, node) {
   if (m && selected && String(m.id) !== String(selected.id)) return;
   renderQuickFacts(m || null, node || null);
+  renderItemInsight(m || null, node || null);
   renderRatingGauge(selected, document.getElementById('ratingGauge'));
   /* Live numbers just (re)rendered — sync the SERP surface (title + meta
      description + JSON-LD) so a crawler that executes JS indexes the page
