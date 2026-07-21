@@ -1396,11 +1396,6 @@ button, input { touch-action: manipulation; }
 .ins-elabel { color:var(--text-muted); font-size:8px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; margin-top:1px; }
 .ins-text { margin:12px auto 2px; font-size:11.5px; line-height:1.6; color:var(--text-muted); max-width:560px; }
 .ins-divider { display:none; }   /* only shown in the desktop side-by-side band */
-/* Only hide the 30-day card on genuinely height-starved landscape (phones,
-   ≤600px tall) where it would eat the chart. A tall-but-narrow window
-   (e.g. a resized desktop ~785px wide) keeps it — shown full-width in its
-   column rather than vanishing into dead space. */
-@media (orientation: landscape) and (max-height: 600px) { .item-insight { display: none; } }
 /* Desktop: a full-width "market context" band spanning the chart width. The
    meter and the summary sit SIDE BY SIDE so the width is actually used,
    instead of a narrow left-aligned box floating under a wide chart. Placed
@@ -1415,6 +1410,24 @@ button, input { touch-action: manipulation; }
   .ins-meter { flex: 1 1 52%; max-width: none; margin: 0; }
   .ins-divider { display: block; flex: 0 0 1px; align-self: stretch; background: var(--border-main); }
   .ins-text { flex: 1 1 48%; margin: 0; max-width: none; font-size: 12.5px; text-align: left; }
+}
+/* Landscape mobile: the app is pinned to one screen (100dvh), so the card
+   can't live inside it without squeezing the chart. JS relocates it to a
+   band just ABOVE the about-section (below the app, in the scroll region)
+   where there's room — same side-by-side layout as desktop, centered to the
+   about-section's content width. This block is after the desktop one so it
+   wins when a viewport matches both (e.g. a short, wide window). */
+@media (max-width: 1023px) and (orientation: landscape),
+       (max-height: 600px) and (orientation: landscape) {
+  .item-insight {
+    display: flex; align-items: center; gap: 22px; text-align: left;
+    max-width: 880px; margin: 14px auto; padding: 13px 20px; border-top: none;
+    background: var(--bg-panel); border: 1px solid var(--border-main);
+    border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+  }
+  .ins-meter { flex: 1 1 52%; max-width: none; margin: 0; }
+  .ins-divider { display: block; flex: 0 0 1px; align-self: stretch; background: var(--border-main); }
+  .ins-text { flex: 1 1 48%; margin: 0; max-width: none; font-size: 12px; text-align: left; }
 }
 </style>
 </head>
@@ -1849,22 +1862,33 @@ function yAxisOnRight() {
    the node by media query instead. renderItemInsight targets it by id, so
    moving it never breaks the live updates. */
 const _insightPortraitMQ = window.matchMedia('(max-width: 1023px) and (orientation: portrait)');
+const _insightLandscapeMQ = window.matchMedia('(max-width: 1023px) and (orientation: landscape), (max-height: 600px) and (orientation: landscape)');
 function placeItemInsight() {
   const insight = document.getElementById('itemInsight');
   const sideModule = document.getElementById('sideModule');
   const quickFacts = document.getElementById('quickFacts');
+  const about = document.querySelector('.about-section');
   if (!insight || !sideModule || !quickFacts) return;
   if (_insightPortraitMQ.matches) {
     // portrait: drop it just under the Potential Profit / Analyst module
     if (insight.previousElementSibling !== sideModule) sideModule.after(insight);
+  } else if (_insightLandscapeMQ.matches && about) {
+    // landscape mobile: the app fills the screen, so put the card just above
+    // the about-section (below the app) rather than squeezing the chart.
+    if (about.previousElementSibling !== insight) about.before(insight);
   } else {
-    // desktop / landscape: back under the chart in the main column
+    // desktop: back under the chart in the main column (full-width band)
     if (quickFacts.nextElementSibling !== insight) quickFacts.after(insight);
   }
 }
 placeItemInsight();
-if (_insightPortraitMQ.addEventListener) _insightPortraitMQ.addEventListener('change', placeItemInsight);
-else if (_insightPortraitMQ.addListener) _insightPortraitMQ.addListener(placeItemInsight);
+// .about-section is parsed after this script, so re-run once the DOM is ready
+// (the landscape branch anchors to it).
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', placeItemInsight);
+[_insightPortraitMQ, _insightLandscapeMQ].forEach(mq => {
+  if (mq.addEventListener) mq.addEventListener('change', placeItemInsight);
+  else if (mq.addListener) mq.addListener(placeItemInsight);
+});
 let hoverIdx = null;
 let selectedAbsIdx = null;
 let membersOn = localStorage.getItem('ge_members') === 'true';
