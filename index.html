@@ -961,6 +961,9 @@ button, input { touch-action: manipulation; }
 .col-menu-row input { margin: 0; accent-color: var(--border-active); cursor: pointer; }
 
 @media screen and (max-width: 1023px) and (orientation: portrait) {
+  /* Portrait: the new 30-day meter + summary run edge-to-edge otherwise;
+     give them a little horizontal breathing room like the rest of content. */
+  .item-insight { padding-left: 12px; padding-right: 12px; margin-left: 0; margin-right: 0; }
   /* Mobile portrait: every gap above the chart is collapsed so the chart
      starts as high up the screen as possible. Earlier this section saved
      wrap / row-wrapper space; the price strip was still eating ~60px
@@ -1076,6 +1079,10 @@ button, input { touch-action: manipulation; }
   .wrap { padding: 3px; gap: 3px; }
   .main-column { gap: 3px; }
   .content-area { flex-direction: row; gap: 4px; }
+  /* Landscape is height-starved — the 30-day meter + summary would eat the
+     chart. Hide them here so the chart keeps its full height (they're still
+     shown in portrait and on desktop). */
+  .item-insight { display: none; }
   .top-row-wrapper { flex-direction: row; gap: 6px; height: auto; align-items: stretch; }
   .top-panel { flex: 1 1 44%; min-width: 0; padding: 3px 6px; }
   .panel-left { flex-wrap: nowrap; gap: 4px; }
