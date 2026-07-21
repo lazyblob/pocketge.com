@@ -690,23 +690,11 @@ button, input { touch-action: manipulation; }
      under the fold. Landscape/portrait keep their own height rules. */
   .wrap { height: auto; min-height: 100dvh; }
   .content-area { align-items: stretch; }
-  /* Fix the chart to fill the first screen (header + price strip + chart +
-     quick-facts ≈ 100dvh); the insight/description then start just past the
-     fold. A definite height (not flex-grow) means the leftover main-column
-     space below reliably flows to the insight card's auto margins. */
-  .chart-container { flex: 0 0 auto; height: calc(100dvh - 248px); min-height: 360px; }
-  /* Desktop: the sidebar is taller than the main column, leaving dead space
-     under the description. Turn the insight into a self-contained "market
-     context" card and let auto margins float it into the middle of that space
-     so the area reads as designed, not empty. */
-  .item-insight {
-    margin: auto; border-top: none; padding: 18px 26px 20px;
-    max-width: 560px; width: 100%;
-    background: var(--bg-panel); border: 1px solid var(--border-main); border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
-  }
-  .ins-meter { max-width: 400px; }
-  .ins-text { font-size: 12px; max-width: 480px; }
+  /* Cap the chart so header + price strip + chart + quick-facts fill the first
+     screen; the insight/description card then starts just past the fold.
+     min-height is a short-viewport safety floor only. (The card's own desktop
+     styling lives after the base .ins-* rules so source order wins.) */
+  .chart-container { min-height: calc(100dvh - 320px); max-height: calc(100dvh - 248px); }
 }
 .calc-container { background: var(--bg-panel); border-bottom: 1px solid var(--border-main); padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
 .calc-headline { display: flex; justify-content: space-between; align-items: center; cursor: pointer; gap: 8px; border-radius: 4px; padding: 2px; margin: -2px; transition: background 0.15s ease; -webkit-tap-highlight-color: rgba(201,166,77,0.2); }
@@ -1103,10 +1091,6 @@ button, input { touch-action: manipulation; }
   .wrap { padding: 3px; gap: 3px; }
   .main-column { gap: 3px; }
   .content-area { flex-direction: row; gap: 4px; }
-  /* Landscape is height-starved — the 30-day meter + summary would eat the
-     chart. Hide them here so the chart keeps its full height (they're still
-     shown in portrait and on desktop). */
-  .item-insight { display: none; }
   .top-row-wrapper { flex-direction: row; gap: 6px; height: auto; align-items: stretch; }
   .top-panel { flex: 1 1 44%; min-width: 0; padding: 3px 6px; }
   .panel-left { flex-wrap: nowrap; gap: 4px; }
@@ -1411,6 +1395,27 @@ button, input { touch-action: manipulation; }
 .ins-val { color:var(--text-main); font-weight:800; font-size:12.5px; }
 .ins-elabel { color:var(--text-muted); font-size:8px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; margin-top:1px; }
 .ins-text { margin:12px auto 2px; font-size:11.5px; line-height:1.6; color:var(--text-muted); max-width:560px; }
+.ins-divider { display:none; }   /* only shown in the desktop side-by-side band */
+/* Only hide the 30-day card on genuinely height-starved landscape (phones,
+   ≤600px tall) where it would eat the chart. A tall-but-narrow window
+   (e.g. a resized desktop ~785px wide) keeps it — shown full-width in its
+   column rather than vanishing into dead space. */
+@media (orientation: landscape) and (max-height: 600px) { .item-insight { display: none; } }
+/* Desktop: a full-width "market context" band spanning the chart width. The
+   meter and the summary sit SIDE BY SIDE so the width is actually used,
+   instead of a narrow left-aligned box floating under a wide chart. Placed
+   after the base .ins-* rules so these overrides win on source order. */
+@media (min-width: 1024px) {
+  .item-insight {
+    display: flex; align-items: center; gap: 30px; text-align: left;
+    margin: 0; padding: 16px 26px; border-top: none;
+    background: var(--bg-panel); border: 1px solid var(--border-main);
+    border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+  }
+  .ins-meter { flex: 1 1 52%; max-width: none; margin: 0; }
+  .ins-divider { display: block; flex: 0 0 1px; align-self: stretch; background: var(--border-main); }
+  .ins-text { flex: 1 1 48%; margin: 0; max-width: none; font-size: 12.5px; text-align: left; }
+}
 </style>
 </head>
 <body>
@@ -1643,6 +1648,7 @@ button, input { touch-action: manipulation; }
             <span class="ins-end ins-end-hi"><span class="ins-val" id="insHi">—</span><span class="ins-elabel">High</span></span>
           </div>
         </div>
+        <div class="ins-divider" aria-hidden="true"></div>
         <p class="ins-text" id="insText"></p>
       </div>
     </div>
