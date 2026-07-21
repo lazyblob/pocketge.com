@@ -1841,6 +1841,30 @@ function updateHeaderChange() {
 function yAxisOnRight() {
   return window.matchMedia('(max-width: 1023px) and (orientation: portrait)').matches;
 }
+/* The 30-day insight sits below the chart on desktop (a full-width band), but
+   in portrait-mobile it belongs BELOW the Potential Profit / Analyst Rating
+   module so those decision numbers are the first thing under the chart. The
+   two blocks live in different containers (insight in .main-column, the module
+   in .watchlist-container), so a plain CSS `order` can't swap them — relocate
+   the node by media query instead. renderItemInsight targets it by id, so
+   moving it never breaks the live updates. */
+const _insightPortraitMQ = window.matchMedia('(max-width: 1023px) and (orientation: portrait)');
+function placeItemInsight() {
+  const insight = document.getElementById('itemInsight');
+  const sideModule = document.getElementById('sideModule');
+  const quickFacts = document.getElementById('quickFacts');
+  if (!insight || !sideModule || !quickFacts) return;
+  if (_insightPortraitMQ.matches) {
+    // portrait: drop it just under the Potential Profit / Analyst module
+    if (insight.previousElementSibling !== sideModule) sideModule.after(insight);
+  } else {
+    // desktop / landscape: back under the chart in the main column
+    if (quickFacts.nextElementSibling !== insight) quickFacts.after(insight);
+  }
+}
+placeItemInsight();
+if (_insightPortraitMQ.addEventListener) _insightPortraitMQ.addEventListener('change', placeItemInsight);
+else if (_insightPortraitMQ.addListener) _insightPortraitMQ.addListener(placeItemInsight);
 let hoverIdx = null;
 let selectedAbsIdx = null;
 let membersOn = localStorage.getItem('ge_members') === 'true';
