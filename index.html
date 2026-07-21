@@ -690,10 +690,23 @@ button, input { touch-action: manipulation; }
      under the fold. Landscape/portrait keep their own height rules. */
   .wrap { height: auto; min-height: 100dvh; }
   .content-area { align-items: stretch; }
-  /* Cap the chart so header + price strip + chart + quick-facts exactly fill
-     the first screen; the insight/description then start just past the fold.
-     min-height is a short-viewport safety floor only. */
-  .chart-container { min-height: calc(100dvh - 320px); max-height: calc(100dvh - 248px); }
+  /* Fix the chart to fill the first screen (header + price strip + chart +
+     quick-facts ≈ 100dvh); the insight/description then start just past the
+     fold. A definite height (not flex-grow) means the leftover main-column
+     space below reliably flows to the insight card's auto margins. */
+  .chart-container { flex: 0 0 auto; height: calc(100dvh - 248px); min-height: 360px; }
+  /* Desktop: the sidebar is taller than the main column, leaving dead space
+     under the description. Turn the insight into a self-contained "market
+     context" card and let auto margins float it into the middle of that space
+     so the area reads as designed, not empty. */
+  .item-insight {
+    margin: auto; border-top: none; padding: 18px 26px 20px;
+    max-width: 560px; width: 100%;
+    background: var(--bg-panel); border: 1px solid var(--border-main); border-radius: 10px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.25);
+  }
+  .ins-meter { max-width: 400px; }
+  .ins-text { font-size: 12px; max-width: 480px; }
 }
 .calc-container { background: var(--bg-panel); border-bottom: 1px solid var(--border-main); padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
 .calc-headline { display: flex; justify-content: space-between; align-items: center; cursor: pointer; gap: 8px; border-radius: 4px; padding: 2px; margin: -2px; transition: background 0.15s ease; -webkit-tap-highlight-color: rgba(201,166,77,0.2); }
@@ -1372,18 +1385,32 @@ button, input { touch-action: manipulation; }
    deliberately NOT the gold/teal buy-sell language — it shows "where in the
    range", not a recommendation, so it can't be confused with the Analyst
    Rating gauge below it. The champagne marker is the only accent. */
-.item-insight { margin:6px 2px 0; padding-top:6px; border-top:1px solid var(--border-main); }
-.ins-meter { max-width:520px; }
-.ins-track { position:relative; height:6px; border-radius:4px;
-  background:linear-gradient(90deg, #26221c 0%, #4a4336 55%, #6f6653 100%);
-  border:1px solid var(--border-main); }
-.ins-marker { position:absolute; top:50%; width:4px; height:15px; border-radius:2px;
-  background:var(--accent-bright); box-shadow:0 0 6px rgba(0,0,0,0.75); transform:translate(-50%,-50%); transition:left .3s ease; }
-.ins-ends { display:flex; justify-content:space-between; align-items:baseline; margin-top:4px;
-  font-size:9.5px; font-variant-numeric:tabular-nums; }
-.ins-lo, .ins-hi { color:var(--text-main); font-weight:700; }
-.ins-mid { color:var(--text-muted); font-size:8.5px; text-transform:uppercase; letter-spacing:.4px; }
-.ins-text { margin:7px 0 2px; font-size:11.5px; line-height:1.55; color:var(--text-muted); max-width:640px; }
+.item-insight { margin:8px 2px 0; padding-top:8px; border-top:1px solid var(--border-main); text-align:center; }
+.ins-meter { max-width:440px; margin:0 auto; }
+.ins-cap { font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px;
+  color:var(--border-active); margin-bottom:26px; }
+.ins-track { position:relative; height:9px; border-radius:5px;
+  background:linear-gradient(90deg, #26221c 0%, #4a4336 55%, #75694f 100%);
+  border:1px solid var(--border-main);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,166,77,0.06); }
+.ins-marker { position:absolute; top:50%; left:50%; width:5px; height:19px; border-radius:3px;
+  background:var(--accent-bright); box-shadow:0 0 0 2px var(--bg-chart), 0 0 8px rgba(0,0,0,0.8);
+  transform:translate(-50%,-50%); transition:left .3s ease; }
+/* live price bubble that rides above the marker, with a small pointer */
+.ins-price { position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%);
+  background:var(--bg-panel); border:1px solid var(--border-light); border-radius:5px;
+  padding:2px 7px; font-size:11px; font-weight:800; color:var(--accent-bright);
+  font-variant-numeric:tabular-nums; white-space:nowrap; letter-spacing:.2px;
+  box-shadow:0 2px 6px rgba(0,0,0,0.5); }
+.ins-price::after { content:""; position:absolute; top:100%; left:50%; transform:translateX(-50%);
+  border:4px solid transparent; border-top-color:var(--border-light); }
+.ins-ends { display:flex; justify-content:space-between; align-items:flex-start; margin-top:8px;
+  font-variant-numeric:tabular-nums; }
+.ins-end { display:flex; flex-direction:column; align-items:flex-start; line-height:1.15; }
+.ins-end-hi { align-items:flex-end; text-align:right; }
+.ins-val { color:var(--text-main); font-weight:800; font-size:12.5px; }
+.ins-elabel { color:var(--text-muted); font-size:8px; font-weight:600; text-transform:uppercase; letter-spacing:.5px; margin-top:1px; }
+.ins-text { margin:12px auto 2px; font-size:11.5px; line-height:1.6; color:var(--text-muted); max-width:560px; }
 </style>
 </head>
 <body>
@@ -1607,8 +1634,14 @@ button, input { touch-action: manipulation; }
            (buy zone) or ceiling (sell zone). -->
       <div class="item-insight" id="itemInsight" style="display:none">
         <div class="ins-meter" aria-hidden="true">
-          <div class="ins-track"><span class="ins-marker" id="insMarker"></span></div>
-          <div class="ins-ends"><span class="ins-lo" id="insLo">—</span><span class="ins-mid">30-day range</span><span class="ins-hi" id="insHi">—</span></div>
+          <div class="ins-cap">30-Day Range</div>
+          <div class="ins-track">
+            <span class="ins-marker" id="insMarker"><span class="ins-price" id="insPrice"></span></span>
+          </div>
+          <div class="ins-ends">
+            <span class="ins-end"><span class="ins-val" id="insLo">—</span><span class="ins-elabel">Low</span></span>
+            <span class="ins-end ins-end-hi"><span class="ins-val" id="insHi">—</span><span class="ins-elabel">High</span></span>
+          </div>
         </div>
         <p class="ins-text" id="insText"></p>
       </div>
@@ -4243,6 +4276,8 @@ function renderItemInsight(m, node) {
   const price = high;
   const pos = Math.max(0, Math.min(1, (price - stats.lo) / (stats.hi - stats.lo)));
   document.getElementById('insMarker').style.left = (pos * 100).toFixed(1) + '%';
+  const priceEl = document.getElementById('insPrice');
+  if (priceEl) priceEl.textContent = fmtGp(price);
   document.getElementById('insLo').textContent = fmtGp(stats.lo);
   document.getElementById('insHi').textContent = fmtGp(stats.hi);
 
