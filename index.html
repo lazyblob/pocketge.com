@@ -683,6 +683,17 @@ button, input { touch-action: manipulation; }
   .wl-resize { display: block; flex: 0 0 8px; align-self: stretch; cursor: col-resize; position: relative; margin: 0 -4px; z-index: 6; touch-action: none; }
   .wl-resize::before { content: ""; position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: 2px; height: 30px; background: var(--border-light); border-radius: 2px; transition: background 0.15s, height 0.15s; }
   .wl-resize:hover::before, .wl-resize.dragging::before { background: var(--border-active); height: 52px; }
+  /* Desktop: let the page grow a hair past the viewport so the 30-day insight
+     + description sit BELOW the chart instead of stealing its height. The chart
+     is floored to fill the first screen down to the quick-facts strip (which
+     then aligns with the sidebar's Favorites section); the insight lands just
+     under the fold. Landscape/portrait keep their own height rules. */
+  .wrap { height: auto; min-height: 100dvh; }
+  .content-area { align-items: stretch; }
+  /* Cap the chart so header + price strip + chart + quick-facts exactly fill
+     the first screen; the insight/description then start just past the fold.
+     min-height is a short-viewport safety floor only. */
+  .chart-container { min-height: calc(100dvh - 320px); max-height: calc(100dvh - 248px); }
 }
 .calc-container { background: var(--bg-panel); border-bottom: 1px solid var(--border-main); padding: 12px 14px; display: flex; flex-direction: column; gap: 4px; flex-shrink: 0; }
 .calc-headline { display: flex; justify-content: space-between; align-items: center; cursor: pointer; gap: 8px; border-radius: 4px; padding: 2px; margin: -2px; transition: background 0.15s ease; -webkit-tap-highlight-color: rgba(201,166,77,0.2); }
