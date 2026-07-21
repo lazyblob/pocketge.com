@@ -556,13 +556,12 @@ button, input { touch-action: manipulation; }
    their own arrangement (title group hidden, Save leads the row). */
 @media (min-width: 1024px) {
   .ticker-header { justify-content: flex-start; }
-  /* Push the timeframe toolbar to the right EDGE via an auto margin on the
-     Save button (the last left-packed item) rather than on the toolbar
-     itself. That way, when a maxed sidebar narrows the column and the toolbar
-     wraps onto its own line, it stays left-aligned (flex-start) instead of
-     being shoved to the right — auto margins only eat free space on the line
-     they sit on. */
-  .ticker-header .fav-btn { margin-right: auto; }
+  /* Timeframe selector gets its OWN full-width row beneath the name/Save,
+     with its buttons spread evenly edge-to-edge (segmented-control look) and
+     a little breathing room above it. flex-basis:100% forces it onto its own
+     line regardless of how wide the column is. */
+  .ticker-header .toolbar { flex: 1 1 100%; margin-top: 8px; gap: 4px; }
+  .ticker-header .toolbar button { flex: 1 1 0; min-width: 0; }
 }
 .ticker-title-group img { width: 34px; height: 34px; image-rendering: pixelated; }
 .ticker-wiki-link { display: inline-flex; color: inherit; text-decoration: none; line-height: 0; cursor: pointer; }
@@ -682,10 +681,11 @@ button, input { touch-action: manipulation; }
 @media screen and (min-width: 1024px) and (max-width: 1279px) {
   .price-box { gap: 12px; padding: 8px 14px 8px 16px; }
   .price-val { font-size: 22px; letter-spacing: -0.4px; }
-  /* Same squeeze applies to the time toolbar: compact buttons so title +
-     toolbar share one ticker-header row instead of clipping or wrapping. */
-  .ticker-header .toolbar { padding: 3px; gap: 3px; }
-  .ticker-header .toolbar button { padding: 4px 10px; font-size: 13px; min-width: 54px; }
+  /* The timeframe row is full-width on its own line now, so buttons flex to
+     fill — keep them shrinkable (no min-width floor) so they never overflow a
+     narrow (maxed-sidebar) column. */
+  .ticker-header .toolbar { padding: 3px; gap: 4px; }
+  .ticker-header .toolbar button { padding: 4px 6px; font-size: 13px; min-width: 0; }
   .ticker-header .toolbar button .pct-chg { font-size: 9px; }
 }
 .chart-tip { position: absolute; display: none; background: rgba(19, 23, 34, 0.95); color: var(--text-main); padding: 8px 10px; border-radius: 4px; font-size: 10px; pointer-events: none; white-space: nowrap; border: 1px solid var(--border-light); box-shadow: 0 4px 12px var(--shadow); z-index: 50; }
@@ -748,31 +748,42 @@ button, input { touch-action: manipulation; }
    title text itself harder to read. Bigger padding gives the header real
    physical presence vs the dense row stack. */
 .category-title {
+  --cat-accent: var(--border-active);
   position: sticky; top: 0; z-index: 4;
   padding: 11px 12px 11px 13px;
   font-size: 11px; font-weight: 800; letter-spacing: 0.7px; text-transform: uppercase;
   color: #F0EBDF;
-  background: #2A251E;
-  border-left: 3px solid var(--border-active);
+  /* Soft top-lit gradient (raised panel) instead of a flat fill, a thin inner
+     highlight for a beveled edge, and a faint wash of the section's accent
+     colour bleeding in from the left stripe — modern depth, still on-brand. */
+  background: linear-gradient(180deg, #312b23 0%, #231e18 100%);
+  border-left: 3px solid var(--cat-accent);
   border-bottom: 1px solid #141210;
   cursor: pointer;
   display: flex; justify-content: space-between; align-items: center;
-  box-shadow: 0 2px 6px -2px rgba(0,0,0,0.55);
+  box-shadow: inset 6px 0 20px -15px var(--cat-accent),
+              inset 0 1px 0 rgba(255,255,255,0.05),
+              0 2px 6px -3px rgba(0,0,0,0.6);
+  transition: background 0.15s ease, box-shadow 0.15s ease;
 }
-/* Per-section color now lives in the LEFT STRIPE, not the title text — the
-   text stays bright white so it never disappears into colored row content. */
-.category-title.high-title { border-left-color: var(--positive); }
-.category-title.low-title { border-left-color: var(--buy-color); }
-.category-title.fav-title { border-left-color: var(--fav-gold, #FFB300); }
-.category-title.lose-title { border-left-color: var(--negative); }
-.category-title.rec-title { border-left-color: #FF9800; }
+/* Per-section accent colour drives the left stripe AND the left-edge glow. */
+.category-title.high-title { --cat-accent: var(--positive); }
+.category-title.low-title { --cat-accent: var(--buy-color); }
+.category-title.fav-title { --cat-accent: var(--fav-gold, #FFB300); }
+.category-title.lose-title { --cat-accent: var(--negative); }
+.category-title.rec-title { --cat-accent: #FF9800; }
 /* Muted sage greens — the old #2ECC71/#7FE3A6 limes read neon-cool against
    the warm obsidian panels. */
-.category-title.margin-title { border-left-color: #57B87B; }
-.category-title.marginlo-title { border-left-color: #9BD4AE; }
-.category-title.steady-title { border-left-color: var(--rs-parchment); }
-.category-title.fall-title { border-left-color: var(--negative); }
-.category-title:hover { background: #363028; }
+.category-title.margin-title { --cat-accent: #57B87B; }
+.category-title.marginlo-title { --cat-accent: #9BD4AE; }
+.category-title.steady-title { --cat-accent: var(--rs-parchment); }
+.category-title.fall-title { --cat-accent: var(--negative); }
+.category-title:hover {
+  background: linear-gradient(180deg, #3b342a 0%, #2a241d 100%);
+  box-shadow: inset 8px 0 24px -15px var(--cat-accent),
+              inset 0 1px 0 rgba(255,255,255,0.08),
+              0 2px 8px -3px rgba(0,0,0,0.6);
+}
 /* Chevron rendered as a clearly tappable button so users can find "close"
    without aiming at a tiny glyph. Inverts when the section is collapsed so
    it's even more obvious the title is interactive. */
@@ -1388,14 +1399,21 @@ button, input { touch-action: manipulation; }
    Rating gauge below it. The champagne marker is the only accent. */
 .item-insight { margin:8px 2px 0; padding-top:8px; border-top:1px solid var(--border-main); text-align:center; }
 .ins-meter { max-width:440px; margin:0 auto; }
-.ins-cap { font-size:9.5px; font-weight:700; text-transform:uppercase; letter-spacing:1.2px;
-  color:var(--border-active); margin-bottom:26px; }
-.ins-track { position:relative; height:9px; border-radius:5px;
-  background:linear-gradient(90deg, #26221c 0%, #4a4336 55%, #75694f 100%);
+/* The track reserves clear space ABOVE for the floating price bubble (there's
+   no caption in that lane anymore, so the bubble can never cover it). */
+.ins-track { position:relative; height:10px; border-radius:6px; margin-top:26px;
+  background:linear-gradient(90deg, #211d17 0%, #443d31 55%, #6f6350 100%);
   border:1px solid var(--border-main);
-  box-shadow:inset 0 1px 2px rgba(0,0,0,0.5), 0 0 0 1px rgba(201,166,77,0.06); }
-.ins-marker { position:absolute; top:50%; left:50%; width:5px; height:19px; border-radius:3px;
-  background:var(--accent-bright); box-shadow:0 0 0 2px var(--bg-chart), 0 0 8px rgba(0,0,0,0.8);
+  box-shadow:inset 0 1px 2px rgba(0,0,0,0.55), inset 0 -1px 0 rgba(255,255,255,0.04), 0 0 0 1px rgba(201,166,77,0.05); }
+/* Subtle neutral "position in range" fill from the floor up to the marker —
+   warm champagne, deliberately NOT a buy/sell tint. */
+.ins-fill { position:absolute; left:0; top:0; bottom:0; width:0;
+  border-radius:6px 0 0 6px;
+  background:linear-gradient(90deg, rgba(201,166,77,0.10), rgba(201,166,77,0.28));
+  transition:width .3s ease; pointer-events:none; }
+.ins-marker { position:absolute; top:50%; left:50%; width:5px; height:20px; border-radius:3px; z-index:2;
+  background:linear-gradient(180deg, #ffe6a8, var(--accent-bright));
+  box-shadow:0 0 0 2px var(--bg-chart), 0 0 10px rgba(229,193,88,0.55), 0 1px 3px rgba(0,0,0,0.7);
   transform:translate(-50%,-50%); transition:left .3s ease; }
 /* live price bubble that rides above the marker, with a small pointer */
 .ins-price { position:absolute; bottom:calc(100% + 8px); left:50%; transform:translateX(-50%);
@@ -1669,13 +1687,13 @@ button, input { touch-action: manipulation; }
            (buy zone) or ceiling (sell zone). -->
       <div class="item-insight" id="itemInsight" style="display:none">
         <div class="ins-meter" aria-hidden="true">
-          <div class="ins-cap">30-Day Range</div>
           <div class="ins-track">
+            <span class="ins-fill" id="insFill"></span>
             <span class="ins-marker" id="insMarker"><span class="ins-price" id="insPrice"></span></span>
           </div>
           <div class="ins-ends">
-            <span class="ins-end"><span class="ins-val" id="insLo">—</span><span class="ins-elabel">Low</span></span>
-            <span class="ins-end ins-end-hi"><span class="ins-val" id="insHi">—</span><span class="ins-elabel">High</span></span>
+            <span class="ins-end"><span class="ins-val" id="insLo">—</span><span class="ins-elabel">30-Day Low</span></span>
+            <span class="ins-end ins-end-hi"><span class="ins-val" id="insHi">—</span><span class="ins-elabel">30-Day High</span></span>
           </div>
         </div>
         <div class="ins-divider" aria-hidden="true"></div>
@@ -2691,20 +2709,53 @@ function updateFootFresh() {
    bump it for a week the footer doesn't go suspiciously stale-looking
    (which would HURT trust). Updated in the same commit as user-facing
    changes — git history is the source of truth, this is the surface. */
-const BUILD_DATE = '2026-07-06';
+const BUILD_DATE = '2026-07-21';
+function agoLabel(dateStr) {
+  const built = new Date(dateStr);
+  const days = Math.max(0, Math.floor((Date.now() - built.getTime()) / 86400000));
+  return days === 0 ? 'Updated today'
+       : days === 1 ? 'Updated yesterday'
+       : days < 14 ? `Updated ${days} days ago`
+       : days < 60 ? `Updated ${Math.floor(days / 7)} weeks ago`
+       : `Updated ${Math.floor(days / 30)} months ago`;
+}
 function updateFootUpdated() {
   const el = document.getElementById('footUpdated');
   if (!el) return;
-  try {
-    const built = new Date(BUILD_DATE + 'T00:00:00Z');
-    const days = Math.max(0, Math.floor((Date.now() - built.getTime()) / 86400000));
-    const label = days === 0 ? 'Updated today'
-                : days === 1 ? 'Updated yesterday'
-                : days < 14 ? `Updated ${days} days ago`
-                : days < 60 ? `Updated ${Math.floor(days / 7)} weeks ago`
-                : `Updated ${Math.floor(days / 30)} months ago`;
-    el.textContent = label;
-  } catch (e) {}
+  try { el.textContent = agoLabel(BUILD_DATE + 'T00:00:00Z'); } catch (e) {}
+}
+/* Keep the footer's build id + "Updated …" honest by syncing them to the
+   repo's latest commit on GitHub, instead of a hand-bumped constant. The
+   short SHA becomes the version chip (so it visibly changes every deploy) and
+   the commit date drives the "Updated N ago" label. Cached 6h in
+   localStorage so we make at most a handful of API calls per user per day,
+   and every failure path silently falls back to the baked-in constants. */
+function syncBuildInfo() {
+  const CACHE_KEY = 'pg_build_info';
+  const TTL = 6 * 3600 * 1000;
+  const apply = (info) => {
+    if (!info) return;
+    const v = document.getElementById('footVersion');
+    if (v && info.sha) { v.textContent = info.sha.slice(0, 7); v.title = 'Latest commit ' + info.sha.slice(0, 7); }
+    const u = document.getElementById('footUpdated');
+    if (u && info.date) u.textContent = agoLabel(info.date);
+  };
+  let cached = null;
+  try { cached = JSON.parse(localStorage.getItem(CACHE_KEY) || 'null'); } catch (e) {}
+  if (cached && cached.info) apply(cached.info);
+  if (cached && (Date.now() - cached.t) < TTL) return;
+  fetch('https://api.github.com/repos/lazyblob/pocketge.com/commits?per_page=1', { headers: { Accept: 'application/vnd.github+json' } })
+    .then(r => r.ok ? r.json() : null)
+    .then(arr => {
+      const c = Array.isArray(arr) ? arr[0] : null;
+      if (!c || !c.sha) return;
+      const commit = c.commit || {};
+      const date = (commit.committer && commit.committer.date) || (commit.author && commit.author.date) || null;
+      const info = { sha: c.sha, date };
+      apply(info);
+      try { localStorage.setItem(CACHE_KEY, JSON.stringify({ t: Date.now(), info })); } catch (e) {}
+    })
+    .catch(() => {});
 }
 
 /* Per-item meta refresh. Updates description / OG / Twitter / canonical so a
@@ -4347,6 +4398,8 @@ function renderItemInsight(m, node) {
   const price = high;
   const pos = Math.max(0, Math.min(1, (price - stats.lo) / (stats.hi - stats.lo)));
   document.getElementById('insMarker').style.left = (pos * 100).toFixed(1) + '%';
+  const fillEl = document.getElementById('insFill');
+  if (fillEl) fillEl.style.width = (pos * 100).toFixed(1) + '%';
   const priceEl = document.getElementById('insPrice');
   if (priceEl) priceEl.textContent = fmtGp(price);
   document.getElementById('insLo').textContent = fmtGp(stats.lo);
@@ -6121,6 +6174,7 @@ setItem._userPicked = false;
     }
     updateFootFresh();
     updateFootUpdated();
+    syncBuildInfo();
 
     /* Landing-screen gate — first-time visitors arriving at "/" (no ?q= deep
        link, no ge_visited flag) see a real brand/education page instead of
