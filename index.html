@@ -562,6 +562,22 @@ button, input { touch-action: manipulation; }
      line regardless of how wide the column is. */
   .ticker-header .toolbar { flex: 1 1 100%; margin-top: 8px; gap: 4px; }
   .ticker-header .toolbar button { flex: 1 1 0; min-width: 0; }
+  /* TradingView's company page gives the logo real presence — a sizeable
+     mark in its own rounded chip beside the name, not a small inline icon.
+     Match that proportion: a bigger backdrop chip (item sprites are small,
+     irregular pixel art, not square logos, so they get a panel behind them
+     rather than just scaling the raw image) with the sprite centered inside,
+     still pixelated so it stays crisp at the larger size. */
+  #tickerHeaderIconLink {
+    width: 48px; height: 48px; flex-shrink: 0;
+    display: inline-flex; align-items: center; justify-content: center;
+    background: var(--bg-input);
+    border: 1px solid var(--border-main);
+    border-radius: 10px;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.05), 0 1px 4px rgba(0,0,0,0.35);
+  }
+  #tickerHeaderIconLink img { width: 34px; height: 34px; max-width: 34px; max-height: 34px; }
+  .ticker-title-group { gap: 12px; }
 }
 .ticker-title-group img { width: 34px; height: 34px; image-rendering: pixelated; }
 .ticker-wiki-link { display: inline-flex; color: inherit; text-decoration: none; line-height: 0; cursor: pointer; }
